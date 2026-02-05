@@ -1,33 +1,30 @@
-import {
-  View,
-  Text,
-  ScrollView,
-  Image,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ImageBackground,
-} from "react-native";
+import { useRouter } from "expo-router";
 import React from "react";
-import { Fonts } from "../../theme/fonts";
-import { image } from "../../assets/images";
+import {
+  Image,
+  ImageBackground,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { image } from "../../assets/images";
 import { AppText } from "../components/appText";
 import { AppTextInput } from "../components/appTextInput";
 
 const HomePage = () => {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+
+  // Use string ids to map across routes
   const categories = [
-    { id: 1, name: "Electronics", image: image.electronic },
-    { id: 2, name: "Fashion", image: image.shirt },
-    {
-      id: 3,
-      name: "Collectibles",
-      image: image.collectible,
-    },
-    { id: 4, name: "Home", image: image.house },
-    { id: 5, name: "Vehicles", image: image.car },
-    { id: 6, name: "Others", image: image.other },
+    { id: "electronics", name: "Electronics", image: image.electronic },
+    { id: "fashion", name: "Fashion", image: image.shirt },
+    { id: "collectibles", name: "Collectibles", image: image.collectible },
+    { id: "home", name: "Home", image: image.house },
+    { id: "vehicles", name: "Vehicles", image: image.car },
+    { id: "others", name: "Others", image: image.other },
   ];
 
   const hotAuctions = [
@@ -144,7 +141,13 @@ const HomePage = () => {
           </View>
           <View style={styles.categoriesGrid}>
             {categories.map((category) => (
-              <TouchableOpacity key={category.id} style={styles.categoryCard}>
+              <TouchableOpacity
+                key={category.id}
+                style={styles.categoryCard}
+                onPress={() =>
+                  router.push(`/screens/category?category=${category.id}`)
+                }
+              >
                 {category.image ? (
                   <Image source={category.image} style={styles.categoryImage} />
                 ) : (
@@ -470,7 +473,7 @@ const styles = StyleSheet.create({
     marginRight: 15,
     backgroundColor: "#fff",
     borderRadius: 15,
-    alignItems: 'center'
+    alignItems: "center",
   },
   hotBadge: {
     position: "absolute",
@@ -545,7 +548,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
-    
   },
   auctionName: {
     fontSize: 15,
