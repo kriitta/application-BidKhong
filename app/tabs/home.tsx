@@ -173,7 +173,9 @@ const HomePage = () => {
                 Hot Auctions
               </AppText>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/screens/view-all?type=hot")}
+            >
               <AppText weight="regular" style={styles.viewAll}>
                 View All →
               </AppText>
@@ -185,7 +187,23 @@ const HomePage = () => {
             style={styles.horizontalScroll}
           >
             {hotAuctions.map((item) => (
-              <TouchableOpacity key={item.id} style={styles.auctionCard}>
+              <TouchableOpacity
+                key={item.id}
+                style={styles.auctionCard}
+                onPress={() =>
+                  router.push({
+                    pathname: "/screens/product-detail",
+                    params: {
+                      productId: item.id.toString(),
+                      productName: item.name,
+                      productImage: JSON.stringify(item.image),
+                      time: item.time,
+                      isHot: item.isHot ? "true" : "false",
+                      isEnding: "false",
+                    },
+                  })
+                }
+              >
                 {item.isHot && (
                   <View style={styles.hotBadge}>
                     <Image
@@ -232,7 +250,9 @@ const HomePage = () => {
                 Ending Soon
               </AppText>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/screens/view-all?type=ending")}
+            >
               <AppText weight="regular" style={styles.viewAll}>
                 View All →
               </AppText>
@@ -244,7 +264,23 @@ const HomePage = () => {
             style={styles.horizontalScroll}
           >
             {endingSoon.map((item) => (
-              <TouchableOpacity key={item.id} style={styles.auctionCard}>
+              <TouchableOpacity
+                key={item.id}
+                style={styles.auctionCard}
+                onPress={() =>
+                  router.push({
+                    pathname: "/screens/product-detail",
+                    params: {
+                      productId: item.id.toString(),
+                      productName: item.name,
+                      productImage: JSON.stringify(item.image),
+                      time: item.time,
+                      isHot: "false",
+                      isEnding: "true",
+                    },
+                  })
+                }
+              >
                 <View style={styles.soonBadge}>
                   <Image
                     source={image.ending_badge}
@@ -289,7 +325,9 @@ const HomePage = () => {
                 Incoming
               </AppText>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/screens/view-all?type=incoming")}
+            >
               <AppText weight="regular" style={styles.viewAll}>
                 View All →
               </AppText>
@@ -301,7 +339,24 @@ const HomePage = () => {
             style={styles.horizontalScroll}
           >
             {incoming.map((item) => (
-              <TouchableOpacity key={item.id} style={styles.auctionCard}>
+              <TouchableOpacity
+                key={item.id}
+                style={styles.auctionCard}
+                onPress={() =>
+                  router.push({
+                    pathname: "/screens/product-detail",
+                    params: {
+                      productId: item.id.toString(),
+                      productName: item.name,
+                      productImage: JSON.stringify(item.image),
+                      time: item.time,
+                      isHot: "false",
+                      isEnding: "false",
+                      isIncoming: "true",
+                    },
+                  })
+                }
+              >
                 <View
                   style={[
                     styles.incomingBadge,

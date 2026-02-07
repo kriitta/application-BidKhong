@@ -1,5 +1,6 @@
 import { image } from "@/assets/images";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -12,7 +13,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppText } from "../components/appText";
-import LottieView from "lottie-react-native";
 
 const SUBCATEGORIES: Record<
   string,
@@ -142,8 +142,8 @@ const CategoryPage = () => {
   const [selectedSub, setSelectedSub] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [scaleAnim] = useState(new Animated.Value(0.5));
-    const [opacityAnim] = useState(new Animated.Value(0));
-    const lottieRef = useRef<LottieView>(null);
+  const [opacityAnim] = useState(new Animated.Value(0));
+  const lottieRef = useRef<LottieView>(null);
 
   useEffect(() => {
     Animated.parallel([
@@ -250,7 +250,23 @@ const CategoryPage = () => {
             <View style={styles.productsGrid}>
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((p: any) => (
-                  <TouchableOpacity key={p.id} style={styles.productCard}>
+                  <TouchableOpacity
+                    key={p.id}
+                    style={styles.productCard}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/screens/product-detail",
+                        params: {
+                          productId: p.id,
+                          productName: p.name,
+                          productImage: JSON.stringify(p.image),
+                          time: p.time,
+                          isHot: p.isHot ? "true" : "false",
+                          isEnding: p.isEnding ? "true" : "false",
+                        },
+                      })
+                    }
+                  >
                     <View style={styles.productImageContainer}>
                       {p.isHot && (
                         <View style={styles.hotBadge}>

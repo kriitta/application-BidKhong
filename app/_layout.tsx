@@ -1,19 +1,13 @@
-import { Stack } from "expo-router";
-import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Stack, useRouter, useSegments } from "expo-router";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
-import { useRouter, useSegments } from "expo-router";
-import {
-  Poppins_300Light,
-  Poppins_400Regular,
-  Poppins_500Medium,
-  Poppins_600SemiBold,
-  Poppins_700Bold,
-} from "@expo-google-fonts/poppins";
+import SplashScreen from "./components/SplashScreen";
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
   const [firstLaunch, setFirstLaunch] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const router = useRouter();
   const segments = useSegments();
 
@@ -34,9 +28,15 @@ export default function RootLayout() {
     if (firstLaunch && !inAuthGroup) {
       // ถ้ายังไม่เคยเห็น welcome ให้ไปหน้า welcome
       router.replace("/welcome");
-    } 
-    
+    }
   }, [ready, firstLaunch, segments]);
+
+  // Show video splash screen on first load
+  if (showSplash) {
+    return (
+      <SplashScreen onVideoEnd={() => setShowSplash(false)} duration={5000} />
+    );
+  }
 
   if (!ready) {
     return (

@@ -58,5 +58,12 @@ export const image = {
     select_time: require("./select_time.png"),
     select_date: require("./select_date.png"),
     remove: require("./remove.png"),
+    phone: require("./phone.png"),
+    ends: require("./ends.png"),
+    starting_bid: require("./starting_bid.png"),
+    location: require("./location.png"),
+    time_remaining: require("./time_remaining.png"),
+    current_bid: require("./current_bid.png"),
+    buynow: require("./buynow.png"),
     
 };
