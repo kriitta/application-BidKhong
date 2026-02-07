@@ -1,14 +1,18 @@
-import { View, Text } from 'react-native'
-import React from 'react'
+import React, { useState } from "react";
+import { View } from "react-native";
+import { AuthModal } from "./components/AuthModal";
 
 const LoginPage = () => {
-  return (
-    <View style={{ flex: 1 }}>
-          <View style={{ flex: 1,justifyContent: 'center', alignItems: 'center'}}>
-            <Text style={{ fontSize: 24 }}>LoginPage</Text>
-          </View>
-        </View>
-  )
-}
+  const [authModalVisible, setAuthModalVisible] = useState(true);
 
-export default LoginPage
+  return (
+    <View style={{ flex: 1, backgroundColor: "#001A3D" }}>
+      <AuthModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+      />
+    </View>
+  );
+};
+
+export default LoginPage;

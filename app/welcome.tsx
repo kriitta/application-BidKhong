@@ -1,22 +1,23 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useNavigation } from "expo-router";
-import React from "react";
+import { useNavigation } from "expo-router";
+import React, { useState } from "react";
 import {
   Image,
   ImageBackground,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../assets/images";
 import { AppText } from "./components/appText";
+import { AuthModal } from "./components/AuthModal";
 
 const WelcomePage = () => {
   const insets = useSafeAreaInsets();
   const navigation: any = useNavigation();
+  const [authModalVisible, setAuthModalVisible] = useState(false);
 
   return (
     <View style={styles.wrapper}>
@@ -167,7 +168,7 @@ const WelcomePage = () => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => navigation.navigate("login")}
+                onPress={() => setAuthModalVisible(true)}
                 style={styles.secondaryButton}
               >
                 <AppText weight="semibold" style={styles.secondaryButtonText}>
@@ -178,6 +179,11 @@ const WelcomePage = () => {
           </View>
         </ScrollView>
       </ImageBackground>
+
+      <AuthModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+      />
     </View>
   );
 };

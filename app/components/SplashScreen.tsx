@@ -1,6 +1,6 @@
 import { ResizeMode, Video } from "expo-av";
 import React, { useEffect, useRef, useState } from "react";
-import { Dimensions, StyleSheet, View } from "react-native";
+import { Animated, Dimensions, StyleSheet, View } from "react-native";
 import { AppText } from "./appText";
 
 const { width, height } = Dimensions.get("window");
@@ -16,44 +16,76 @@ const SplashScreenComponent: React.FC<SplashScreenProps> = ({
 }) => {
   const videoRef = useRef<Video>(null);
   const [videoEnded, setVideoEnded] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Set a timeout to transition after video duration or 5 seconds
-    const timer = setTimeout(() => {
+    // Timeout fallback - ให้แน่ใจว่ามันจะทำงาน
+    const fallbackTimer = setTimeout(() => {
       if (!videoEnded) {
         handleTransition();
       }
-    }, duration);
+    }, duration + 500);
 
-    return () => clearTimeout(timer);
+    return () => clearTimeout(fallbackTimer);
   }, [duration, videoEnded]);
 
+  useEffect(() => {
+    // ถ้า video loaded และพอ 2 seconds ให้เริ่ม play ด้วย
+    if (videoLoaded && videoRef.current) {
+      videoRef.current.playAsync().catch(() => {
+        // Fallback ถ้า play fail
+        console.warn("Video play failed, using timeout");
+      });
+    }
+  }, [videoLoaded]);
+
   const handleTransition = () => {
+    if (videoEnded) return;
     setVideoEnded(true);
-    onVideoEnd();
+
+    // Fade out animation ก่อน
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 600,
+      useNativeDriver: true,
+    }).start(() => {
+      onVideoEnd();
+    });
   };
 
   const handleVideoEnd = () => {
     handleTransition();
   };
 
+  const handlePlaybackStatusUpdate = (status: any) => {
+    if (status.isLoaded && !videoLoaded) {
+      setVideoLoaded(true);
+    }
+    if (status.isLoaded && status.didJustFinish) {
+      handleVideoEnd();
+    }
+  };
+
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <Video
         ref={videoRef}
         source={require("../../assets/splashscreen_bidkhong.mp4")}
         style={styles.video}
         resizeMode={ResizeMode.COVER}
         isLooping={false}
-        shouldPlay
-        onPlaybackStatusUpdate={(status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            handleVideoEnd();
-          }
+        shouldPlay={true}
+        useNativeControls={false}
+        onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+        onError={(error) => {
+          console.error("Video error:", error);
+          // Fallback เมื่อ video error
+          handleTransition();
         }}
       />
       
-    </View>
+    </Animated.View>
   );
 };
 

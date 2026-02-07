@@ -65,5 +65,10 @@ export const image = {
     time_remaining: require("./time_remaining.png"),
     current_bid: require("./current_bid.png"),
     buynow: require("./buynow.png"),
+    mail: require("./mail.png"),
+    password: require("./password.png"),
+    person: require("./person.png"),
+    show_eye: require("./show_eye.png"),
+    close_eye: require("./close_eye.png"),
     
 };
