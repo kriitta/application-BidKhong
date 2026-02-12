@@ -1,7 +1,6 @@
 import { ResizeMode, Video } from "expo-av";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Dimensions, StyleSheet, View } from "react-native";
-import { AppText } from "./appText";
+import { Animated, Dimensions, StyleSheet } from "react-native";
 
 const { width, height } = Dimensions.get("window");
 
@@ -77,6 +76,7 @@ const SplashScreenComponent: React.FC<SplashScreenProps> = ({
         isLooping={false}
         shouldPlay={true}
         useNativeControls={false}
+        isMuted={true}
         onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
         onError={(error) => {
           console.error("Video error:", error);
@@ -84,7 +84,6 @@ const SplashScreenComponent: React.FC<SplashScreenProps> = ({
           handleTransition();
         }}
       />
-      
     </Animated.View>
   );
 };

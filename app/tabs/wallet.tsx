@@ -1,29 +1,37 @@
+import React, { useEffect, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Image,
-  ImageBackground,
   Animated,
   Dimensions,
+  Image,
+  ImageBackground,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import React, { useEffect, useRef, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
 import { AppText } from "../components/appText";
+import { HistoryFilterModal } from "../components/HistoryFilterModal";
+import { TopUpModal } from "../components/TopUpModal";
+import { WithdrawModal } from "../components/WithdrawModal";
 
 const WalletPage = () => {
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const [disablePointer, setDisablePointer] = useState(false);
+  const [topUpModalVisible, setTopUpModalVisible] = useState(false);
+  const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
+  const [historyFilterModalVisible, setHistoryFilterModalVisible] =
+    useState(false);
+  const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
   const HEADER_MAX_HEIGHT = Math.min(
     SCREEN_HEIGHT * 0.35,
-    340 // ไม่ให้สูงเกิน
+    340, // ไม่ให้สูงเกิน
   );
 
   const HEADER_MIN_HEIGHT = insets.top + 100;
@@ -126,7 +134,9 @@ const WalletPage = () => {
                 source={image.mywallet}
                 style={{ width: 24, height: 24, marginRight: 10 }}
               />
-              <AppText weight="bold" style={styles.headerText}>My Wallet</AppText>
+              <AppText weight="bold" style={styles.headerText}>
+                My Wallet
+              </AppText>
             </View>
 
             {/* Balance Card - Animated */}
@@ -141,7 +151,9 @@ const WalletPage = () => {
               pointerEvents={disablePointer ? "none" : "auto"}
             >
               <View style={styles.balanceHeader}>
-                <AppText weight="regular" style={styles.balanceLabel}>Total Balance</AppText>
+                <AppText weight="regular" style={styles.balanceLabel}>
+                  Total Balance
+                </AppText>
               </View>
               <View
                 style={{
@@ -151,9 +163,13 @@ const WalletPage = () => {
                   marginBottom: 16,
                 }}
               >
-                <AppText weight="semibold" style={styles.balanceAmount}>฿125,000</AppText>
-                <TouchableOpacity style={styles.topUpButton}>
-                  <AppText weight="medium" style={styles.topUpText}>+ Top Up</AppText>
+                <AppText weight="semibold" style={styles.balanceAmount}>
+                  ฿125,000
+                </AppText>
+                <TouchableOpacity style={styles.topUpButton} onPress={() => setTopUpModalVisible(true)}>
+                  <AppText weight="medium" style={styles.topUpText}>
+                    + Top Up
+                  </AppText>
                 </TouchableOpacity>
               </View>
 
@@ -162,11 +178,17 @@ const WalletPage = () => {
               <View style={styles.balanceDetails}>
                 <View style={styles.balanceItem}>
                   <AppText style={styles.balanceSubLabel}>Available</AppText>
-                  <AppText weight="medium" style={styles.availableAmount}>฿100,200</AppText>
+                  <AppText weight="medium" style={styles.availableAmount}>
+                    ฿100,200
+                  </AppText>
                 </View>
                 <View style={styles.balanceItem}>
-                  <AppText style={styles.balanceSubLabel}>In Pending Bids</AppText>
-                  <AppText weight="medium" style={styles.pendingAmount}>฿2,300</AppText>
+                  <AppText style={styles.balanceSubLabel}>
+                    In Pending Bids
+                  </AppText>
+                  <AppText weight="medium" style={styles.pendingAmount}>
+                    ฿2,300
+                  </AppText>
                 </View>
               </View>
             </Animated.View>
@@ -182,13 +204,23 @@ const WalletPage = () => {
         scrollEventThrottle={16}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
+          { useNativeDriver: false },
         )}
       >
         {/* Quick Actions */}
-        <View style={[styles.quickActions, { paddingTop: HEADER_MAX_HEIGHT+15 }]}>
+        <View
+          style={[styles.quickActions, { paddingTop: HEADER_MAX_HEIGHT + 15 }]}
+        >
           {quickActions.map((action) => (
-            <TouchableOpacity key={action.id} style={styles.actionCard}>
+            <TouchableOpacity
+              key={action.id}
+              onPress={() => {
+                if (action.id === 1) setTopUpModalVisible(true);
+                else if (action.id === 2) setWithdrawModalVisible(true);
+                else if (action.id === 3) setHistoryFilterModalVisible(true);
+              }}
+              style={styles.actionCard}
+            >
               <View
                 style={[styles.actionIcon, { backgroundColor: action.bgColor }]}
               >
@@ -210,15 +242,19 @@ const WalletPage = () => {
               source={image.recent_trans}
               style={{ width: 20, height: 20, marginRight: 8 }}
             />
-            <AppText weight="semibold" style={styles.sectionTitle}>Recent Transactions</AppText>
+            <AppText weight="semibold" style={styles.sectionTitle}>
+              {selectedMonth && selectedYear
+                ? `Transactions - ${new Date(selectedYear, selectedMonth - 1).toLocaleDateString("en-US", { month: "long", year: "numeric" })}`
+                : "Recent Transactions"}
+            </AppText>
           </View>
 
           <View style={styles.transactionsList}>
-            {transactions.map((transaction) => (
-              <View
-                key={transaction.id}
-                style={styles.transactionItem}
-              >
+            {(selectedMonth && selectedYear
+              ? filteredTransactions
+              : transactions
+            ).map((transaction) => (
+              <View key={transaction.id} style={styles.transactionItem}>
                 <View
                   style={[
                     styles.transactionIcon,
@@ -233,13 +269,16 @@ const WalletPage = () => {
                 </View>
 
                 <View style={styles.transactionInfo}>
-                  <AppText style={styles. transactionTitle}>
+                  <AppText style={styles.transactionTitle}>
                     {transaction.title}
                   </AppText>
-                  <AppText style={styles.transactionTime}>{transaction.time}</AppText>
+                  <AppText style={styles.transactionTime}>
+                    {transaction.time}
+                  </AppText>
                 </View>
 
-                <AppText weight="semibold"
+                <AppText
+                  weight="semibold"
                   style={[
                     styles.transactionAmount,
                     transaction.isNegative
@@ -254,6 +293,38 @@ const WalletPage = () => {
           </View>
         </View>
       </Animated.ScrollView>
+
+      {/* Top Up Modal */}
+      <TopUpModal
+        visible={topUpModalVisible}
+        onClose={() => setTopUpModalVisible(false)}
+        onConfirm={(amount, method) => {
+          alert(`Top Up ฿${amount} via ${method} successful!`);
+        }}
+      />
+
+      {/* Withdraw Modal */}
+      <WithdrawModal
+        visible={withdrawModalVisible}
+        onClose={() => setWithdrawModalVisible(false)}
+        onConfirm={(amount, bank, accountNumber, accountName) => {
+          alert(
+            `Withdraw ฿${amount} to ${bank}\nAccount: ${accountNumber}\nHolder: ${accountName}`,
+          );
+        }}
+      />
+
+      {/* History Filter Modal */}
+      <HistoryFilterModal
+        visible={historyFilterModalVisible}
+        onClose={() => setHistoryFilterModalVisible(false)}
+        onApply={(month, year) => {
+          setSelectedMonth(month);
+          setSelectedYear(year);
+          // ฟิลเตอร์ transactions (ในตัวอย่างนี้แสดงทั้งหมด แต่คุณสามารถเพิ่มข้อมูลเดือน/ปีได้)
+          setFilteredTransactions(transactions);
+        }}
+      />
     </View>
   );
 };
@@ -412,7 +483,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   transactionsList: {
-    gap:8,
+    gap: 8,
   },
   transactionItem: {
     flexDirection: "row",

@@ -12,8 +12,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "../components/appText";
+import { LinearGradient } from "expo-linear-gradient";
 
 const { width } = Dimensions.get("window");
 
@@ -33,6 +34,7 @@ const ProductDetailPage = () => {
   const [buyNowPrice, setBuyNowPrice] = useState(19500);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const imageScrollRef = useRef<ScrollView>(null);
+  const insets = useSafeAreaInsets();
 
   // Mock product data - in real app, fetch from API
   const productData = {
@@ -300,10 +302,17 @@ const ProductDetailPage = () => {
                   value={bidAmount}
                   onChangeText={setBidAmount}
                 />
-                <TouchableOpacity style={styles.bidButton} onPress={handleBid}>
-                  <AppText weight="bold" style={styles.bidButtonText}>
-                    Bid
-                  </AppText>
+                <TouchableOpacity onPress={handleBid}>
+                  <LinearGradient
+                    colors={["#00112E", "#003994"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.primaryButton}
+                  >
+                    <AppText weight="bold" style={styles.bidButtonText}>
+                      Bid
+                    </AppText>
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
               <View style={styles.minimumBidNote}>
@@ -438,25 +447,31 @@ const ProductDetailPage = () => {
       </ScrollView>
 
       {/* Bottom Action Buttons */}
-      <View style={styles.bottomButtonsContainer}>
-        <TouchableOpacity
-          style={styles.placeBidButton}
-          onPress={handleBid}
-          activeOpacity={0.8}
-        >
-          <AppText weight="bold" style={styles.placeBidButtonText}>
-            Place Bid
-          </AppText>
+      <View style={[styles.bottomButtonsContainer, { paddingBottom: insets.bottom }]}>
+        <TouchableOpacity onPress={handleBid} activeOpacity={0.8}>
+          <LinearGradient
+            colors={["#2EA200", "#3CD500"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.primaryButton2}
+          >
+            <AppText weight="bold" style={styles.placeBidButtonText}>
+              Place Bid
+            </AppText>
+          </LinearGradient>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.buyNowButton}
-          onPress={handleBuyNow}
-          activeOpacity={0.8}
-        >
-          <AppText weight="bold" style={styles.buyNowButtonText}>
-            Buy Now
-          </AppText>
+        <TouchableOpacity onPress={handleBuyNow} activeOpacity={0.8}>
+          <LinearGradient
+            colors={["#00112E", "#003994"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.primaryButton2}
+          >
+            <AppText weight="bold" style={styles.buyNowButtonText}>
+              Buy Now
+            </AppText>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -560,6 +575,21 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: "#111827",
   },
+  primaryButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+  },
+  primaryButton2: {
+    paddingVertical: 14,
+    paddingHorizontal: 60,
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+  },
   sellerContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -660,9 +690,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   bidButton: {
-    backgroundColor: "#1F3A93",
     paddingHorizontal: 32,
-    paddingVertical: 12,
     borderRadius: 8,
   },
   bidButtonText: {
@@ -745,12 +773,13 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   bottomButtonsContainer: {
+    justifyContent: "center",
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     flexDirection: "row",
-    gap: 12,
+    gap: 24,
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: "#fff",
@@ -776,6 +805,7 @@ const styles = StyleSheet.create({
   placeBidButtonText: {
     fontSize: 16,
     color: "#fff",
+    fontWeight: 600,
   },
   buyNowButton: {
     flex: 1,
@@ -788,6 +818,7 @@ const styles = StyleSheet.create({
   buyNowButtonText: {
     fontSize: 16,
     color: "#fff",
+    fontWeight: 600,
   },
 });
 

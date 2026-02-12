@@ -70,5 +70,7 @@ export const image = {
     person: require("./person.png"),
     show_eye: require("./show_eye.png"),
     close_eye: require("./close_eye.png"),
+    qr: require("./qr.png"),
+    mobile_banking: require("./mobile_banking.png"),
     
 };
