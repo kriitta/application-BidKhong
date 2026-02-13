@@ -1,4 +1,5 @@
 import { image } from "@/assets/images";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
@@ -12,9 +13,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import { useAuth } from "../../contexts/AuthContext";
 import { AppText } from "../components/appText";
-import { LinearGradient } from "expo-linear-gradient";
+import { AuthModal } from "../components/AuthModal";
 
 const { width } = Dimensions.get("window");
 
@@ -35,6 +40,8 @@ const ProductDetailPage = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const imageScrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
+  const { isGuest } = useAuth();
+  const [authModalVisible, setAuthModalVisible] = useState(false);
 
   // Mock product data - in real app, fetch from API
   const productData = {
@@ -90,11 +97,19 @@ const ProductDetailPage = () => {
   };
 
   const handleBid = () => {
+    if (isGuest) {
+      setAuthModalVisible(true);
+      return;
+    }
     // Handle bid logic
     console.log("Bid placed:", bidAmount);
   };
 
   const handleBuyNow = () => {
+    if (isGuest) {
+      setAuthModalVisible(true);
+      return;
+    }
     // Handle buy now logic
     console.log("Buy now clicked");
   };
@@ -211,127 +226,243 @@ const ProductDetailPage = () => {
           </View>
         </View>
 
-        {/* Bidding Info Cards */}
-        <View style={styles.bidInfoContainer}>
-          {/* Current Bid Card */}
-          <View
-            style={[
-              styles.bidCard,
-              {
-                backgroundColor: "#E8F5E9",
-                borderWidth: 0.5,
-                borderColor: "#22C55E",
-              },
-            ]}
-          >
-            <View style={styles.bidCardHeader}>
+        {/* Incoming Banner */}
+        {productData.isIncoming && (
+          <View style={styles.incomingBanner}>
+            <View style={styles.incomingBannerIcon}>
               <Image
-                source={image.current_bid}
-                style={{
-                  width: 13,
-                  height: 7,
-                  tintColor: "#22C55E",
-                  marginRight: 4,
-                }}
+                source={image.incoming_time}
+                style={{ width: 20, height: 20 }}
               />
-              <AppText
-                weight="medium"
-                style={[styles.bidLabel, { color: "#22C55E" }]}
-              >
-                {productData.totalBids} Bids
+            </View>
+            <View style={{ flex: 1 }}>
+              <AppText weight="semibold" style={styles.incomingBannerTitle}>
+                Upcoming Auction
+              </AppText>
+              <AppText weight="regular" style={styles.incomingBannerSub}>
+                This auction hasn't started yet. Starts in {productData.time}.
               </AppText>
             </View>
-            <AppText weight="regular" style={styles.bidLabelSmall}>
-              Current Bid
-            </AppText>
-            <AppText weight="bold" style={styles.bidAmount}>
-              ฿{currentBid.toLocaleString("en-US")}
-            </AppText>
           </View>
+        )}
 
-          {/* Buy Now Card */}
-          <View
-            style={[
-              styles.bidCard,
-              {
-                backgroundColor: "#E3F2FD",
-                borderWidth: 0.5,
-                borderColor: "#2C7BFC",
-              },
-            ]}
-          >
-            <View style={styles.bidCardHeader}>
-              <Image
-                source={image.buynow}
-                style={{
-                  width: 14,
-                  height: 14,
-                  tintColor: "#2C7BFC",
-                  marginRight: 4,
-                }}
-              />
-              <AppText
-                weight="medium"
-                style={[styles.bidLabel, { color: "#2C7BFC" }]}
-              >
-                Buy Now
-              </AppText>
-            </View>
-            <AppText weight="regular" style={styles.bidLabelSmall}>
-              Buyout Price
-            </AppText>
-            <AppText weight="bold" style={styles.bidAmount}>
-              ฿{buyNowPrice.toLocaleString("en-US")}
-            </AppText>
-          </View>
-        </View>
-
-        {/* Bidding Section */}
-        <View style={styles.biddingSection}>
-          <View style={styles.biddingInputContainer}>
-            <View style={styles.bidInputWrapper}>
-              <AppText weight="regular" style={styles.minBidLabel}>
-                Place Your Bid
-              </AppText>
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={styles.biddingInput}
-                  placeholder="Min : ฿12,600"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="decimal-pad"
-                  value={bidAmount}
-                  onChangeText={setBidAmount}
-                />
-                <TouchableOpacity onPress={handleBid}>
-                  <LinearGradient
-                    colors={["#00112E", "#003994"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.primaryButton}
-                  >
-                    <AppText weight="bold" style={styles.bidButtonText}>
-                      Bid
-                    </AppText>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.minimumBidNote}>
+        {/* Incoming — show starting bid + buy now price */}
+        {productData.isIncoming && (
+          <View style={styles.bidInfoContainer}>
+            <View
+              style={[
+                styles.bidCard,
+                {
+                  backgroundColor: "#E8F5E9",
+                  borderWidth: 0.5,
+                  borderColor: "#22C55E",
+                },
+              ]}
+            >
+              <View style={styles.bidCardHeader}>
                 <Image
-                  source={image.info}
+                  source={image.current_bid}
+                  style={{
+                    width: 13,
+                    height: 7,
+                    tintColor: "#22C55E",
+                    marginRight: 4,
+                  }}
+                />
+                <AppText
+                  weight="medium"
+                  style={[styles.bidLabel, { color: "#22C55E" }]}
+                >
+                  0 Bids
+                </AppText>
+              </View>
+              <AppText weight="regular" style={styles.bidLabelSmall}>
+                Current Bid
+              </AppText>
+              <AppText weight="bold" style={styles.bidAmount}>
+                ฿8,000
+              </AppText>
+            </View>
+            <View
+              style={[
+                styles.bidCard,
+                {
+                  backgroundColor: "#E3F2FD",
+                  borderWidth: 0.5,
+                  borderColor: "#2C7BFC",
+                },
+              ]}
+            >
+              <View style={styles.bidCardHeader}>
+                <Image
+                  source={image.buynow}
                   style={{
                     width: 14,
                     height: 14,
-                    tintColor: "#6B7280",
-                    marginRight: 6,
+                    tintColor: "#2C7BFC",
+                    marginRight: 4,
                   }}
                 />
-                <AppText weight="regular" style={styles.minimumBidText}>
-                  Minimum bid increment: ฿100
+                <AppText
+                  weight="medium"
+                  style={[styles.bidLabel, { color: "#2C7BFC" }]}
+                >
+                  Buy Now
                 </AppText>
+              </View>
+              <AppText weight="regular" style={styles.bidLabelSmall}>
+                Buyout Price
+              </AppText>
+              <AppText weight="bold" style={styles.bidAmount}>
+                ฿{buyNowPrice.toLocaleString("en-US")}
+              </AppText>
+            </View>
+          </View>
+        )}
+
+        {/* Minimum bid increment — for incoming */}
+        {productData.isIncoming && (
+          <View style={styles.incomingMinBidNote}>
+            <Image
+              source={image.info}
+              style={{
+                width: 14,
+                height: 14,
+                tintColor: "#6B7280",
+                marginRight: 6,
+              }}
+            />
+            <AppText weight="regular" style={styles.minimumBidText}>
+              Minimum bid increment: ฿100
+            </AppText>
+          </View>
+        )}
+
+        {/* Bidding Info Cards — hidden for incoming */}
+        {!productData.isIncoming && (
+          <View style={styles.bidInfoContainer}>
+            {/* Current Bid Card */}
+            <View
+              style={[
+                styles.bidCard,
+                {
+                  backgroundColor: "#E8F5E9",
+                  borderWidth: 0.5,
+                  borderColor: "#22C55E",
+                },
+              ]}
+            >
+              <View style={styles.bidCardHeader}>
+                <Image
+                  source={image.current_bid}
+                  style={{
+                    width: 13,
+                    height: 7,
+                    tintColor: "#22C55E",
+                    marginRight: 4,
+                  }}
+                />
+                <AppText
+                  weight="medium"
+                  style={[styles.bidLabel, { color: "#22C55E" }]}
+                >
+                  {productData.totalBids} Bids
+                </AppText>
+              </View>
+              <AppText weight="regular" style={styles.bidLabelSmall}>
+                Current Bid
+              </AppText>
+              <AppText weight="bold" style={styles.bidAmount}>
+                ฿{currentBid.toLocaleString("en-US")}
+              </AppText>
+            </View>
+
+            {/* Buy Now Card */}
+            <View
+              style={[
+                styles.bidCard,
+                {
+                  backgroundColor: "#E3F2FD",
+                  borderWidth: 0.5,
+                  borderColor: "#2C7BFC",
+                },
+              ]}
+            >
+              <View style={styles.bidCardHeader}>
+                <Image
+                  source={image.buynow}
+                  style={{
+                    width: 14,
+                    height: 14,
+                    tintColor: "#2C7BFC",
+                    marginRight: 4,
+                  }}
+                />
+                <AppText
+                  weight="medium"
+                  style={[styles.bidLabel, { color: "#2C7BFC" }]}
+                >
+                  Buy Now
+                </AppText>
+              </View>
+              <AppText weight="regular" style={styles.bidLabelSmall}>
+                Buyout Price
+              </AppText>
+              <AppText weight="bold" style={styles.bidAmount}>
+                ฿{buyNowPrice.toLocaleString("en-US")}
+              </AppText>
+            </View>
+          </View>
+        )}
+
+        {/* Bidding Section — hidden for incoming */}
+        {!productData.isIncoming && (
+          <View style={styles.biddingSection}>
+            <View style={styles.biddingInputContainer}>
+              <View style={styles.bidInputWrapper}>
+                <AppText weight="regular" style={styles.minBidLabel}>
+                  Place Your Bid
+                </AppText>
+                <View style={styles.inputRow}>
+                  <TextInput
+                    style={styles.biddingInput}
+                    placeholder="Min : ฿12,600"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="decimal-pad"
+                    value={bidAmount}
+                    onChangeText={setBidAmount}
+                  />
+                  <TouchableOpacity onPress={handleBid}>
+                    <LinearGradient
+                      colors={["#00112E", "#003994"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.primaryButton}
+                    >
+                      <AppText weight="bold" style={styles.bidButtonText}>
+                        Bid
+                      </AppText>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.minimumBidNote}>
+                  <Image
+                    source={image.info}
+                    style={{
+                      width: 14,
+                      height: 14,
+                      tintColor: "#6B7280",
+                      marginRight: 6,
+                    }}
+                  />
+                  <AppText weight="regular" style={styles.minimumBidText}>
+                    Minimum bid increment: ฿100
+                  </AppText>
+                </View>
               </View>
             </View>
           </View>
-        </View>
+        )}
 
         {/* Auction Information */}
         <View style={styles.auctionInfoSection}>
@@ -348,7 +479,7 @@ const ProductDetailPage = () => {
             </View>
             <View style={{ flex: 1 }}>
               <AppText weight="regular" style={styles.infoLabel}>
-                Ends
+                {productData.isIncoming ? "Starts" : "Ends"}
               </AppText>
               <AppText weight="semibold" style={styles.infoValue}>
                 {productData.auctionInfo.ends}
@@ -365,10 +496,18 @@ const ProductDetailPage = () => {
             </View>
             <View style={{ flex: 1 }}>
               <AppText weight="regular" style={styles.infoLabel}>
-                Time Remaining
+                {productData.isIncoming ? "Starts In" : "Time Remaining"}
               </AppText>
-              <AppText weight="semibold" style={styles.infoValue}>
-                {productData.auctionInfo.timeRemaining}
+              <AppText
+                weight="semibold"
+                style={[
+                  styles.infoValue,
+                  productData.isIncoming && { color: "#9B27B0" },
+                ]}
+              >
+                {productData.isIncoming
+                  ? productData.time
+                  : productData.auctionInfo.timeRemaining}
               </AppText>
             </View>
           </View>
@@ -418,62 +557,77 @@ const ProductDetailPage = () => {
           </AppText>
         </View>
 
-        {/* Bid History */}
-        <View style={styles.bidHistorySection}>
-          <AppText weight="bold" style={styles.sectionTitle}>
-            Bid History
-            <AppText weight="regular" style={styles.bidHistoryCount}>
-              {" "}
-              ( 5 lastest bid )
+        {/* Bid History — hidden for incoming */}
+        {!productData.isIncoming && (
+          <View style={styles.bidHistorySection}>
+            <AppText weight="bold" style={styles.sectionTitle}>
+              Bid History
+              <AppText weight="regular" style={styles.bidHistoryCount}>
+                {" "}
+                ( 5 lastest bid )
+              </AppText>
             </AppText>
-          </AppText>
 
-          {productData.biddingHistory.map((bid) => (
-            <View key={bid.id} style={styles.bidHistoryItem}>
-              <View>
-                <AppText weight="semibold" style={styles.bidHistoryName}>
-                  {bid.bidder}
-                </AppText>
-                <AppText weight="regular" style={styles.bidHistoryTime}>
-                  {bid.time}
+            {productData.biddingHistory.map((bid) => (
+              <View key={bid.id} style={styles.bidHistoryItem}>
+                <View>
+                  <AppText weight="semibold" style={styles.bidHistoryName}>
+                    {bid.bidder}
+                  </AppText>
+                  <AppText weight="regular" style={styles.bidHistoryTime}>
+                    {bid.time}
+                  </AppText>
+                </View>
+                <AppText weight="bold" style={styles.bidHistoryAmount}>
+                  ฿{bid.amount.toLocaleString("en-US")}
                 </AppText>
               </View>
-              <AppText weight="bold" style={styles.bidHistoryAmount}>
-                ฿{bid.amount.toLocaleString("en-US")}
-              </AppText>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
-      {/* Bottom Action Buttons */}
-      <View style={[styles.bottomButtonsContainer, { paddingBottom: insets.bottom }]}>
-        <TouchableOpacity onPress={handleBid} activeOpacity={0.8}>
-          <LinearGradient
-            colors={["#2EA200", "#3CD500"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.primaryButton2}
-          >
-            <AppText weight="bold" style={styles.placeBidButtonText}>
-              Place Bid
-            </AppText>
-          </LinearGradient>
-        </TouchableOpacity>
+      {/* Bottom Action Buttons — hidden for incoming */}
+      {!productData.isIncoming && (
+        <View
+          style={[
+            styles.bottomButtonsContainer,
+            { paddingBottom: insets.bottom },
+          ]}
+        >
+          <TouchableOpacity onPress={handleBid} activeOpacity={0.8}>
+            <LinearGradient
+              colors={["#2EA200", "#3CD500"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.primaryButton2}
+            >
+              <AppText weight="bold" style={styles.placeBidButtonText}>
+                Place Bid
+              </AppText>
+            </LinearGradient>
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleBuyNow} activeOpacity={0.8}>
-          <LinearGradient
-            colors={["#00112E", "#003994"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.primaryButton2}
-          >
-            <AppText weight="bold" style={styles.buyNowButtonText}>
-              Buy Now
-            </AppText>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity onPress={handleBuyNow} activeOpacity={0.8}>
+            <LinearGradient
+              colors={["#00112E", "#003994"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.primaryButton2}
+            >
+              <AppText weight="bold" style={styles.buyNowButtonText}>
+                Buy Now
+              </AppText>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Login Modal สำหรับ Guest */}
+      <AuthModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -626,6 +780,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
   },
+  incomingBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3E5F5",
+    borderWidth: 1,
+    borderColor: "#CE93D8",
+    borderRadius: 14,
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 16,
+  },
+  incomingBannerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#9B27B0",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 14,
+  },
+  incomingBannerTitle: {
+    fontSize: 15,
+    color: "#7B1FA2",
+    marginBottom: 2,
+  },
+  incomingBannerSub: {
+    fontSize: 12,
+    color: "#9C27B0",
+    lineHeight: 18,
+  },
   bidCard: {
     flex: 1,
     paddingHorizontal: 16,
@@ -705,6 +889,13 @@ const styles = StyleSheet.create({
   minimumBidText: {
     fontSize: 12,
     color: "#6B7280",
+  },
+  incomingMinBidNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    marginBottom: 16,
   },
   auctionInfoSection: {
     paddingHorizontal: 20,

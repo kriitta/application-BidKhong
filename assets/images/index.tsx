@@ -72,5 +72,6 @@ export const image = {
     close_eye: require("./close_eye.png"),
     qr: require("./qr.png"),
     mobile_banking: require("./mobile_banking.png"),
+    calendar: require("./calendar.png"),
     
 };

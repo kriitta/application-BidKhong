@@ -1,6 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  Alert,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -11,6 +13,8 @@ import {
   View,
 } from "react-native";
 import { image } from "../../assets/images";
+import { useAuth } from "../../contexts/AuthContext";
+import { authService } from "../../utils/authService";
 import { AppText } from "./appText";
 import { AppTextInput } from "./appTextInput";
 
@@ -24,6 +28,8 @@ type AuthMode = "login" | "signup";
 const { height, width } = Dimensions.get("window");
 
 export function AuthModal({ visible, onClose }: AuthModalProps) {
+  const router = useRouter();
+  const { loginSuccess } = useAuth();
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,38 +58,58 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      alert("Please fill in all fields");
+      Alert.alert("ข้อผิดพลาด", "กรุณากรอกอีเมลและรหัสผ่าน");
       return;
     }
     setLoading(true);
-    // API call here
-    setTimeout(() => {
-      setLoading(false);
-      alert("Login successful!");
+    const result = await authService.login(email, password);
+    setLoading(false);
+
+    if (result.success && result.user) {
+      loginSuccess(result.user);
+      Alert.alert("สำเร็จ", result.message);
       handleClose();
-    }, 1500);
+      // Route based on user role
+      if (result.user.role === "admin") {
+        router.replace("/admin");
+      } else {
+        router.replace("/tabs/home");
+      }
+    } else {
+      Alert.alert("ข้อผิดพลาด", result.message);
+    }
   };
 
   const handleSignup = async () => {
     if (!fullName || !email || !phoneNumber || !password || !confirmPassword) {
-      alert("Please fill in all fields");
+      Alert.alert("ข้อผิดพลาด", "กรุณากรอกข้อมูลทั้งหมด");
       return;
     }
     if (password !== confirmPassword) {
-      alert("Passwords do not match");
+      Alert.alert("ข้อผิดพลาด", "รหัสผ่านไม่ตรงกัน");
       return;
     }
     if (password.length < 6) {
-      alert("Password must be at least 6 characters");
+      Alert.alert("ข้อผิดพลาด", "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร");
       return;
     }
+    setLoading(true);
+    const result = await authService.signup(
+      email,
+      password,
+      fullName,
+      phoneNumber,
+    );
     setLoading(false);
-    // API call here
-    setTimeout(() => {
-      setLoading(false);
-      alert("Account created successfully!");
+
+    if (result.success && result.user) {
+      loginSuccess(result.user);
+      Alert.alert("สำเร็จ", result.message);
       handleClose();
-    }, 1500);
+      router.replace("/tabs/home");
+    } else {
+      Alert.alert("ข้อผิดพลาด", result.message);
+    }
   };
 
   const isLoginMode = mode === "login";

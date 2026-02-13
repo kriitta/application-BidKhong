@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Image,
+  Keyboard,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -28,9 +29,11 @@ const ViewAllPage = () => {
   const { type } = useLocalSearchParams();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const lottieRef = useRef<LottieView>(null);
+  const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     Animated.parallel([
@@ -211,6 +214,28 @@ const ViewAllPage = () => {
       incoming: "Incoming",
     }[typeStr] || "All Auctions";
 
+  // Re-trigger empty state animation when search yields no results
+  useEffect(() => {
+    if (searchQuery.length > 0) {
+      const items = allAuctions[typeStr] || [];
+      const filtered = items.filter((item) =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      );
+      if (filtered.length === 0) {
+        scaleAnim.setValue(0.5);
+        opacityAnim.setValue(0);
+        Animated.parallel([
+          Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }),
+          Animated.timing(opacityAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+    }
+  }, [searchQuery, typeStr]);
+
   const filteredAuctions = useMemo(() => {
     const items = allAuctions[typeStr] || [];
     if (!searchQuery.trim()) return items;
@@ -253,16 +278,48 @@ const ViewAllPage = () => {
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
-          <View style={styles.searchWrapper}>
+          <View
+            style={[
+              styles.searchWrapper,
+              isSearchFocused && styles.searchWrapperActive,
+            ]}
+          >
             <Image source={image.search_gray} style={styles.searchIcon} />
             <TextInput
+              ref={searchInputRef}
               style={styles.searchInput}
               placeholder={`Search in ${typeTitle}...`}
               placeholderTextColor="#B0B0B0"
               value={searchQuery}
               onChangeText={setSearchQuery}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              returnKeyType="search"
+              autoCorrect={false}
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery("")}
+                style={styles.clearBtn}
+              >
+                <AppText style={styles.clearBtnText}>✕</AppText>
+              </TouchableOpacity>
+            )}
           </View>
+          {isSearchFocused && (
+            <TouchableOpacity
+              onPress={() => {
+                Keyboard.dismiss();
+                setIsSearchFocused(false);
+                setSearchQuery("");
+              }}
+              style={styles.cancelBtn}
+            >
+              <AppText weight="medium" style={styles.cancelText}>
+                Cancel
+              </AppText>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Auctions Grid */}
@@ -372,10 +429,13 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   searchWrapper: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
@@ -390,6 +450,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 8,
   },
+  searchWrapperActive: {
+    borderColor: "#4285F4",
+    borderWidth: 1.5,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
   searchIcon: {
     width: 16,
     height: 16,
@@ -401,6 +467,27 @@ const styles = StyleSheet.create({
     paddingRight: 12,
     fontSize: 14,
     color: "#111827",
+  },
+  clearBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#E5E7EB",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 6,
+  },
+  clearBtnText: {
+    fontSize: 13,
+    color: "#999",
+  },
+  cancelBtn: {
+    paddingVertical: 8,
+    paddingLeft: 12,
+  },
+  cancelText: {
+    fontSize: 15,
+    color: "#4285F4",
   },
   gridContainer: {
     paddingHorizontal: 16,

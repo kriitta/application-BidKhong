@@ -1,15 +1,19 @@
-import React, { useState } from "react";
-import { View, TouchableOpacity, Text, StyleSheet, Image } from "react-native";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { image } from "../../assets/images";
+import React, { useState } from "react";
+import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { image } from "../../assets/images";
+import { useAuth } from "../../contexts/AuthContext";
 import { AppText } from "./appText";
+import { AuthModal } from "./AuthModal";
 
 export function CustomTabBar({
   state,
   descriptors,
   navigation,
 }: BottomTabBarProps) {
+  const { isGuest, isLoggedIn } = useAuth();
+  const [authModalVisible, setAuthModalVisible] = useState(false);
   const middleRouteIndex = state.routes.findIndex((r) => r.name === "seller");
   const isMiddleFocused = state.index === middleRouteIndex;
 
@@ -19,19 +23,28 @@ export function CustomTabBar({
     return null;
   }
 
+  // แท็บที่ guest ใช้ได้
+  const guestAllowedTabs = ["home"];
+
   return (
     <>
       <View style={styles.tabBar}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
-          const iconProps = (route.params as any)?.tabBarItemIcon || {};
 
           const onPress = () => {
+            // ถ้าเป็น guest กดแท็บที่ไม่ใช่ home → เด้ง login
+            if (isGuest && !guestAllowedTabs.includes(route.name)) {
+              setAuthModalVisible(true);
+              return;
+            }
             if (!isFocused) {
               navigation.navigate(route.name);
             }
           };
+
+          const iconProps = (route.params as any)?.tabBarItemIcon || {};
 
           const label =
             options.tabBarLabel !== undefined
@@ -98,7 +111,11 @@ export function CustomTabBar({
         <View style={styles.centerWrapper}>
           <TouchableOpacity
             onPress={() => {
-              // Navigate ไปหน้า seller
+              // ถ้า guest กดปุ่ม seller → เด้ง login
+              if (isGuest) {
+                setAuthModalVisible(true);
+                return;
+              }
               navigation.navigate("seller");
             }}
             style={{ alignItems: "center" }}
@@ -138,6 +155,12 @@ export function CustomTabBar({
         edges={["bottom"]}
         style={{ backgroundColor: "#FFF" }}
       ></SafeAreaView>
+
+      {/* Login Modal สำหรับ Guest */}
+      <AuthModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+      />
     </>
   );
 }

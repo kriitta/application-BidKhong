@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useNavigation } from "expo-router";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   Image,
@@ -11,12 +11,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../assets/images";
+import { useAuth } from "../contexts/AuthContext";
 import { AppText } from "./components/appText";
 import { AuthModal } from "./components/AuthModal";
 
 const WelcomePage = () => {
   const insets = useSafeAreaInsets();
-  const navigation: any = useNavigation();
+  const router = useRouter();
+  const { enterAsGuest } = useAuth();
   const [authModalVisible, setAuthModalVisible] = useState(false);
 
   return (
@@ -149,7 +151,10 @@ const WelcomePage = () => {
             {/* CTA Buttons */}
             <View style={styles.buttonContainer}>
               <TouchableOpacity
-                onPress={() => navigation.navigate("tabs")}
+                onPress={() => {
+                  enterAsGuest();
+                  router.replace("/tabs/home");
+                }}
                 style={styles.primaryButton}
               >
                 <LinearGradient

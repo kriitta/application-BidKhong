@@ -7,16 +7,25 @@ const { width, height } = Dimensions.get("window");
 interface SplashScreenProps {
   onVideoEnd: () => void;
   duration?: number;
+  isReady?: boolean;
 }
 
 const SplashScreenComponent: React.FC<SplashScreenProps> = ({
   onVideoEnd,
   duration = 5000,
+  isReady = false,
 }) => {
   const videoRef = useRef<Video>(null);
   const [videoEnded, setVideoEnded] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  // เมื่อข้อมูลโหลดเสร็จ (isReady) ให้ transition ออกทันที
+  useEffect(() => {
+    if (isReady && !videoEnded) {
+      handleTransition();
+    }
+  }, [isReady]);
 
   useEffect(() => {
     // Timeout fallback - ให้แน่ใจว่ามันจะทำงาน
