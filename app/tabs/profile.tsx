@@ -180,6 +180,27 @@ const ProfilePage = () => {
           </AppText>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => router.push("/screens/verify-product")}
+        >
+          <View
+            style={[styles.menuIconContainer, { backgroundColor: "#E8F5E9" }]}
+          >
+            <AppText weight="semibold" style={styles.menuIcon}>
+              ✅
+            </AppText>
+          </View>
+          <View style={styles.menuContent}>
+            <AppText weight="semibold" style={styles.menuTitle}>
+              Verify Product
+            </AppText>
+          </View>
+          <AppText weight="regular" style={styles.menuArrow}>
+            ›
+          </AppText>
+        </TouchableOpacity>
+
         {/* About App */}
         <TouchableOpacity
           style={styles.menuItem}

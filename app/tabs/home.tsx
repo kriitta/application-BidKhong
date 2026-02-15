@@ -24,7 +24,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
+import { useAuth } from "../../contexts/AuthContext";
 import { AppText } from "../components/appText";
+import { AuthModal } from "../components/AuthModal";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -41,6 +43,8 @@ const TRENDING_TAGS = [
 const HomePage = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { isGuest, isLoggedIn } = useAuth();
+  const [authModalVisible, setAuthModalVisible] = useState(false);
 
   // Search state
   const [searchVisible, setSearchVisible] = useState(false);
@@ -494,17 +498,34 @@ const HomePage = () => {
             BidKhong
           </AppText>
         </View>
-        <View style={styles.balanceContainer}>
-          <View>
-            <AppText weight="regular" style={styles.balanceLabel}>
-              Total Balance
-            </AppText>
-            <AppText weight="bold" style={styles.balanceAmount}>
-              ฿125,000
-            </AppText>
+        {isLoggedIn && !isGuest ? (
+          <View style={styles.balanceContainer}>
+            <View>
+              <AppText weight="regular" style={styles.balanceLabel}>
+                Total Balance
+              </AppText>
+              <AppText weight="bold" style={styles.balanceAmount}>
+                ฿125,000
+              </AppText>
+            </View>
+            <Image source={image.bang} style={styles.avatar} />
           </View>
-          <Image source={image.bang} style={styles.avatar} />
-        </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.guestHeaderBtn}
+            onPress={() => setAuthModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.guestAvatarCircle}>
+              <AppText weight="bold" style={{ fontSize: 16, color: "#003994" }}>
+                ?
+              </AppText>
+            </View>
+            <AppText weight="semibold" style={styles.guestSignInText}>
+              Sign In
+            </AppText>
+          </TouchableOpacity>
+        )}
       </ImageBackground>
 
       <ScrollView
@@ -1002,6 +1023,11 @@ const HomePage = () => {
           </>
         )}
       </ScrollView>
+
+      <AuthModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+      />
     </View>
   );
 };
@@ -1064,6 +1090,29 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginLeft: 10,
+  },
+  guestHeaderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+  },
+  guestAvatarCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
+  },
+  guestSignInText: {
+    fontSize: 14,
+    color: "#fff",
   },
   content: {
     flex: 1,
