@@ -140,18 +140,18 @@ const ProfilePage = () => {
 
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() =>
-            Alert.alert("ประวัติการประมูล", "ฟีเจอร์นี้จะมาในเร็วๆนี้")
-          }
+          onPress={() => router.push("/screens/verify-product")}
         >
-          <View style={styles.menuIconContainer}>
+          <View
+            style={[styles.menuIconContainer, { backgroundColor: "#E8F5E9" }]}
+          >
             <AppText weight="semibold" style={styles.menuIcon}>
-              🏆
+              ✅
             </AppText>
           </View>
           <View style={styles.menuContent}>
             <AppText weight="semibold" style={styles.menuTitle}>
-              Bid History
+              Verify Product
             </AppText>
           </View>
           <AppText weight="regular" style={styles.menuArrow}>
@@ -172,28 +172,7 @@ const ProfilePage = () => {
           </View>
           <View style={styles.menuContent}>
             <AppText weight="semibold" style={styles.menuTitle}>
-              Shipping Address
-            </AppText>
-          </View>
-          <AppText weight="regular" style={styles.menuArrow}>
-            ›
-          </AppText>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => router.push("/screens/verify-product")}
-        >
-          <View
-            style={[styles.menuIconContainer, { backgroundColor: "#E8F5E9" }]}
-          >
-            <AppText weight="semibold" style={styles.menuIcon}>
-              ✅
-            </AppText>
-          </View>
-          <View style={styles.menuContent}>
-            <AppText weight="semibold" style={styles.menuTitle}>
-              Verify Product
+              Help & Support
             </AppText>
           </View>
           <AppText weight="regular" style={styles.menuArrow}>
@@ -204,12 +183,7 @@ const ProfilePage = () => {
         {/* About App */}
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() =>
-            Alert.alert(
-              "เกี่ยวกับแอป",
-              "BidKhong v1.0.0\n\nแอพพลิเคชั่นสำหรับการประมูลสินค้าออนไลน์",
-            )
-          }
+          onPress={() => router.push("/screens/about-app")}
         >
           <View style={styles.menuIconContainer}>
             <AppText weight="semibold" style={styles.menuIcon}>

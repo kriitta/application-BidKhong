@@ -807,7 +807,22 @@ const VerifyProductPage = () => {
                       style={styles.actionButton}
                     >
                       <AppText weight="bold" style={styles.actionButtonText}>
-                        📬 Product Received
+                        Product Received
+                      </AppText>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => handleReceived(selectedProduct.id)}
+                  >
+                    <LinearGradient
+                      colors={["#da0303", "#ff4d4d"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.actionButton, { marginTop: 12 }]}
+                    >
+                      <AppText weight="bold" style={styles.actionButtonText}>
+                        Report an Issue
                       </AppText>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -1146,7 +1161,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
-    justifyContent: "center",
+      justifyContent: "center",
   },
   actionButtonText: {
     fontSize: 16,

@@ -147,7 +147,7 @@ const SellerPage = () => {
           <View style={[styles.sectionHeader]}>
             <Image source={image.camera} style={{ width: 16.25, height: 13 }} />
             <AppText weight="medium" style={styles.sectionTitle}>
-              Product Photos * (Max 6)
+              Product Photos * (Max 8)
             </AppText>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>

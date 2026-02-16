@@ -23,36 +23,65 @@ const SUBCATEGORIES: Record<
     {
       id: "smartphones",
       name: "Smartphones & Tablets",
-      image: image.electronic,
+      image: image.smartphone,
     },
-    { id: "computers", name: "Computers & Laptops", image: image.macbook },
-    { id: "cameras", name: "Cameras & Photography", image: image.labubu },
+    { id: "computers", name: "Computers & Laptops", image: image.computer },
+    { id: "cameras", name: "Cameras & Photography", image: image.photography },
+    { id: "audio", name: "Audio & Headphones", image: image.headphone },
+    { id: "gaming", name: "Gaming & Consoles", image: image.game },
+    {
+      id: "wearables",
+      name: "Wearables & Smartwatch",
+      image: image.smartwatch,
+    },
   ],
   fashion: [
-    { id: "mens", name: "Men's Clothing", image: image.shirt },
-    { id: "womens", name: "Women's Clothing", image: image.shirt },
-    { id: "shoes", name: "Shoes & Footwear", image: image.other },
+    { id: "mens", name: "Men's Clothing", image: image.men },
+    { id: "womens", name: "Women's Clothing", image: image.women },
+    { id: "shoes", name: "Shoes & Footwear", image: image.shoes },
+    { id: "bags", name: "Bags & Accessories", image: image.bags },
+    { id: "watches", name: "Watches & Jewelry", image: image.jew },
   ],
   collectibles: [
-    { id: "art", name: "Art & Paintings", image: image.collectible },
-    { id: "toys", name: "Toys & Figures", image: image.labubu },
+    { id: "art", name: "Art & Paintings", image: image.art },
+    { id: "toys", name: "Toys & Figures", image: image.toy },
+    { id: "coins", name: "Coins & Stamps", image: image.coin },
+    { id: "cards", name: "Trading Cards", image: image.card },
+    { id: "antiques", name: "Antiques & Vintage", image: image.antique },
   ],
   home: [
-    { id: "furniture", name: "Furniture", image: image.house },
-    { id: "decor", name: "Home Decor", image: image.house },
+    { id: "furniture", name: "Furniture", image: image.furniture },
+    { id: "decor", name: "Home Decor", image: image.decor },
+    { id: "kitchen", name: "Kitchen & Dining", image: image.kitchen },
+    { id: "garden", name: "Garden & Outdoor", image: image.garden },
   ],
   vehicles: [
-    { id: "cars", name: "Cars", image: image.car },
-    { id: "motorcycles", name: "Motorcycles", image: image.car },
+    { id: "cars", name: "Cars", image: image.cars },
+    { id: "motorcycles", name: "Motorcycles", image: image.motorcycle },
+    { id: "parts", name: "Parts & Accessories", image: image.part },
+    { id: "ev", name: "Electric Vehicles", image: image.elec_car },
   ],
   others: [
-    { id: "books", name: "Books & Magazines", image: image.other },
-    { id: "sports", name: "Sports & Fitness", image: image.other },
+    { id: "books", name: "Books & Magazines", image: image.book },
+    { id: "sports", name: "Sports & Fitness", image: image.sport },
+    { id: "music", name: "Musical Instruments", image: image.music },
+    { id: "pets", name: "Pet Supplies", image: image.pet },
   ],
 };
 
 // Mock products per subcategory with auction info
-const MOCK_PRODUCTS = {
+const MOCK_PRODUCTS: Record<
+  string,
+  Array<{
+    id: string;
+    name: string;
+    image: any;
+    time: string;
+    isHot: boolean;
+    isEnding: boolean;
+  }>
+> = {
+  // Electronics
   smartphones: [
     {
       id: "1",
@@ -97,24 +126,63 @@ const MOCK_PRODUCTS = {
       isEnding: true,
     },
   ],
-  toys: [
+  cameras: [
     {
-      id: "6",
-      name: "Labubi Figure",
-      image: image.labubu,
-      time: "21:17:56",
-      isHot: false,
-      isEnding: false,
-    },
-    {
-      id: "7",
-      name: "Funko Pop Rare",
-      image: image.labubu,
-      time: "15:45:20",
+      id: "10",
+      name: "Sony A7IV",
+      image: image.electronic,
+      time: "14:20:00",
       isHot: true,
       isEnding: false,
     },
+    {
+      id: "11",
+      name: "Canon EOS R6",
+      image: image.electronic,
+      time: "08:15:30",
+      isHot: false,
+      isEnding: true,
+    },
   ],
+  audio: [
+    {
+      id: "12",
+      name: "AirPods Max",
+      image: image.electronic,
+      time: "10:45:00",
+      isHot: false,
+      isEnding: false,
+    },
+  ],
+  gaming: [
+    {
+      id: "13",
+      name: "PS5 Pro",
+      image: image.electronic,
+      time: "16:30:00",
+      isHot: true,
+      isEnding: false,
+    },
+    {
+      id: "14",
+      name: "Nintendo Switch 2",
+      image: image.electronic,
+      time: "03:20:15",
+      isHot: false,
+      isEnding: true,
+    },
+    {
+      id: "15",
+      name: "Xbox Series X",
+      image: image.electronic,
+      time: "19:00:00",
+      isHot: false,
+      isEnding: false,
+    },
+  ],
+  wearables: [],
+
+  // Fashion
   mens: [
     {
       id: "8",
@@ -135,6 +203,148 @@ const MOCK_PRODUCTS = {
       isEnding: true,
     },
   ],
+  shoes: [
+    {
+      id: "16",
+      name: "Nike Dunk Low",
+      image: image.other,
+      time: "12:00:00",
+      isHot: true,
+      isEnding: false,
+    },
+    {
+      id: "17",
+      name: "Adidas Yeezy 350",
+      image: image.other,
+      time: "06:45:30",
+      isHot: false,
+      isEnding: true,
+    },
+  ],
+  bags: [],
+  watches: [
+    {
+      id: "18",
+      name: "Rolex Submariner",
+      image: image.other,
+      time: "20:00:00",
+      isHot: true,
+      isEnding: false,
+    },
+  ],
+
+  // Collectibles
+  art: [
+    {
+      id: "19",
+      name: "Abstract Oil Painting",
+      image: image.collectible,
+      time: "15:30:00",
+      isHot: false,
+      isEnding: false,
+    },
+  ],
+  toys: [
+    {
+      id: "6",
+      name: "Labubu Figure",
+      image: image.labubu,
+      time: "21:17:56",
+      isHot: false,
+      isEnding: false,
+    },
+    {
+      id: "7",
+      name: "Funko Pop Rare",
+      image: image.labubu,
+      time: "15:45:20",
+      isHot: true,
+      isEnding: false,
+    },
+  ],
+  coins: [],
+  cards: [
+    {
+      id: "20",
+      name: "Pokemon Charizard 1st Ed",
+      image: image.collectible,
+      time: "04:30:00",
+      isHot: true,
+      isEnding: true,
+    },
+  ],
+  antiques: [],
+
+  // Home
+  furniture: [
+    {
+      id: "21",
+      name: "IKEA Desk Set",
+      image: image.house,
+      time: "11:00:00",
+      isHot: false,
+      isEnding: false,
+    },
+  ],
+  decor: [],
+  kitchen: [],
+  garden: [],
+
+  // Vehicles
+  cars: [
+    {
+      id: "22",
+      name: "BMW i8 2020",
+      image: image.i8,
+      time: "23:59:59",
+      isHot: true,
+      isEnding: false,
+    },
+    {
+      id: "23",
+      name: "Mercedes C300",
+      image: image.car,
+      time: "18:30:00",
+      isHot: false,
+      isEnding: true,
+    },
+  ],
+  motorcycles: [
+    {
+      id: "24",
+      name: "Ducati Panigale V4",
+      image: image.car,
+      time: "14:00:00",
+      isHot: true,
+      isEnding: false,
+    },
+  ],
+  parts: [],
+  ev: [
+    {
+      id: "25",
+      name: "Tesla Model 3",
+      image: image.car,
+      time: "20:15:00",
+      isHot: false,
+      isEnding: false,
+    },
+  ],
+
+  // Others
+  books: [],
+  sports: [
+    {
+      id: "26",
+      name: "Golf Club Set",
+      image: image.other,
+      time: "09:30:00",
+      isHot: false,
+      isEnding: true,
+    },
+  ],
+  music: [],
+  pets: [],
 };
 
 const CategoryPage = () => {
@@ -245,7 +455,7 @@ const CategoryPage = () => {
                     )}
                     <View style={styles.itemCountBadge}>
                       <AppText weight="semibold" style={styles.itemCountText}>
-                        8 items
+                        {(MOCK_PRODUCTS[s.id] || []).length} items
                       </AppText>
                     </View>
                   </View>
