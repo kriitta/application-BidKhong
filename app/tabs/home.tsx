@@ -1,4 +1,3 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, {
@@ -347,70 +346,109 @@ const HomePage = () => {
                     ))}
                   </View>
 
-                  {/* Trending */}
+                  {/* Hot Auctions */}
                   <View style={s.searchSection}>
                     <AppText weight="semibold" style={s.searchSectionTitle}>
-                      🚀 กำลังเป็นที่นิยม
-                    </AppText>
-                    <View style={s.trendingGrid}>
-                      {TRENDING_TAGS.map((tag, idx) => (
-                        <TouchableOpacity
-                          key={idx}
-                          style={[
-                            s.trendingTag,
-                            { borderColor: tag.color + "40" },
-                          ]}
-                          onPress={() =>
-                            setSearchQuery(
-                              tag.label.split(" ").slice(1).join(" "),
-                            )
-                          }
-                        >
-                          <AppText
-                            weight="medium"
-                            style={[s.trendingText, { color: tag.color }]}
-                          >
-                            {tag.label}
-                          </AppText>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* Quick Categories */}
-                  <View style={s.searchSection}>
-                    <AppText weight="semibold" style={s.searchSectionTitle}>
-                      📂 หมวดหมู่ยอดนิยม
+                      🔥 Hot Auctions
                     </AppText>
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
                     >
-                      {categories.slice(0, 4).map((cat) => (
+                      {hotAuctions.map((item) => (
                         <TouchableOpacity
-                          key={cat.id}
-                          style={s.quickCatCard}
+                          key={item.id}
+                          style={styles.searchHotCard}
                           onPress={() => {
                             closeSearch();
-                            setTimeout(
-                              () =>
-                                router.push(
-                                  `/screens/category?category=${cat.id}`,
-                                ),
-                              300,
-                            );
+                            setTimeout(() => {
+                              router.push({
+                                pathname: "/screens/product-detail",
+                                params: {
+                                  productId: item.id.toString(),
+                                  productName: item.name,
+                                  productImage: JSON.stringify(item.image),
+                                  time: item.time,
+                                  isHot: "true",
+                                  isEnding: "false",
+                                },
+                              });
+                            }, 300);
                           }}
+                          activeOpacity={0.7}
                         >
-                          <Image source={cat.image} style={s.quickCatImage} />
-                          <LinearGradient
-                            colors={["transparent", "rgba(0,0,0,0.7)"]}
-                            style={s.quickCatGradient}
-                          />
-                          <AppText weight="semibold" style={s.quickCatText}>
-                            {cat.name}
+                          <View style={styles.searchHotImageWrap}>
+                            <Image
+                              source={item.image}
+                              style={styles.searchHotImage}
+                            />
+                            <View style={styles.searchHotBadge}>
+                              <Image
+                                source={image.hot_badge}
+                                style={{ width: 12, height: 13 }}
+                              />
+                            </View>
+                            <View style={styles.searchHotTime}>
+                              <Image
+                                source={image.incoming_time}
+                                style={{
+                                  width: 10,
+                                  height: 10,
+                                  marginRight: 3,
+                                }}
+                              />
+                              <AppText
+                                weight="medium"
+                                style={{ fontSize: 9, color: "#fff" }}
+                              >
+                                {item.time}
+                              </AppText>
+                            </View>
+                          </View>
+                          <AppText
+                            weight="medium"
+                            style={styles.searchHotName}
+                            numberOfLines={1}
+                          >
+                            {item.name}
                           </AppText>
                         </TouchableOpacity>
                       ))}
+                      {/* View All Card */}
+                      <TouchableOpacity
+                        style={styles.searchHotViewAll}
+                        onPress={() => {
+                          closeSearch();
+                          setTimeout(
+                            () => router.push("/screens/view-all?type=hot"),
+                            300,
+                          );
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.searchHotViewAllInner}>
+                          <View style={styles.searchHotViewAllCircle}>
+                            <AppText
+                              weight="bold"
+                              style={styles.searchHotViewAllArrow}
+                            >
+                              →
+                            </AppText>
+                          </View>
+                          <AppText
+                            weight="semibold"
+                            style={styles.searchHotViewAllText}
+                          >
+                            View All
+                          </AppText>
+                          <AppText
+                            weight="regular"
+                            style={styles.searchHotViewAllSub}
+                          >
+                            Hot Auctions
+                          </AppText>
+                        </View>
+                      </TouchableOpacity>
                     </ScrollView>
                   </View>
                 </Animated.View>
@@ -617,64 +655,97 @@ const HomePage = () => {
                   ))}
                 </View>
 
-                {/* Trending */}
+                {/* Hot Auctions */}
                 <View style={styles.searchSection}>
                   <AppText weight="semibold" style={styles.searchSectionTitle}>
-                    🚀 กำลังเป็นที่นิยม
-                  </AppText>
-                  <View style={styles.trendingGrid}>
-                    {TRENDING_TAGS.map((tag, idx) => (
-                      <TouchableOpacity
-                        key={idx}
-                        style={[
-                          styles.trendingTag,
-                          { borderColor: tag.color + "40" },
-                        ]}
-                        onPress={() =>
-                          setSearchQuery(
-                            tag.label.split(" ").slice(1).join(" "),
-                          )
-                        }
-                      >
-                        <AppText
-                          weight="medium"
-                          style={[styles.trendingText, { color: tag.color }]}
-                        >
-                          {tag.label}
-                        </AppText>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                {/* Quick Categories */}
-                <View style={styles.searchSection}>
-                  <AppText weight="semibold" style={styles.searchSectionTitle}>
-                    📂 หมวดหมู่ยอดนิยม
+                    🔥 Hot Auctions
                   </AppText>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {categories.slice(0, 4).map((cat) => (
+                    {hotAuctions.map((item) => (
                       <TouchableOpacity
-                        key={cat.id}
-                        style={styles.quickCatCard}
+                        key={item.id}
+                        style={styles.searchHotCard}
                         onPress={() => {
                           cancelSearch();
-                          router.push(`/screens/category?category=${cat.id}`);
+                          router.push({
+                            pathname: "/screens/product-detail",
+                            params: {
+                              productId: item.id.toString(),
+                              productName: item.name,
+                              productImage: JSON.stringify(item.image),
+                              time: item.time,
+                              isHot: "true",
+                              isEnding: "false",
+                            },
+                          });
                         }}
+                        activeOpacity={0.7}
                       >
-                        <Image
-                          source={cat.image}
-                          style={styles.quickCatImage}
-                        />
-                        <LinearGradient
-                          colors={["transparent", "rgba(0,0,0,0.7)"]}
-                          style={styles.quickCatGradient}
-                        />
-                        <AppText weight="semibold" style={styles.quickCatText}>
-                          {cat.name}
+                        <View style={styles.searchHotImageWrap}>
+                          <Image
+                            source={item.image}
+                            style={styles.searchHotImage}
+                          />
+                          <View style={styles.searchHotBadge}>
+                            <Image
+                              source={image.hot_badge}
+                              style={{ width: 12, height: 13 }}
+                            />
+                          </View>
+                          <View style={styles.searchHotTime}>
+                            <Image
+                              source={image.incoming_time}
+                              style={{ width: 10, height: 10, marginRight: 3 }}
+                            />
+                            <AppText
+                              weight="medium"
+                              style={{ fontSize: 9, color: "#fff" }}
+                            >
+                              {item.time}
+                            </AppText>
+                          </View>
+                        </View>
+                        <AppText
+                          weight="medium"
+                          style={styles.searchHotName}
+                          numberOfLines={1}
+                        >
+                          {item.name}
                         </AppText>
                       </TouchableOpacity>
                     ))}
+                    {/* View All Card */}
+                    <TouchableOpacity
+                      style={styles.searchHotViewAll}
+                      onPress={() => {
+                        cancelSearch();
+                        router.push("/screens/view-all?type=hot");
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.searchHotViewAllInner}>
+                        <View style={styles.searchHotViewAllCircle}>
+                          <AppText
+                            weight="bold"
+                            style={styles.searchHotViewAllArrow}
+                          >
+                            →
+                          </AppText>
+                        </View>
+                        <AppText
+                          weight="semibold"
+                          style={styles.searchHotViewAllText}
+                        >
+                          View All
+                        </AppText>
+                        <AppText
+                          weight="regular"
+                          style={styles.searchHotViewAllSub}
+                        >
+                          Hot Auctions
+                        </AppText>
+                      </View>
+                    </TouchableOpacity>
                   </ScrollView>
                 </View>
               </>
@@ -1509,6 +1580,96 @@ const styles = StyleSheet.create({
   emptyStateSub: {
     fontSize: 14,
     color: "#6B7280",
+  },
+  searchHotCard: {
+    width: 140,
+    marginRight: 12,
+    backgroundColor: "#FFF",
+    borderRadius: 14,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  searchHotImageWrap: {
+    width: "100%",
+    height: 110,
+    position: "relative",
+  },
+  searchHotImage: {
+    width: "100%",
+    height: "100%",
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+  },
+  searchHotBadge: {
+    position: "absolute",
+    top: 6,
+    left: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#FF0000",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  searchHotTime: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  searchHotName: {
+    fontSize: 12,
+    color: "#111827",
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    textAlign: "center",
+  },
+  searchHotViewAll: {
+    width: 110,
+    height: 148,
+    marginRight: 12,
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: "#FF3B3020",
+    borderStyle: "dashed",
+  },
+  searchHotViewAllInner: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFF5F5",
+  },
+  searchHotViewAllCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FF3B30",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  searchHotViewAllArrow: {
+    fontSize: 18,
+    color: "#FFF",
+  },
+  searchHotViewAllText: {
+    fontSize: 13,
+    color: "#FF3B30",
+  },
+  searchHotViewAllSub: {
+    fontSize: 10,
+    color: "#999",
+    marginTop: 2,
   },
 });
 

@@ -18,8 +18,8 @@ interface AuthResponse {
 // Mock user database
 const mockUsers: Array<{ email: string; password: string; user: User }> = [
   {
-    email: "admin@bidkhong.com",
-    password: "admin123",
+    email: "admin",
+    password: "password",
     user: {
       id: "admin_001",
       email: "admin@bidkhong.com",
@@ -29,8 +29,8 @@ const mockUsers: Array<{ email: string; password: string; user: User }> = [
     },
   },
   {
-    email: "user@bidkhong.com",
-    password: "user123",
+    email: "user",
+    password: "password",
     user: {
       id: "user_001",
       email: "user@bidkhong.com",
@@ -156,5 +156,62 @@ export const authService = {
   async logout(): Promise<void> {
     await AsyncStorage.removeItem("userToken");
     await AsyncStorage.removeItem("userData");
+  },
+
+  // Update user profile
+  async updateProfile(
+    updates: Partial<Pick<User, "fullName" | "email" | "phoneNumber">>,
+  ): Promise<AuthResponse> {
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      const userData = await AsyncStorage.getItem("userData");
+      if (!userData) {
+        return { success: false, message: "ไม่พบข้อมูลผู้ใช้" };
+      }
+      const currentUser: User = JSON.parse(userData);
+      const updatedUser: User = { ...currentUser, ...updates };
+      await AsyncStorage.setItem("userData", JSON.stringify(updatedUser));
+
+      // Update mock database too
+      const mockEntry = mockUsers.find((u) => u.user.id === currentUser.id);
+      if (mockEntry) {
+        mockEntry.user = updatedUser;
+        if (updates.email) mockEntry.email = updates.email;
+      }
+
+      return {
+        success: true,
+        message: "อัปเดตโปรไฟล์สำเร็จ",
+        user: updatedUser,
+      };
+    } catch (error) {
+      return { success: false, message: "เกิดข้อผิดพลาดในการอัปเดต" };
+    }
+  },
+
+  // Change password
+  async changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<AuthResponse> {
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      const userData = await AsyncStorage.getItem("userData");
+      if (!userData) {
+        return { success: false, message: "ไม่พบข้อมูลผู้ใช้" };
+      }
+      const currentUser: User = JSON.parse(userData);
+      const mockEntry = mockUsers.find((u) => u.user.id === currentUser.id);
+      if (!mockEntry) {
+        return { success: false, message: "ไม่พบบัญชีผู้ใช้" };
+      }
+      if (mockEntry.password !== currentPassword) {
+        return { success: false, message: "รหัสผ่านปัจจุบันไม่ถูกต้อง" };
+      }
+      mockEntry.password = newPassword;
+      return { success: true, message: "เปลี่ยนรหัสผ่านสำเร็จ" };
+    } catch (error) {
+      return { success: false, message: "เกิดข้อผิดพลาด" };
+    }
   },
 };

@@ -1,7 +1,7 @@
 import { image } from "@/assets/images";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -20,14 +20,22 @@ const ProfilePage = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const loadUser = async () => {
+    const currentUser = await authService.getCurrentUser();
+    setUser(currentUser);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const loadUser = async () => {
-      const currentUser = await authService.getCurrentUser();
-      setUser(currentUser);
-      setLoading(false);
-    };
     loadUser();
   }, []);
+
+  // Reload user data when screen comes back into focus (e.g. after editing profile)
+  useFocusEffect(
+    useCallback(() => {
+      loadUser();
+    }, []),
+  );
 
   const handleLogout = async () => {
     Alert.alert("ออกจากระบบ", "คุณแน่ใจที่ต้องการออกจากระบบหรือไม่?", [
@@ -41,10 +49,6 @@ const ProfilePage = () => {
         style: "destructive",
       },
     ]);
-  };
-
-  const handleEditProfile = () => {
-    Alert.alert("แก้ไขโปรไฟล์", "ฟีเจอร์นี้จะมาในเร็วๆนี้");
   };
 
   if (loading) {
@@ -119,9 +123,7 @@ const ProfilePage = () => {
         {/* Menu Items */}
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() =>
-            Alert.alert("แก้ไขโปรไฟล์", "ฟีเจอร์นี้จะมาในเร็วๆนี้")
-          }
+          onPress={() => router.push("/screens/edit-profile")}
         >
           <View style={styles.menuIconContainer}>
             <AppText weight="semibold" style={styles.menuIcon}>
@@ -161,13 +163,13 @@ const ProfilePage = () => {
 
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() =>
-            Alert.alert("ที่อยู่จัดส่ง", "ฟีเจอร์นี้จะมาในเร็วๆนี้")
-          }
+          onPress={() => router.push("/screens/help-support")}
         >
-          <View style={styles.menuIconContainer}>
+          <View
+            style={[styles.menuIconContainer, { backgroundColor: "#FFF3E0" }]}
+          >
             <AppText weight="semibold" style={styles.menuIcon}>
-              📍
+              🛟
             </AppText>
           </View>
           <View style={styles.menuContent}>
