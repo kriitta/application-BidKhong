@@ -1,5 +1,7 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useState } from "react";
-import { authService, User } from "../utils/authService";
+import { tokenManager } from "../utils/api/config";
+import { User } from "../utils/api/types";
 
 interface AuthContextType {
   isGuest: boolean;
@@ -10,6 +12,8 @@ interface AuthContextType {
   setShowLoginModal: (visible: boolean) => void;
   enterAsGuest: () => void;
   loginSuccess: (user: User) => void;
+  updateUser: (user: User) => void;
+  refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -22,6 +26,8 @@ const AuthContext = createContext<AuthContextType>({
   setShowLoginModal: () => {},
   enterAsGuest: () => {},
   loginSuccess: () => {},
+  updateUser: () => {},
+  refreshUser: async () => {},
   logout: async () => {},
 });
 
@@ -47,8 +53,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setShowLoginModal(false);
   }, []);
 
+  const updateUser = useCallback((updatedUser: User) => {
+    setUser(updatedUser);
+    setUserRole(updatedUser.role);
+    AsyncStorage.setItem("userData", JSON.stringify(updatedUser));
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const { apiService } = require("../utils/api");
+      const freshUser = await apiService.auth.getMe();
+      setUser(freshUser);
+      setUserRole(freshUser.role);
+      await AsyncStorage.setItem("userData", JSON.stringify(freshUser));
+    } catch {
+      // fallback จาก AsyncStorage
+      const userData = await AsyncStorage.getItem("userData");
+      if (userData) {
+        const cachedUser: User = JSON.parse(userData);
+        setUser(cachedUser);
+        setUserRole(cachedUser.role);
+      }
+    }
+  }, []);
+
   const logout = useCallback(async () => {
-    await authService.logout();
+    try {
+      const { apiService } = require("../utils/api");
+      await apiService.auth.logout();
+    } catch {
+      // ลบ token ฝั่ง client อยู่ดี แม้ API จะ fail
+      await tokenManager.clearTokens();
+    }
+    await AsyncStorage.removeItem("userData");
     setIsGuest(false);
     setIsLoggedIn(false);
     setUser(null);
@@ -66,6 +103,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setShowLoginModal,
         enterAsGuest,
         loginSuccess,
+        updateUser,
+        refreshUser,
         logout,
       }}
     >

@@ -375,7 +375,7 @@ const VerifyProductPage = () => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Image source={image.back} style={{ width: 28, height: 28 }} />
+          <Image source={image.back} style={{ width: 32, height: 32 }} />
         </TouchableOpacity>
         <AppText weight="bold" style={styles.headerTitle}>
           Verify Product
@@ -1161,7 +1161,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
-      justifyContent: "center",
+    justifyContent: "center",
   },
   actionButtonText: {
     fontSize: 16,

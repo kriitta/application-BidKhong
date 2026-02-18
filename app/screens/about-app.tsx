@@ -191,10 +191,7 @@ const AboutAppPage = () => {
             onPress={() => router.back()}
             style={styles.backBtn}
           >
-            <Image
-              source={image.back}
-              style={{ width: 24, height: 24, tintColor: "#FFF" }}
-            />
+            <Image source={image.back} style={{ width: 32, height: 32 }} />
           </TouchableOpacity>
           <AppText weight="bold" style={styles.headerTitle}>
             About BidKhong

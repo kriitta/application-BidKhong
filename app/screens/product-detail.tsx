@@ -123,7 +123,7 @@ const ProductDetailPage = () => {
         {/* Header with Back Button */}
         <View style={styles.headerContainer}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Image source={image.back} style={{ width: 28, height: 28 }} />
+            <Image source={image.back} style={{ width: 32, height: 32 }} />
           </TouchableOpacity>
         </View>
 

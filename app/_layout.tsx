@@ -1,9 +1,15 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
-import { authService } from "../utils/authService";
+import { tokenManager } from "../utils/api/config";
 import SplashScreen from "./components/SplashScreen";
+
+// Reactotron — dev only
+if (__DEV__) {
+  require("../reactotron.config");
+}
 
 function RootLayoutInner() {
   const [ready, setReady] = useState(false);
@@ -15,10 +21,10 @@ function RootLayoutInner() {
   useEffect(() => {
     const init = async () => {
       // Check if user is logged in
-      const isAuth = await authService.isAuthenticated();
-      const user = await authService.getCurrentUser();
-      if (isAuth && user) {
-        loginSuccess(user);
+      const token = await tokenManager.getToken();
+      const userData = await AsyncStorage.getItem("userData");
+      if (token && userData) {
+        loginSuccess(JSON.parse(userData));
       }
       setReady(true);
     };

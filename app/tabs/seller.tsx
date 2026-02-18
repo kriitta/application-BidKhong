@@ -130,7 +130,7 @@ const SellerPage = () => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Image source={image.back} style={{ width: 28, height: 28 }} />
+          <Image source={image.back} style={{ width: 32, height: 32 }} />
         </TouchableOpacity>
         <AppText weight="semibold" style={styles.headerTitle}>
           Create Auction

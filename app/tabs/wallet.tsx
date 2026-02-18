@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -10,6 +11,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
+import { useAuth } from "../../contexts/AuthContext";
+import { UserWallet } from "../../utils/api/types";
 import { AppText } from "../components/appText";
 import { HistoryFilterModal } from "../components/HistoryFilterModal";
 import { TopUpModal } from "../components/TopUpModal";
@@ -18,6 +21,7 @@ import { WithdrawModal } from "../components/WithdrawModal";
 const WalletPage = () => {
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
+  const { user, refreshUser } = useAuth();
 
   const [disablePointer, setDisablePointer] = useState(false);
   const [topUpModalVisible, setTopUpModalVisible] = useState(false);
@@ -35,6 +39,20 @@ const WalletPage = () => {
   );
 
   const HEADER_MIN_HEIGHT = insets.top + 100;
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshUser();
+    }, []),
+  );
+
+  const wallet: UserWallet | undefined = user?.wallet;
+
+  const formatBalance = (amount?: string) => {
+    if (!amount) return "฿0";
+    const num = parseFloat(amount);
+    return `฿${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  };
 
   useEffect(() => {
     const id = scrollY.addListener(({ value }) => {
@@ -164,9 +182,12 @@ const WalletPage = () => {
                 }}
               >
                 <AppText weight="semibold" style={styles.balanceAmount}>
-                  ฿125,000
+                  {formatBalance(wallet?.balance_total)}
                 </AppText>
-                <TouchableOpacity style={styles.topUpButton} onPress={() => setTopUpModalVisible(true)}>
+                <TouchableOpacity
+                  style={styles.topUpButton}
+                  onPress={() => setTopUpModalVisible(true)}
+                >
                   <AppText weight="medium" style={styles.topUpText}>
                     + Top Up
                   </AppText>
@@ -179,7 +200,7 @@ const WalletPage = () => {
                 <View style={styles.balanceItem}>
                   <AppText style={styles.balanceSubLabel}>Available</AppText>
                   <AppText weight="medium" style={styles.availableAmount}>
-                    ฿100,200
+                    {formatBalance(wallet?.balance_available)}
                   </AppText>
                 </View>
                 <View style={styles.balanceItem}>
@@ -187,7 +208,7 @@ const WalletPage = () => {
                     In Pending Bids
                   </AppText>
                   <AppText weight="medium" style={styles.pendingAmount}>
-                    ฿2,300
+                    {formatBalance(wallet?.balance_pending)}
                   </AppText>
                 </View>
               </View>

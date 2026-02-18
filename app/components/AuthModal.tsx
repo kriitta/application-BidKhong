@@ -8,13 +8,14 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
 } from "react-native";
 import { image } from "../../assets/images";
 import { useAuth } from "../../contexts/AuthContext";
-import { authService } from "../../utils/authService";
+import { apiService } from "../../utils/api";
 import { AppText } from "./appText";
 import { AppTextInput } from "./appTextInput";
 
@@ -23,7 +24,7 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-type AuthMode = "login" | "signup";
+type AuthMode = "login" | "signup" | "forgot-password" | "reset-password";
 
 const { height, width } = Dimensions.get("window");
 
@@ -40,6 +41,12 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Forgot/Reset Password states
+  const [resetToken, setResetToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+
   const resetForm = () => {
     setEmail("");
     setPassword("");
@@ -48,6 +55,10 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
     setConfirmPassword("");
     setShowPassword(false);
     setShowConfirmPassword(false);
+    setResetToken("");
+    setNewPassword("");
+    setShowNewPassword(false);
+    setForgotEmail("");
   };
 
   const handleClose = () => {
@@ -62,21 +73,20 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
       return;
     }
     setLoading(true);
-    const result = await authService.login(email, password);
-    setLoading(false);
-
-    if (result.success && result.user) {
-      loginSuccess(result.user);
-      Alert.alert("สำเร็จ", result.message);
+    try {
+      const { user } = await apiService.auth.login({ email, password });
+      loginSuccess(user);
+      Alert.alert("สำเร็จ", "เข้าสู่ระบบสำเร็จ");
       handleClose();
-      // Route based on user role
-      if (result.user.role === "admin") {
+      if (user.role === "admin") {
         router.replace("/admin");
       } else {
         router.replace("/tabs/home");
       }
-    } else {
-      Alert.alert("ข้อผิดพลาด", result.message);
+    } catch (error: any) {
+      Alert.alert("ข้อผิดพลาด", error.message || "เกิดข้อผิดพลาด");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -94,25 +104,102 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
       return;
     }
     setLoading(true);
-    const result = await authService.signup(
-      email,
-      password,
-      fullName,
-      phoneNumber,
-    );
-    setLoading(false);
-
-    if (result.success && result.user) {
-      loginSuccess(result.user);
-      Alert.alert("สำเร็จ", result.message);
+    try {
+      const { user } = await apiService.auth.register({
+        name: fullName,
+        email,
+        password,
+        phone_number: phoneNumber,
+      });
+      loginSuccess(user);
+      Alert.alert("สำเร็จ", "สร้างบัญชีสำเร็จ");
       handleClose();
       router.replace("/tabs/home");
-    } else {
-      Alert.alert("ข้อผิดพลาด", result.message);
+    } catch (error: any) {
+      Alert.alert("ข้อผิดพลาด", error.message || "เกิดข้อผิดพลาด");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const isLoginMode = mode === "login";
+  const handleForgotPassword = async () => {
+    if (!forgotEmail) {
+      Alert.alert("ข้อผิดพลาด", "กรุณากรอกอีเมล");
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await apiService.auth.forgotPassword({
+        email: forgotEmail,
+      });
+      Alert.alert(
+        "สำเร็จ",
+        result.message || "ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว",
+      );
+      // ย้ายไปหน้า reset-password พร้อมเก็บ email ไว้
+      setEmail(forgotEmail);
+      setMode("reset-password");
+    } catch (error: any) {
+      Alert.alert("ข้อผิดพลาด", error.message || "เกิดข้อผิดพลาด");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!email || !resetToken || !newPassword) {
+      Alert.alert("ข้อผิดพลาด", "กรุณากรอกข้อมูลทั้งหมด");
+      return;
+    }
+    if (newPassword.length < 6) {
+      Alert.alert("ข้อผิดพลาด", "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร");
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await apiService.auth.resetPassword({
+        email,
+        token: resetToken,
+        password: newPassword,
+      });
+      Alert.alert(
+        "สำเร็จ",
+        result.message || "เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบใหม่",
+      );
+      resetForm();
+      setMode("login");
+    } catch (error: any) {
+      Alert.alert("ข้อผิดพลาด", error.message || "เกิดข้อผิดพลาด");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getTitle = () => {
+    switch (mode) {
+      case "login":
+        return "Log In";
+      case "signup":
+        return "Sign Up";
+      case "forgot-password":
+        return "Forgot Password";
+      case "reset-password":
+        return "Reset Password";
+    }
+  };
+
+  const getSubtitle = () => {
+    switch (mode) {
+      case "login":
+        return "Sign in to place your bid and join the auction";
+      case "signup":
+        return "Create your account to start bidding";
+      case "forgot-password":
+        return "Enter your email to receive a password reset token";
+      case "reset-password":
+        return "Enter the token from your email and set a new password";
+    }
+  };
 
   return (
     <Modal
@@ -137,267 +224,488 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
             {/* Modal Header */}
             <View style={styles.header}>
               <AppText weight="semibold" style={styles.title}>
-                {isLoginMode ? "Log In" : "Sign Up"}
+                {getTitle()}
               </AppText>
               <AppText weight="regular" style={styles.subtitle}>
-                {isLoginMode
-                  ? "Sign in to place your bid and join the auction"
-                  : "Create your account to start bidding"}
+                {getSubtitle()}
               </AppText>
             </View>
 
-            {/* Login Form */}
-            {isLoginMode && (
-              <View style={{}}>
-                {/* Email */}
-                <View style={styles.inputGroup}>
-                  <AppText weight="medium" style={styles.label}>
-                    Email Address
-                  </AppText>
-                  <View style={styles.inputWrapper}>
-                    <Image source={image.mail} style={styles.inputIcon} />
-                    <AppTextInput
-                      placeholder="you@example.com"
-                      value={email}
-                      onChangeText={setEmail}
-                      keyboardType="email-address"
-                      editable={!loading}
-                      style={styles.input}
-                    />
-                  </View>
-                </View>
-
-                {/* Password */}
-                <View style={styles.inputGroup}>
-                  <AppText weight="medium" style={styles.label}>
-                    Password
-                  </AppText>
-                  <View style={styles.inputWrapper}>
-                    <Image source={image.password} style={styles.inputIcon} />
-                    <AppTextInput
-                      placeholder="••••••••"
-                      value={password}
-                      onChangeText={setPassword}
-                      secureTextEntry={!showPassword}
-                      editable={!loading}
-                      style={styles.input}
-                    />
-                    <TouchableOpacity
-                      onPress={() => setShowPassword(!showPassword)}
-                      style={styles.eyeIcon}
-                    >
-                      <Image
-                        source={showPassword ? image.close_eye : image.show_eye}
-                        style={styles.eyeIconImage}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* Forgot Password Link */}
-                {/* <TouchableOpacity style={styles.forgotPasswordContainer}>
-                  <AppText weight="medium" style={styles.forgotPassword}>
-                    Forgot Password?
-                  </AppText>
-                </TouchableOpacity> */}
-
-                {/* Login Button */}
-                <TouchableOpacity
-                  onPress={handleLogin}
-                  disabled={loading}
-                  style={styles.primaryButtonWrapper}
-                >
-                  <LinearGradient
-                    colors={["#00112E", "#003994"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.primaryButton}
-                  >
-                    <AppText weight="semibold" style={styles.primaryButtonText}>
-                      {loading ? "Logging in..." : "Log In"}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* ═══════════════════════════════════════════ */}
+              {/* Login Form */}
+              {/* ═══════════════════════════════════════════ */}
+              {mode === "login" && (
+                <View>
+                  {/* Email */}
+                  <View style={styles.inputGroup}>
+                    <AppText weight="medium" style={styles.label}>
+                      Email Address
                     </AppText>
-                  </LinearGradient>
-                </TouchableOpacity>
-
-                {/* Divider */}
-                <View style={styles.dividerContainer}>
-                  <View style={styles.dividerLine} />
-                  <AppText weight="regular" style={styles.dividerText}>
-                    Don't have an account?
-                  </AppText>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                {/* Signup Link */}
-                <TouchableOpacity
-                  onPress={() => {
-                    setMode("signup");
-                    resetForm();
-                  }}
-                  style={styles.signupLinkButton}
-                >
-                  <AppText weight="semibold" style={styles.signupLinkText}>
-                    Sign Up
-                  </AppText>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* Signup Form */}
-            {!isLoginMode && (
-              <View style={{}}>
-                {/* Full Name */}
-                <View style={styles.inputGroup}>
-                  <AppText weight="medium" style={styles.label}>
-                    Full Name
-                  </AppText>
-                  <View style={styles.inputWrapper}>
-                    <Image source={image.person} style={styles.inputIcon} />
-                    <AppTextInput
-                      placeholder="John Doe"
-                      value={fullName}
-                      onChangeText={setFullName}
-                      editable={!loading}
-                      style={styles.input}
-                    />
-                  </View>
-                </View>
-
-                {/* Email */}
-                <View style={styles.inputGroup}>
-                  <AppText weight="medium" style={styles.label}>
-                    Email Address
-                  </AppText>
-                  <View style={styles.inputWrapper}>
-                    <Image source={image.mail} style={styles.inputIcon} />
-                    <AppTextInput
-                      placeholder="you@example.com"
-                      value={email}
-                      onChangeText={setEmail}
-                      keyboardType="email-address"
-                      editable={!loading}
-                      style={styles.input}
-                    />
-                  </View>
-                </View>
-
-                {/* Phone Number */}
-                <View style={styles.inputGroup}>
-                  <AppText weight="medium" style={styles.label}>
-                    Phone Number
-                  </AppText>
-                  <View style={styles.inputWrapper}>
-                    <Image source={image.phone} style={styles.inputIcon} />
-                    <AppTextInput
-                      placeholder="08X-XXX-XXXX"
-                      value={phoneNumber}
-                      onChangeText={setPhoneNumber}
-                      keyboardType="phone-pad"
-                      editable={!loading}
-                      style={styles.input}
-                    />
-                  </View>
-                </View>
-
-                {/* Password */}
-                <View style={styles.inputGroup}>
-                  <AppText weight="medium" style={styles.label}>
-                    Password
-                  </AppText>
-                  <View style={styles.inputWrapper}>
-                    <Image source={image.password} style={styles.inputIcon} />
-                    <AppTextInput
-                      placeholder="••••••••"
-                      value={password}
-                      onChangeText={setPassword}
-                      secureTextEntry={!showPassword}
-                      editable={!loading}
-                      style={styles.input}
-                    />
-                    <TouchableOpacity
-                      onPress={() => setShowPassword(!showPassword)}
-                      style={styles.eyeIcon}
-                    >
-                      <Image
-                        source={showPassword ? image.show_eye : image.close_eye}
-                        style={styles.eyeIconImage}
+                    <View style={styles.inputWrapper}>
+                      <Image source={image.mail} style={styles.inputIcon} />
+                      <AppTextInput
+                        placeholder="you@example.com"
+                        value={email}
+                        onChangeText={setEmail}
+                        keyboardType="email-address"
+                        editable={!loading}
+                        style={styles.input}
                       />
-                    </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
 
-                {/* Confirm Password */}
-                <View style={styles.inputGroup}>
-                  <AppText weight="medium" style={styles.label}>
-                    Confirm Password
-                  </AppText>
-                  <View style={styles.inputWrapper}>
-                    <Image source={image.password} style={styles.inputIcon} />
-                    <AppTextInput
-                      placeholder="••••••••"
-                      value={confirmPassword}
-                      onChangeText={setConfirmPassword}
-                      secureTextEntry={!showConfirmPassword}
-                      editable={!loading}
-                      style={styles.input}
-                    />
-                    <TouchableOpacity
-                      onPress={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
-                      }
-                      style={styles.eyeIcon}
+                  {/* Password */}
+                  <View style={styles.inputGroup}>
+                    <AppText weight="medium" style={styles.label}>
+                      Password
+                    </AppText>
+                    <View style={styles.inputWrapper}>
+                      <Image source={image.password} style={styles.inputIcon} />
+                      <AppTextInput
+                        placeholder="••••••••"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry={!showPassword}
+                        editable={!loading}
+                        style={styles.input}
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowPassword(!showPassword)}
+                        style={styles.eyeIcon}
+                      >
+                        <Image
+                          source={
+                            showPassword ? image.close_eye : image.show_eye
+                          }
+                          style={styles.eyeIconImage}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Forgot Password Link */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setForgotEmail(email);
+                      setMode("forgot-password");
+                    }}
+                    style={styles.forgotPasswordContainer}
+                  >
+                    <AppText weight="medium" style={styles.forgotPassword}>
+                      Forgot Password?
+                    </AppText>
+                  </TouchableOpacity>
+
+                  {/* Login Button */}
+                  <TouchableOpacity
+                    onPress={handleLogin}
+                    disabled={loading}
+                    style={styles.primaryButtonWrapper}
+                  >
+                    <LinearGradient
+                      colors={["#00112E", "#003994"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.primaryButton}
                     >
-                      <Image
-                        source={
-                          showConfirmPassword ? image.show_eye : image.close_eye
+                      <AppText
+                        weight="semibold"
+                        style={styles.primaryButtonText}
+                      >
+                        {loading ? "Logging in..." : "Log In"}
+                      </AppText>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  {/* Divider */}
+                  <View style={styles.dividerContainer}>
+                    <View style={styles.dividerLine} />
+                    <AppText weight="regular" style={styles.dividerText}>
+                      Don't have an account?
+                    </AppText>
+                    <View style={styles.dividerLine} />
+                  </View>
+
+                  {/* Signup Link */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setMode("signup");
+                      resetForm();
+                    }}
+                    style={styles.signupLinkButton}
+                  >
+                    <AppText weight="semibold" style={styles.signupLinkText}>
+                      Sign Up
+                    </AppText>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* ═══════════════════════════════════════════ */}
+              {/* Signup Form */}
+              {/* ═══════════════════════════════════════════ */}
+              {mode === "signup" && (
+                <View>
+                  {/* Full Name */}
+                  <View style={styles.inputGroup}>
+                    <AppText weight="medium" style={styles.label}>
+                      Full Name
+                    </AppText>
+                    <View style={styles.inputWrapper}>
+                      <Image source={image.person} style={styles.inputIcon} />
+                      <AppTextInput
+                        placeholder="John Doe"
+                        value={fullName}
+                        onChangeText={setFullName}
+                        editable={!loading}
+                        style={styles.input}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Email */}
+                  <View style={styles.inputGroup}>
+                    <AppText weight="medium" style={styles.label}>
+                      Email Address
+                    </AppText>
+                    <View style={styles.inputWrapper}>
+                      <Image source={image.mail} style={styles.inputIcon} />
+                      <AppTextInput
+                        placeholder="you@example.com"
+                        value={email}
+                        onChangeText={setEmail}
+                        keyboardType="email-address"
+                        editable={!loading}
+                        style={styles.input}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Phone Number */}
+                  <View style={styles.inputGroup}>
+                    <AppText weight="medium" style={styles.label}>
+                      Phone Number
+                    </AppText>
+                    <View style={styles.inputWrapper}>
+                      <Image source={image.phone} style={styles.inputIcon} />
+                      <AppTextInput
+                        placeholder="08X-XXX-XXXX"
+                        value={phoneNumber}
+                        onChangeText={setPhoneNumber}
+                        keyboardType="phone-pad"
+                        editable={!loading}
+                        style={styles.input}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Password */}
+                  <View style={styles.inputGroup}>
+                    <AppText weight="medium" style={styles.label}>
+                      Password
+                    </AppText>
+                    <View style={styles.inputWrapper}>
+                      <Image source={image.password} style={styles.inputIcon} />
+                      <AppTextInput
+                        placeholder="••••••••"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry={!showPassword}
+                        editable={!loading}
+                        style={styles.input}
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowPassword(!showPassword)}
+                        style={styles.eyeIcon}
+                      >
+                        <Image
+                          source={
+                            showPassword ? image.show_eye : image.close_eye
+                          }
+                          style={styles.eyeIconImage}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Confirm Password */}
+                  <View style={styles.inputGroup}>
+                    <AppText weight="medium" style={styles.label}>
+                      Confirm Password
+                    </AppText>
+                    <View style={styles.inputWrapper}>
+                      <Image source={image.password} style={styles.inputIcon} />
+                      <AppTextInput
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                        secureTextEntry={!showConfirmPassword}
+                        editable={!loading}
+                        style={styles.input}
+                      />
+                      <TouchableOpacity
+                        onPress={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
                         }
-                        style={styles.eyeIconImage}
-                      />
-                    </TouchableOpacity>
+                        style={styles.eyeIcon}
+                      >
+                        <Image
+                          source={
+                            showConfirmPassword
+                              ? image.show_eye
+                              : image.close_eye
+                          }
+                          style={styles.eyeIconImage}
+                        />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
 
-                {/* Signup Button */}
-                <TouchableOpacity
-                  onPress={handleSignup}
-                  disabled={loading}
-                  style={styles.primaryButtonWrapper}
-                >
-                  <LinearGradient
-                    colors={["#00112E", "#003994"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.primaryButton}
+                  {/* Signup Button */}
+                  <TouchableOpacity
+                    onPress={handleSignup}
+                    disabled={loading}
+                    style={styles.primaryButtonWrapper}
                   >
-                    <AppText weight="semibold" style={styles.primaryButtonText}>
-                      {loading ? "Creating Account..." : "Create Account"}
+                    <LinearGradient
+                      colors={["#00112E", "#003994"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.primaryButton}
+                    >
+                      <AppText
+                        weight="semibold"
+                        style={styles.primaryButtonText}
+                      >
+                        {loading ? "Creating Account..." : "Create Account"}
+                      </AppText>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  {/* Divider */}
+                  <View style={styles.dividerContainer}>
+                    <View style={styles.dividerLine} />
+                    <AppText weight="regular" style={styles.dividerText}>
+                      Already have an account?
                     </AppText>
-                  </LinearGradient>
-                </TouchableOpacity>
+                    <View style={styles.dividerLine} />
+                  </View>
 
-                {/* Divider */}
-                <View style={styles.dividerContainer}>
-                  <View style={styles.dividerLine} />
-                  <AppText weight="regular" style={styles.dividerText}>
-                    Already have an account?
-                  </AppText>
-                  <View style={styles.dividerLine} />
+                  {/* Login Link */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setMode("login");
+                      resetForm();
+                    }}
+                    style={styles.loginLinkButton}
+                  >
+                    <AppText weight="semibold" style={styles.loginLinkText}>
+                      Log In
+                    </AppText>
+                  </TouchableOpacity>
                 </View>
+              )}
 
-                {/* Login Link */}
-                <TouchableOpacity
-                  onPress={() => {
-                    setMode("login");
-                    resetForm();
-                  }}
-                  style={styles.loginLinkButton}
-                >
-                  <AppText weight="semibold" style={styles.loginLinkText}>
-                    Log In
-                  </AppText>
-                </TouchableOpacity>
-              </View>
-            )}
+              {/* ═══════════════════════════════════════════ */}
+              {/* Forgot Password Form */}
+              {/* ═══════════════════════════════════════════ */}
+              {mode === "forgot-password" && (
+                <View>
+                  {/* Email */}
+                  <View style={styles.inputGroup}>
+                    <AppText weight="medium" style={styles.label}>
+                      Email Address
+                    </AppText>
+                    <View style={styles.inputWrapper}>
+                      <Image source={image.mail} style={styles.inputIcon} />
+                      <AppTextInput
+                        placeholder="you@example.com"
+                        value={forgotEmail}
+                        onChangeText={setForgotEmail}
+                        keyboardType="email-address"
+                        editable={!loading}
+                        style={styles.input}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Send Reset Token Button */}
+                  <TouchableOpacity
+                    onPress={handleForgotPassword}
+                    disabled={loading}
+                    style={styles.primaryButtonWrapper}
+                  >
+                    <LinearGradient
+                      colors={["#00112E", "#003994"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.primaryButton}
+                    >
+                      <AppText
+                        weight="semibold"
+                        style={styles.primaryButtonText}
+                      >
+                        {loading ? "Sending..." : "Send Reset Token"}
+                      </AppText>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  {/* Already have token? */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setEmail(forgotEmail);
+                      setMode("reset-password");
+                    }}
+                    style={styles.alreadyHaveTokenContainer}
+                  >
+                    <AppText weight="medium" style={styles.alreadyHaveToken}>
+                      Already have a token? Reset Password
+                    </AppText>
+                  </TouchableOpacity>
+
+                  {/* Divider */}
+                  <View style={styles.dividerContainer}>
+                    <View style={styles.dividerLine} />
+                    <AppText weight="regular" style={styles.dividerText}>
+                      Remember your password?
+                    </AppText>
+                    <View style={styles.dividerLine} />
+                  </View>
+
+                  {/* Back to Login */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setMode("login");
+                      resetForm();
+                    }}
+                    style={styles.loginLinkButton}
+                  >
+                    <AppText weight="semibold" style={styles.loginLinkText}>
+                      Back to Log In
+                    </AppText>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* ═══════════════════════════════════════════ */}
+              {/* Reset Password Form */}
+              {/* ═══════════════════════════════════════════ */}
+              {mode === "reset-password" && (
+                <View>
+                  {/* Email (pre-filled, editable) */}
+                  <View style={styles.inputGroup}>
+                    <AppText weight="medium" style={styles.label}>
+                      Email Address
+                    </AppText>
+                    <View style={styles.inputWrapper}>
+                      <Image source={image.mail} style={styles.inputIcon} />
+                      <AppTextInput
+                        placeholder="you@example.com"
+                        value={email}
+                        onChangeText={setEmail}
+                        keyboardType="email-address"
+                        editable={!loading}
+                        style={styles.input}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Token */}
+                  <View style={styles.inputGroup}>
+                    <AppText weight="medium" style={styles.label}>
+                      Reset Token
+                    </AppText>
+                    <View style={styles.inputWrapper}>
+                      <Image source={image.password} style={styles.inputIcon} />
+                      <AppTextInput
+                        placeholder="Paste token from email"
+                        value={resetToken}
+                        onChangeText={setResetToken}
+                        editable={!loading}
+                        style={styles.input}
+                      />
+                    </View>
+                  </View>
+
+                  {/* New Password */}
+                  <View style={styles.inputGroup}>
+                    <AppText weight="medium" style={styles.label}>
+                      New Password
+                    </AppText>
+                    <View style={styles.inputWrapper}>
+                      <Image source={image.password} style={styles.inputIcon} />
+                      <AppTextInput
+                        placeholder="••••••••"
+                        value={newPassword}
+                        onChangeText={setNewPassword}
+                        secureTextEntry={!showNewPassword}
+                        editable={!loading}
+                        style={styles.input}
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowNewPassword(!showNewPassword)}
+                        style={styles.eyeIcon}
+                      >
+                        <Image
+                          source={
+                            showNewPassword ? image.close_eye : image.show_eye
+                          }
+                          style={styles.eyeIconImage}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Reset Password Button */}
+                  <TouchableOpacity
+                    onPress={handleResetPassword}
+                    disabled={loading}
+                    style={styles.primaryButtonWrapper}
+                  >
+                    <LinearGradient
+                      colors={["#00112E", "#003994"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.primaryButton}
+                    >
+                      <AppText
+                        weight="semibold"
+                        style={styles.primaryButtonText}
+                      >
+                        {loading ? "Resetting..." : "Reset Password"}
+                      </AppText>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  {/* Divider */}
+                  <View style={styles.dividerContainer}>
+                    <View style={styles.dividerLine} />
+                    <AppText weight="regular" style={styles.dividerText}>
+                      Remember your password?
+                    </AppText>
+                    <View style={styles.dividerLine} />
+                  </View>
+
+                  {/* Back to Login */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setMode("login");
+                      resetForm();
+                    }}
+                    style={styles.loginLinkButton}
+                  >
+                    <AppText weight="semibold" style={styles.loginLinkText}>
+                      Back to Log In
+                    </AppText>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -516,9 +824,18 @@ const styles = StyleSheet.create({
   },
   forgotPasswordContainer: {
     alignItems: "flex-end",
-    marginBottom: 20,
+    marginBottom: 4,
+    marginTop: -8,
   },
   forgotPassword: {
+    fontSize: 12,
+    color: "#0088FF",
+  },
+  alreadyHaveTokenContainer: {
+    alignItems: "center",
+    marginTop: 16,
+  },
+  alreadyHaveToken: {
     fontSize: 12,
     color: "#0088FF",
   },

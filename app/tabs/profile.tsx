@@ -1,7 +1,7 @@
 import { image } from "@/assets/images";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,31 +11,34 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "../../contexts/AuthContext";
-import { authService, User } from "../../utils/authService";
+import { getFullImageUrl } from "../../utils/api";
 import { AppText } from "../components/appText";
 
 const ProfilePage = () => {
   const router = useRouter();
-  const { logout: contextLogout } = useAuth();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, logout: contextLogout, refreshUser } = useAuth();
+  const [loading, setLoading] = useState(false);
 
-  const loadUser = async () => {
-    const currentUser = await authService.getCurrentUser();
-    setUser(currentUser);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadUser();
-  }, []);
-
-  // Reload user data when screen comes back into focus (e.g. after editing profile)
   useFocusEffect(
     useCallback(() => {
-      loadUser();
+      refreshUser();
     }, []),
   );
+
+  const formatJoinDate = (dateStr?: string) => {
+    if (!dateStr) return "Unknown";
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  const formatBalance = (amount?: string) => {
+    if (!amount) return "฿0";
+    const num = parseFloat(amount);
+    return `฿${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  };
 
   const handleLogout = async () => {
     Alert.alert("ออกจากระบบ", "คุณแน่ใจที่ต้องการออกจากระบบหรือไม่?", [
@@ -72,20 +75,24 @@ const ProfilePage = () => {
         {/* Profile Picture */}
         <View style={styles.profilePictureContainer}>
           <View style={styles.profilePicture}>
-            {/* <AppText weight="bold" style={styles.profileInitial}>
-              {user?.fullName?.charAt(0).toUpperCase() || "U"}
-            </AppText> */}
-            <Image
-              source={image.bang}
-              style={{ width: 90, height: 90, borderRadius: 50 }}
-            />
+            {user?.profile_image ? (
+              <Image
+                source={{ uri: getFullImageUrl(user.profile_image)! }}
+                style={{ width: 90, height: 90, borderRadius: 50 }}
+              />
+            ) : (
+              <View style={styles.defaultAvatar}>
+                <AppText weight="bold" style={styles.defaultAvatarText}>
+                  {user?.name?.charAt(0).toUpperCase() || "U"}
+                </AppText>
+              </View>
+            )}
           </View>
         </View>
 
         {/* User Info */}
         <AppText weight="bold" style={styles.userName}>
-          {/* {user?.fullName} */}
-          Krittapas Wannawilai
+          {user?.name || "Unknown User"}
         </AppText>
 
         <View style={styles.infoRow}>
@@ -94,7 +101,7 @@ const ProfilePage = () => {
             style={{ width: 13, height: 16, marginRight: 4 }}
           />
           <AppText weight="regular" style={styles.infoLabel}>
-            Joined January 2024
+            Joined {formatJoinDate(user?.join_date || user?.created_at)}
           </AppText>
         </View>
 
@@ -105,7 +112,7 @@ const ProfilePage = () => {
               style={{ width: 18, height: 14, marginRight: 4 }}
             />
             <AppText weight="regular" style={styles.contactValue}>
-              {user?.email}
+              {user?.email || "-"}
             </AppText>
           </View>
           <View style={styles.contactSpacer} />
@@ -115,10 +122,48 @@ const ProfilePage = () => {
               style={{ width: 15, height: 14, marginRight: 4 }}
             />
             <AppText weight="regular" style={styles.contactValue}>
-              {user?.phoneNumber}
+              {user?.phone_number || "-"}
             </AppText>
           </View>
         </View>
+
+        {/* Wallet Balance Summary */}
+        {user?.wallet && (
+          <View style={styles.walletSummary}>
+            <View style={styles.walletItem}>
+              <AppText weight="regular" style={styles.walletLabel}>
+                Balance
+              </AppText>
+              <AppText weight="bold" style={styles.walletValue}>
+                {formatBalance(user.wallet.balance_available)}
+              </AppText>
+            </View>
+            <View style={styles.walletDivider} />
+            <View style={styles.walletItem}>
+              <AppText weight="regular" style={styles.walletLabel}>
+                Pending
+              </AppText>
+              <AppText
+                weight="bold"
+                style={[styles.walletValue, { color: "#FF9800" }]}
+              >
+                {formatBalance(user.wallet.balance_pending)}
+              </AppText>
+            </View>
+            <View style={styles.walletDivider} />
+            <View style={styles.walletItem}>
+              <AppText weight="regular" style={styles.walletLabel}>
+                Total
+              </AppText>
+              <AppText
+                weight="bold"
+                style={[styles.walletValue, { color: "#003994" }]}
+              >
+                {formatBalance(user.wallet.balance_total)}
+              </AppText>
+            </View>
+          </View>
+        )}
 
         {/* Menu Items */}
         <TouchableOpacity
@@ -238,7 +283,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   headerBackground: {
-    height: 160,
+    height: 220,
     position: "absolute",
     top: 0,
     left: 0,
@@ -246,9 +291,9 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     flex: 1,
-    marginTop: 100,
+    marginTop: 140,
     marginHorizontal: 20,
-    marginBottom: 15,
+    marginBottom: 40,
     paddingHorizontal: 20,
     paddingTop: 55,
     paddingBottom: 20,
@@ -283,6 +328,18 @@ const styles = StyleSheet.create({
   },
   profileInitial: {
     fontSize: 40,
+    color: "#FFF",
+  },
+  defaultAvatar: {
+    width: 90,
+    height: 90,
+    borderRadius: 50,
+    backgroundColor: "#003994",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  defaultAvatarText: {
+    fontSize: 36,
     color: "#FFF",
   },
   userName: {
@@ -353,7 +410,7 @@ const styles = StyleSheet.create({
   },
   logoutButtonWrapper: {
     width: "100%",
-    marginTop: 20,
+    marginTop: 60,
     borderRadius: 12,
     overflow: "hidden",
   },
@@ -390,6 +447,32 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F5F5",
     borderRadius: 12,
     marginTop: 12,
+  },
+  walletSummary: {
+    flexDirection: "row",
+    width: "100%",
+    backgroundColor: "#F0F6FF",
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    marginBottom: 8,
+  },
+  walletItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  walletLabel: {
+    fontSize: 11,
+    color: "#666",
+    marginBottom: 4,
+  },
+  walletValue: {
+    fontSize: 14,
+    color: "#2E7D32",
+  },
+  walletDivider: {
+    width: 1,
+    backgroundColor: "#D0D8E8",
   },
   additionalSection: {
     width: "100%",

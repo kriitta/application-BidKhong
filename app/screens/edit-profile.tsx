@@ -1,4 +1,6 @@
 import { image } from "@/assets/images";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -17,11 +19,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { authService, User } from "../../utils/authService";
+import { useAuth } from "../../contexts/AuthContext";
+import { apiService, getFullImageUrl } from "../../utils/api";
+import { User } from "../../utils/api/types";
 import { AppText } from "../components/appText";
 
 const EditProfilePage = () => {
   const router = useRouter();
+  const { updateUser } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -40,6 +45,8 @@ const EditProfilePage = () => {
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
 
   // Track changes
   const [hasChanges, setHasChanges] = useState(false);
@@ -49,12 +56,14 @@ const EditProfilePage = () => {
 
   useEffect(() => {
     const loadUser = async () => {
-      const currentUser = await authService.getCurrentUser();
-      if (currentUser) {
+      const userData = await AsyncStorage.getItem("userData");
+      if (userData) {
+        const currentUser: User = JSON.parse(userData);
         setUser(currentUser);
-        setFullName(currentUser.fullName);
+        setFullName(currentUser.name);
         setEmail(currentUser.email);
-        setPhoneNumber(currentUser.phoneNumber || "");
+        setPhoneNumber(currentUser.phone_number || "");
+        setProfileImageUri(getFullImageUrl(currentUser.profile_image));
       }
       setLoading(false);
     };
@@ -64,11 +73,9 @@ const EditProfilePage = () => {
   useEffect(() => {
     if (!user) return;
     const changed =
-      fullName !== user.fullName ||
-      email !== user.email ||
-      phoneNumber !== (user.phoneNumber || "");
+      fullName !== user.name || phoneNumber !== (user.phone_number || "");
     setHasChanges(changed);
-  }, [fullName, email, phoneNumber, user]);
+  }, [fullName, phoneNumber, user]);
 
   const showSuccess = () => {
     successAnim.setValue(0);
@@ -108,19 +115,20 @@ const EditProfilePage = () => {
     }
 
     setSaving(true);
-    const result = await authService.updateProfile({
-      fullName: fullName.trim(),
-      email: email.trim(),
-      phoneNumber: phoneNumber.trim(),
-    });
-    setSaving(false);
-
-    if (result.success && result.user) {
-      setUser(result.user);
+    try {
+      const updatedUser = await apiService.auth.updateProfile({
+        name: fullName.trim(),
+        phone_number: phoneNumber.trim(),
+      });
+      await AsyncStorage.setItem("userData", JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      updateUser(updatedUser);
       setHasChanges(false);
       showSuccess();
-    } else {
-      Alert.alert("ข้อผิดพลาด", result.message);
+    } catch (error: any) {
+      Alert.alert("ข้อผิดพลาด", error.message || "เกิดข้อผิดพลาด");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -145,20 +153,60 @@ const EditProfilePage = () => {
     }
 
     setChangingPassword(true);
-    const result = await authService.changePassword(
-      currentPassword,
-      newPassword,
-    );
-    setChangingPassword(false);
-
-    if (result.success) {
+    try {
+      await apiService.auth.changePassword({
+        currentPassword,
+        newPassword,
+      });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setShowPasswordSection(false);
-      Alert.alert("สำเร็จ ✅", result.message);
-    } else {
-      Alert.alert("ข้อผิดพลาด", result.message);
+      Alert.alert("สำเร็จ ✅", "เปลี่ยนรหัสผ่านสำเร็จ");
+    } catch (error: any) {
+      Alert.alert("ข้อผิดพลาด", error.message || "เกิดข้อผิดพลาด");
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const handleChangePhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "ขออนุญาต",
+        "กรุณาอนุญาตการเข้าถึงคลังรูปภาพเพื่ออัพโหลดรูปโปรไฟล์",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.length) return;
+
+    const selectedImage = result.assets[0];
+    setUploadingImage(true);
+    try {
+      const profileImagePath = await apiService.auth.uploadProfileImage(
+        selectedImage.uri,
+      );
+      // อัปเดต user object กับ profile_image ใหม่
+      if (user) {
+        const updatedUser = { ...user, profile_image: profileImagePath };
+        setUser(updatedUser);
+        updateUser(updatedUser);
+      }
+      setProfileImageUri(getFullImageUrl(profileImagePath));
+      Alert.alert("สำเร็จ ✅", "อัพโหลดรูปโปรไฟล์สำเร็จ");
+    } catch (error: any) {
+      Alert.alert("ข้อผิดพลาด", error.message || "อัพโหลดรูปไม่สำเร็จ");
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -195,10 +243,7 @@ const EditProfilePage = () => {
       <LinearGradient colors={["#00112E", "#003994"]} style={styles.header}>
         <SafeAreaView edges={["top"]} style={styles.headerInner}>
           <TouchableOpacity onPress={handleGoBack} style={styles.backBtn}>
-            <Image
-              source={image.back}
-              style={{ width: 24, height: 24, tintColor: "#FFF" }}
-            />
+            <Image source={image.back} style={{ width: 32, height: 32 }} />
           </TouchableOpacity>
           <AppText weight="bold" style={styles.headerTitle}>
             Edit Profile
@@ -257,23 +302,37 @@ const EditProfilePage = () => {
           {/* Profile Picture Section */}
           <View style={styles.avatarSection}>
             <View style={styles.avatarContainer}>
-              <Image source={image.bang} style={styles.avatarImage} />
+              {profileImageUri ? (
+                <Image
+                  source={{ uri: profileImageUri }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <View style={[styles.avatarImage, styles.defaultAvatar]}>
+                  <AppText weight="bold" style={styles.defaultAvatarText}>
+                    {user?.name?.charAt(0).toUpperCase() || "U"}
+                  </AppText>
+                </View>
+              )}
+              {uploadingImage && (
+                <View style={styles.uploadingOverlay}>
+                  <ActivityIndicator size="small" color="#FFF" />
+                </View>
+              )}
               <TouchableOpacity
                 style={styles.cameraBtn}
-                onPress={() =>
-                  Alert.alert("เปลี่ยนรูปโปรไฟล์", "ฟีเจอร์นี้จะมาในเร็วๆนี้")
-                }
+                onPress={handleChangePhoto}
+                disabled={uploadingImage}
               >
                 <AppText style={{ fontSize: 14 }}>📷</AppText>
               </TouchableOpacity>
             </View>
             <TouchableOpacity
-              onPress={() =>
-                Alert.alert("เปลี่ยนรูปโปรไฟล์", "ฟีเจอร์นี้จะมาในเร็วๆนี้")
-              }
+              onPress={handleChangePhoto}
+              disabled={uploadingImage}
             >
               <AppText weight="medium" style={styles.changePhotoText}>
-                Change Photo
+                {uploadingImage ? "Uploading..." : "Change Photo"}
               </AppText>
             </TouchableOpacity>
           </View>
@@ -298,7 +357,7 @@ const EditProfilePage = () => {
                   placeholderTextColor="#C0C0C0"
                   autoCorrect={false}
                 />
-                {fullName !== user?.fullName && fullName.trim() !== "" && (
+                {fullName !== user?.name && fullName.trim() !== "" && (
                   <View style={styles.changedDot} />
                 )}
               </View>
@@ -308,24 +367,14 @@ const EditProfilePage = () => {
               <AppText weight="medium" style={styles.inputLabel}>
                 อีเมล
               </AppText>
-              <View style={styles.inputWrapper}>
+              <View style={[styles.inputWrapper, styles.inputDisabled]}>
                 <Image
                   source={image.mail}
                   style={[styles.inputIcon, { width: 20, height: 16 }]}
                 />
-                <TextInput
-                  style={styles.textInput}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="กรอกอีเมล"
-                  placeholderTextColor="#C0C0C0"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {email !== user?.email && email.trim() !== "" && (
-                  <View style={styles.changedDot} />
-                )}
+                <AppText weight="regular" style={styles.disabledText}>
+                  {email}
+                </AppText>
               </View>
             </View>
 
@@ -346,7 +395,7 @@ const EditProfilePage = () => {
                   placeholderTextColor="#C0C0C0"
                   keyboardType="phone-pad"
                 />
-                {phoneNumber !== (user?.phoneNumber || "") &&
+                {phoneNumber !== (user?.phone_number || "") &&
                   phoneNumber.trim() !== "" && (
                     <View style={styles.changedDot} />
                   )}
@@ -398,184 +447,6 @@ const EditProfilePage = () => {
               </View>
             </View>
           </View>
-
-          {/* Password Section */}
-          <View style={styles.section}>
-            <TouchableOpacity
-              style={styles.sectionHeaderBtn}
-              onPress={() => setShowPasswordSection(!showPasswordSection)}
-            >
-              <AppText weight="semibold" style={styles.sectionTitle}>
-                🔒 เปลี่ยนรหัสผ่าน
-              </AppText>
-              <AppText weight="regular" style={styles.expandArrow}>
-                {showPasswordSection ? "▲" : "▼"}
-              </AppText>
-            </TouchableOpacity>
-
-            {showPasswordSection && (
-              <View style={styles.passwordFields}>
-                <View style={styles.inputGroup}>
-                  <AppText weight="medium" style={styles.inputLabel}>
-                    รหัสผ่านปัจจุบัน
-                  </AppText>
-                  <View style={styles.inputWrapper}>
-                    <Image
-                      source={image.password}
-                      style={[styles.inputIcon, { width: 18, height: 20 }]}
-                    />
-                    <TextInput
-                      style={styles.textInput}
-                      value={currentPassword}
-                      onChangeText={setCurrentPassword}
-                      placeholder="กรอกรหัสผ่านปัจจุบัน"
-                      placeholderTextColor="#C0C0C0"
-                      secureTextEntry={!showCurrentPw}
-                      autoCorrect={false}
-                    />
-                    <TouchableOpacity
-                      onPress={() => setShowCurrentPw(!showCurrentPw)}
-                    >
-                      <Image
-                        source={
-                          showCurrentPw ? image.show_eye : image.close_eye
-                        }
-                        style={{ width: 22, height: 18, opacity: 0.4 }}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <AppText weight="medium" style={styles.inputLabel}>
-                    รหัสผ่านใหม่
-                  </AppText>
-                  <View style={styles.inputWrapper}>
-                    <Image
-                      source={image.password}
-                      style={[styles.inputIcon, { width: 18, height: 20 }]}
-                    />
-                    <TextInput
-                      style={styles.textInput}
-                      value={newPassword}
-                      onChangeText={setNewPassword}
-                      placeholder="กรอกรหัสผ่านใหม่ (อย่างน้อย 6 ตัว)"
-                      placeholderTextColor="#C0C0C0"
-                      secureTextEntry={!showNewPw}
-                      autoCorrect={false}
-                    />
-                    <TouchableOpacity onPress={() => setShowNewPw(!showNewPw)}>
-                      <Image
-                        source={showNewPw ? image.show_eye : image.close_eye}
-                        style={{ width: 22, height: 18, opacity: 0.4 }}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <AppText weight="medium" style={styles.inputLabel}>
-                    ยืนยันรหัสผ่านใหม่
-                  </AppText>
-                  <View
-                    style={[
-                      styles.inputWrapper,
-                      confirmPassword.length > 0 &&
-                        confirmPassword !== newPassword && {
-                          borderColor: "#EF4444",
-                          borderWidth: 1.5,
-                        },
-                      confirmPassword.length > 0 &&
-                        confirmPassword === newPassword && {
-                          borderColor: "#22C55E",
-                          borderWidth: 1.5,
-                        },
-                    ]}
-                  >
-                    <Image
-                      source={image.password}
-                      style={[styles.inputIcon, { width: 18, height: 20 }]}
-                    />
-                    <TextInput
-                      style={styles.textInput}
-                      value={confirmPassword}
-                      onChangeText={setConfirmPassword}
-                      placeholder="กรอกรหัสผ่านใหม่อีกครั้ง"
-                      placeholderTextColor="#C0C0C0"
-                      secureTextEntry={!showConfirmPw}
-                      autoCorrect={false}
-                    />
-                    <TouchableOpacity
-                      onPress={() => setShowConfirmPw(!showConfirmPw)}
-                    >
-                      <Image
-                        source={
-                          showConfirmPw ? image.show_eye : image.close_eye
-                        }
-                        style={{ width: 22, height: 18, opacity: 0.4 }}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                  {confirmPassword.length > 0 &&
-                    confirmPassword !== newPassword && (
-                      <AppText weight="regular" style={styles.errorText}>
-                        รหัสผ่านไม่ตรงกัน
-                      </AppText>
-                    )}
-                </View>
-
-                <TouchableOpacity
-                  style={[
-                    styles.changePasswordBtn,
-                    changingPassword && { opacity: 0.6 },
-                  ]}
-                  onPress={handleChangePassword}
-                  disabled={changingPassword}
-                >
-                  <LinearGradient
-                    colors={["#3B82F6", "#2563EB"]}
-                    style={styles.changePasswordGradient}
-                  >
-                    {changingPassword ? (
-                      <ActivityIndicator size="small" color="#FFF" />
-                    ) : (
-                      <AppText
-                        weight="semibold"
-                        style={styles.changePasswordText}
-                      >
-                        🔑 เปลี่ยนรหัสผ่าน
-                      </AppText>
-                    )}
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          {/* Save Button (bottom) */}
-          <TouchableOpacity
-            style={[
-              styles.saveBottomBtn,
-              (!hasChanges || saving) && { opacity: 0.4 },
-            ]}
-            onPress={handleSaveProfile}
-            disabled={!hasChanges || saving}
-          >
-            <LinearGradient
-              colors={
-                hasChanges ? ["#22C55E", "#16A34A"] : ["#9CA3AF", "#6B7280"]
-              }
-              style={styles.saveBottomGradient}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <AppText weight="semibold" style={styles.saveBottomText}>
-                  💾 บันทึกการเปลี่ยนแปลง
-                </AppText>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
 
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -692,6 +563,26 @@ const styles = StyleSheet.create({
   changePhotoText: {
     fontSize: 14,
     color: "#3B82F6",
+  },
+  defaultAvatar: {
+    backgroundColor: "#003994",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  defaultAvatarText: {
+    fontSize: 36,
+    color: "#FFF",
+  },
+  uploadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 50,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   // Section

@@ -1,4 +1,5 @@
 import { image } from "@/assets/images";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -16,7 +17,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../contexts/AuthContext";
-import { authService, User } from "../utils/authService";
+import { User } from "../utils/api/types";
 import { AppText } from "./components/appText";
 
 const { width } = Dimensions.get("window");
@@ -312,7 +313,8 @@ const AdminScreen = () => {
 
   useEffect(() => {
     const loadUser = async () => {
-      const currentUser = await authService.getCurrentUser();
+      const userData = await AsyncStorage.getItem("userData");
+      const currentUser: User | null = userData ? JSON.parse(userData) : null;
       if (currentUser?.role !== "admin") {
         router.replace("/login");
         return;
@@ -425,7 +427,7 @@ const AdminScreen = () => {
                 Admin Panel
               </AppText>
               <AppText weight="regular" style={styles.headerSubtitle}>
-                {user?.fullName}
+                {user?.name}
               </AppText>
             </View>
             <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>

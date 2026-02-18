@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, {
   useCallback,
@@ -24,6 +24,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
 import { useAuth } from "../../contexts/AuthContext";
+import { getFullImageUrl } from "../../utils/api";
 import { AppText } from "../components/appText";
 import { AuthModal } from "../components/AuthModal";
 
@@ -42,8 +43,22 @@ const TRENDING_TAGS = [
 const HomePage = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { isGuest, isLoggedIn } = useAuth();
+  const { isGuest, isLoggedIn, user, refreshUser } = useAuth();
   const [authModalVisible, setAuthModalVisible] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isLoggedIn && !isGuest) {
+        refreshUser();
+      }
+    }, [isLoggedIn, isGuest]),
+  );
+
+  const formatBalance = (amount?: string) => {
+    if (!amount) return "฿0";
+    const num = parseFloat(amount);
+    return `฿${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  };
 
   // Search state
   const [searchVisible, setSearchVisible] = useState(false);
@@ -543,10 +558,21 @@ const HomePage = () => {
                 Total Balance
               </AppText>
               <AppText weight="bold" style={styles.balanceAmount}>
-                ฿125,000
+                {formatBalance(user?.wallet?.balance_total)}
               </AppText>
             </View>
-            <Image source={image.bang} style={styles.avatar} />
+            {user?.profile_image ? (
+              <Image
+                source={{ uri: getFullImageUrl(user.profile_image)! }}
+                style={styles.avatar}
+              />
+            ) : (
+              <View style={[styles.avatar, styles.defaultAvatar]}>
+                <AppText weight="bold" style={styles.defaultAvatarText}>
+                  {user?.name?.charAt(0).toUpperCase() || "U"}
+                </AppText>
+              </View>
+            )}
           </View>
         ) : (
           <TouchableOpacity
@@ -1161,6 +1187,17 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginLeft: 10,
+  },
+  defaultAvatar: {
+    backgroundColor: "#003994",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.5)",
+  },
+  defaultAvatarText: {
+    fontSize: 18,
+    color: "#FFF",
   },
   guestHeaderBtn: {
     flexDirection: "row",
