@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   brandText: {
-    fontSize: 28,
+    fontSize: 24,
     color: "#fff",
     textShadowColor: "rgba(0, 0, 0, 0.8)",
     textShadowOffset: { width: 2, height: 2 },

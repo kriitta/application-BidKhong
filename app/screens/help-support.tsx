@@ -254,10 +254,18 @@ const HelpSupportPage = () => {
   const renderFAQTab = () => (
     <View>
       <View style={styles.sectionHeader}>
-        <AppText weight="semibold" style={styles.sectionTitle}>
+        <AppText
+          weight="semibold"
+          style={styles.sectionTitle}
+          numberOfLines={1}
+        >
           คำถามที่พบบ่อย
         </AppText>
-        <AppText weight="regular" style={styles.sectionSubtitle}>
+        <AppText
+          weight="regular"
+          style={styles.sectionSubtitle}
+          numberOfLines={1}
+        >
           กดที่คำถามเพื่อดูคำตอบ
         </AppText>
       </View>
@@ -280,10 +288,14 @@ const HelpSupportPage = () => {
                 Q
               </AppText>
             </View>
-            <AppText weight="semibold" style={styles.faqQuestionText}>
+            <AppText
+              weight="semibold"
+              style={styles.faqQuestionText}
+              numberOfLines={2}
+            >
               {item.question}
             </AppText>
-            <AppText weight="regular" style={styles.faqArrow}>
+            <AppText weight="regular" style={styles.faqArrow} numberOfLines={1}>
               {expandedFAQ === item.id ? "▲" : "▼"}
             </AppText>
           </View>
@@ -307,17 +319,25 @@ const HelpSupportPage = () => {
   const renderReportTab = () => (
     <View>
       <View style={styles.sectionHeader}>
-        <AppText weight="semibold" style={styles.sectionTitle}>
+        <AppText
+          weight="semibold"
+          style={styles.sectionTitle}
+          numberOfLines={1}
+        >
           แจ้งปัญหา / ข้อเสนอแนะ
         </AppText>
-        <AppText weight="regular" style={styles.sectionSubtitle}>
+        <AppText
+          weight="regular"
+          style={styles.sectionSubtitle}
+          numberOfLines={1}
+        >
           ทีมงานจะตอบกลับภายใน 24-48 ชั่วโมง
         </AppText>
       </View>
 
       {/* Report Type Selection */}
       <View style={styles.reportCard}>
-        <AppText weight="medium" style={styles.reportLabel}>
+        <AppText weight="medium" style={styles.reportLabel} numberOfLines={1}>
           ประเภทปัญหา
         </AppText>
         <View style={styles.reportTypes}>
@@ -349,7 +369,7 @@ const HelpSupportPage = () => {
 
       {/* Report Form */}
       <View style={styles.reportCard}>
-        <AppText weight="medium" style={styles.reportLabel}>
+        <AppText weight="medium" style={styles.reportLabel} numberOfLines={1}>
           หัวข้อ
         </AppText>
         <TextInput
@@ -378,7 +398,7 @@ const HelpSupportPage = () => {
           textAlignVertical="top"
           maxLength={1000}
         />
-        <AppText weight="regular" style={styles.charCount}>
+        <AppText weight="regular" style={styles.charCount} numberOfLines={1}>
           {reportDescription.length}/1000
         </AppText>
 
@@ -392,7 +412,11 @@ const HelpSupportPage = () => {
             colors={["#3B82F6", "#2563EB"]}
             style={styles.submitGradient}
           >
-            <AppText weight="semibold" style={styles.submitText}>
+            <AppText
+              weight="semibold"
+              style={styles.submitText}
+              numberOfLines={1}
+            >
               {submitting ? "⏳ กำลังส่ง..." : "📤 ส่งรายงาน"}
             </AppText>
           </LinearGradient>
@@ -404,10 +428,18 @@ const HelpSupportPage = () => {
   const renderStatusTab = () => (
     <View>
       <View style={styles.sectionHeader}>
-        <AppText weight="semibold" style={styles.sectionTitle}>
+        <AppText
+          weight="semibold"
+          style={styles.sectionTitle}
+          numberOfLines={1}
+        >
           สถานะการแจ้งปัญหา
         </AppText>
-        <AppText weight="regular" style={styles.sectionSubtitle}>
+        <AppText
+          weight="regular"
+          style={styles.sectionSubtitle}
+          numberOfLines={1}
+        >
           ติดตามสถานะรายงานที่คุณส่งไป
         </AppText>
       </View>
@@ -429,7 +461,12 @@ const HelpSupportPage = () => {
               >
                 {count}
               </AppText>
-              <AppText weight="regular" style={styles.statusSummaryLabel}>
+              <AppText
+                weight="regular"
+                style={styles.statusSummaryLabel}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 {config.label}
               </AppText>
             </View>
@@ -441,10 +478,18 @@ const HelpSupportPage = () => {
       {reports.length === 0 ? (
         <View style={styles.emptyStatus}>
           <AppText style={{ fontSize: 48, marginBottom: 12 }}>📭</AppText>
-          <AppText weight="semibold" style={styles.emptyStatusTitle}>
+          <AppText
+            weight="semibold"
+            style={styles.emptyStatusTitle}
+            numberOfLines={1}
+          >
             ยังไม่มีรายงาน
           </AppText>
-          <AppText weight="regular" style={styles.emptyStatusSub}>
+          <AppText
+            weight="regular"
+            style={styles.emptyStatusSub}
+            numberOfLines={2}
+          >
             เมื่อคุณแจ้งปัญหา รายงานจะแสดงที่นี่
           </AppText>
         </View>
@@ -498,16 +543,28 @@ const HelpSupportPage = () => {
               </View>
 
               {/* Title */}
-              <AppText weight="semibold" style={styles.statusCardTitle}>
+              <AppText
+                weight="semibold"
+                style={styles.statusCardTitle}
+                numberOfLines={1}
+              >
                 {report.title}
               </AppText>
 
               {/* ID & Date */}
               <View style={styles.statusCardMeta}>
-                <AppText weight="regular" style={styles.statusCardId}>
+                <AppText
+                  weight="regular"
+                  style={styles.statusCardId}
+                  numberOfLines={1}
+                >
                   {report.id}
                 </AppText>
-                <AppText weight="regular" style={styles.statusCardDate}>
+                <AppText
+                  weight="regular"
+                  style={styles.statusCardDate}
+                  numberOfLines={1}
+                >
                   📅 {report.submittedAt}
                 </AppText>
               </View>
@@ -528,7 +585,11 @@ const HelpSupportPage = () => {
 
               {/* Tap hint */}
               <View style={styles.tapHint}>
-                <AppText weight="regular" style={styles.tapHintText}>
+                <AppText
+                  weight="regular"
+                  style={styles.tapHintText}
+                  numberOfLines={1}
+                >
                   กดเพื่อดูรายละเอียด →
                 </AppText>
               </View>
@@ -787,7 +848,12 @@ const HelpSupportPage = () => {
           >
             <Image source={image.back} style={{ width: 32, height: 32 }} />
           </TouchableOpacity>
-          <AppText weight="bold" style={styles.headerTitle}>
+          <AppText
+            weight="bold"
+            style={styles.headerTitle}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
             Help & Support
           </AppText>
           <View style={{ width: 40 }} />
@@ -808,6 +874,8 @@ const HelpSupportPage = () => {
                 styles.tabText,
                 activeTab === tab.key && styles.tabTextActive,
               ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
             >
               {tab.label}
             </AppText>
@@ -884,7 +952,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: "#FFF",
   },
 
@@ -949,7 +1017,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: "#111827",
     marginBottom: 4,
   },
@@ -1122,7 +1190,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   statusSummaryCount: {
-    fontSize: 22,
+    fontSize: 20,
     marginVertical: 4,
   },
   statusSummaryLabel: {

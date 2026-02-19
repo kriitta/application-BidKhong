@@ -36,15 +36,17 @@ const EditProfilePage = () => {
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
 
-  // Password change
-  const [showPasswordSection, setShowPasswordSection] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
+  // Reset Password (via token)
+  const [showResetSection, setShowResetSection] = useState(false);
+  const [resetToken, setResetToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
-  const [changingPassword, setChangingPassword] = useState(false);
+  const [sendingToken, setSendingToken] = useState(false);
+  const [tokenSent, setTokenSent] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
 
@@ -77,6 +79,13 @@ const EditProfilePage = () => {
     setHasChanges(changed);
   }, [fullName, phoneNumber, user]);
 
+  // Cooldown timer for resend token
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
   const showSuccess = () => {
     successAnim.setValue(0);
     Animated.sequence([
@@ -98,19 +107,19 @@ const EditProfilePage = () => {
     Keyboard.dismiss();
 
     if (!fullName.trim()) {
-      Alert.alert("ข้อผิดพลาด", "กรุณากรอกชื่อ-นามสกุล");
+      Alert.alert("Error", "Please enter your full name");
       return;
     }
     if (!email.trim()) {
-      Alert.alert("ข้อผิดพลาด", "กรุณากรอกอีเมล");
+      Alert.alert("Error", "Please enter your email");
       return;
     }
     if (!email.includes("@")) {
-      Alert.alert("ข้อผิดพลาด", "กรุณากรอกอีเมลให้ถูกต้อง");
+      Alert.alert("Error", "Please enter a valid email address");
       return;
     }
     if (!phoneNumber.trim()) {
-      Alert.alert("ข้อผิดพลาด", "กรุณากรอกเบอร์โทรศัพท์");
+      Alert.alert("Error", "Please enter your phone number");
       return;
     }
 
@@ -126,47 +135,73 @@ const EditProfilePage = () => {
       setHasChanges(false);
       showSuccess();
     } catch (error: any) {
-      Alert.alert("ข้อผิดพลาด", error.message || "เกิดข้อผิดพลาด");
+      Alert.alert("Error", error.message || "An error occurred while saving profile");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleChangePassword = async () => {
+  const handleSendToken = async () => {
+    Keyboard.dismiss();
+    if (!email) {
+      Alert.alert("Error", "Email not found");
+      return;
+    }
+
+    setSendingToken(true);
+    try {
+      const res = await apiService.auth.forgotPassword({ email });
+      setTokenSent(true);
+      setCooldown(60);
+      Alert.alert(
+        "Token Sent Successfully",
+        `We have sent a token to ${email}\nPlease check your email and enter the token to reset your password.`,
+      );
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to send token");
+    } finally {
+      setSendingToken(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
     Keyboard.dismiss();
 
-    if (!currentPassword.trim()) {
-      Alert.alert("ข้อผิดพลาด", "กรุณากรอกรหัสผ่านปัจจุบัน");
+    if (!resetToken.trim()) {
+      Alert.alert("Error", "Please enter the token sent to your email");
       return;
     }
     if (!newPassword.trim()) {
-      Alert.alert("ข้อผิดพลาด", "กรุณากรอกรหัสผ่านใหม่");
+      Alert.alert("Error", "Please enter your new password");
       return;
     }
     if (newPassword.length < 6) {
-      Alert.alert("ข้อผิดพลาด", "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร");
+      Alert.alert("Error", "New password must be at least 6 characters");
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert("ข้อผิดพลาด", "รหัสผ่านใหม่ไม่ตรงกัน");
+      Alert.alert("Error", "New passwords do not match");
       return;
     }
 
-    setChangingPassword(true);
+    setResettingPassword(true);
     try {
-      await apiService.auth.changePassword({
-        currentPassword,
-        newPassword,
+      await apiService.auth.resetPassword({
+        email,
+        token: resetToken.trim(),
+        password: newPassword,
       });
-      setCurrentPassword("");
+      setResetToken("");
       setNewPassword("");
       setConfirmPassword("");
-      setShowPasswordSection(false);
-      Alert.alert("สำเร็จ ✅", "เปลี่ยนรหัสผ่านสำเร็จ");
+      setTokenSent(false);
+      setShowResetSection(false);
+      setCooldown(0);
+      Alert.alert("Success", "Password changed successfully");
     } catch (error: any) {
-      Alert.alert("ข้อผิดพลาด", error.message || "เกิดข้อผิดพลาด");
+      Alert.alert("Error", error.message || "Failed to change password");
     } finally {
-      setChangingPassword(false);
+      setResettingPassword(false);
     }
   };
 
@@ -174,8 +209,8 @@ const EditProfilePage = () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
-        "ขออนุญาต",
-        "กรุณาอนุญาตการเข้าถึงคลังรูปภาพเพื่ออัพโหลดรูปโปรไฟล์",
+        "Permission Required",
+        "Please allow access to your photo library to upload a profile picture",
       );
       return;
     }
@@ -202,9 +237,9 @@ const EditProfilePage = () => {
         updateUser(updatedUser);
       }
       setProfileImageUri(getFullImageUrl(profileImagePath));
-      Alert.alert("สำเร็จ ✅", "อัพโหลดรูปโปรไฟล์สำเร็จ");
+      Alert.alert("Success", "Profile picture uploaded successfully");
     } catch (error: any) {
-      Alert.alert("ข้อผิดพลาด", error.message || "อัพโหลดรูปไม่สำเร็จ");
+      Alert.alert("Error", error.message || "Failed to upload profile picture");
     } finally {
       setUploadingImage(false);
     }
@@ -213,12 +248,13 @@ const EditProfilePage = () => {
   const handleGoBack = () => {
     if (hasChanges) {
       Alert.alert(
-        "ยังไม่ได้บันทึก",
-        "คุณมีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก ต้องการออกหรือไม่?",
+        "Unsaved Changes",
+        "You have unsaved changes. Do you want to discard them?",
         [
-          { text: "อยู่ต่อ" },
+          { text: "Stay" },
           {
-            text: "ออกโดยไม่บันทึก",
+            text: "Discard",
+
             style: "destructive",
             onPress: () => router.back(),
           },
@@ -245,7 +281,7 @@ const EditProfilePage = () => {
           <TouchableOpacity onPress={handleGoBack} style={styles.backBtn}>
             <Image source={image.back} style={{ width: 32, height: 32 }} />
           </TouchableOpacity>
-          <AppText weight="bold" style={styles.headerTitle}>
+          <AppText weight="bold" numberOfLines={1} style={styles.headerTitle}>
             Edit Profile
           </AppText>
           <TouchableOpacity
@@ -259,7 +295,11 @@ const EditProfilePage = () => {
             {saving ? (
               <ActivityIndicator size="small" color="#FFF" />
             ) : (
-              <AppText weight="semibold" style={styles.saveBtnText}>
+              <AppText
+                weight="semibold"
+                numberOfLines={1}
+                style={styles.saveBtnText}
+              >
                 Save
               </AppText>
             )}
@@ -285,8 +325,13 @@ const EditProfilePage = () => {
         ]}
         pointerEvents="none"
       >
-        <AppText weight="semibold" style={styles.successToastText}>
-          ✅ บันทึกข้อมูลสำเร็จ
+        <AppText
+          weight="semibold"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={styles.successToastText}
+        >
+          ✅ Profile updated successfully
         </AppText>
       </Animated.View>
 
@@ -301,7 +346,12 @@ const EditProfilePage = () => {
         >
           {/* Profile Picture Section */}
           <View style={styles.avatarSection}>
-            <View style={styles.avatarContainer}>
+            <TouchableOpacity
+              style={styles.avatarContainer}
+              onPress={handleChangePhoto}
+              disabled={uploadingImage}
+              activeOpacity={0.7}
+            >
               {profileImageUri ? (
                 <Image
                   source={{ uri: profileImageUri }}
@@ -314,46 +364,51 @@ const EditProfilePage = () => {
                   </AppText>
                 </View>
               )}
-              {uploadingImage && (
-                <View style={styles.uploadingOverlay}>
-                  <ActivityIndicator size="small" color="#FFF" />
-                </View>
-              )}
-              <TouchableOpacity
-                style={styles.cameraBtn}
-                onPress={handleChangePhoto}
-                disabled={uploadingImage}
-              >
-                <AppText style={{ fontSize: 14 }}>📷</AppText>
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={handleChangePhoto}
               disabled={uploadingImage}
             >
-              <AppText weight="medium" style={styles.changePhotoText}>
-                {uploadingImage ? "Uploading..." : "Change Photo"}
+              <AppText
+                weight="medium"
+                numberOfLines={1}
+                style={styles.changePhotoText}
+              >
+                Change photo
               </AppText>
             </TouchableOpacity>
           </View>
 
           {/* Personal Info Section */}
           <View style={styles.section}>
-            <AppText weight="semibold" style={styles.sectionTitle}>
-              📋 ข้อมูลส่วนตัว
-            </AppText>
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}> 
+              <AppText
+                weight="semibold"
+                numberOfLines={1}
+                style={styles.sectionTitle}
+              >
+                Personal Information
+              </AppText>
+            </View>
 
             <View style={styles.inputGroup}>
-              <AppText weight="medium" style={styles.inputLabel}>
-                ชื่อ-นามสกุล
+              <AppText
+                weight="medium"
+                numberOfLines={1}
+                style={styles.inputLabel}
+              >
+                Full Name
               </AppText>
               <View style={styles.inputWrapper}>
-                <Image source={image.person} style={styles.inputIcon} />
+                <Image
+                  source={image.person}
+                  style={[styles.inputIcon, { height: 16, width: 12 }]}
+                />
                 <TextInput
                   style={styles.textInput}
                   value={fullName}
                   onChangeText={setFullName}
-                  placeholder="กรอกชื่อ-นามสกุล"
+                  placeholder="Enter your full name"
                   placeholderTextColor="#C0C0C0"
                   autoCorrect={false}
                 />
@@ -364,13 +419,17 @@ const EditProfilePage = () => {
             </View>
 
             <View style={styles.inputGroup}>
-              <AppText weight="medium" style={styles.inputLabel}>
-                อีเมล
+              <AppText
+                weight="medium"
+                numberOfLines={1}
+                style={styles.inputLabel}
+              >
+                Email
               </AppText>
               <View style={[styles.inputWrapper, styles.inputDisabled]}>
                 <Image
                   source={image.mail}
-                  style={[styles.inputIcon, { width: 20, height: 16 }]}
+                  style={[styles.inputIcon, { width: 18, height: 14 }]}
                 />
                 <AppText weight="regular" style={styles.disabledText}>
                   {email}
@@ -379,19 +438,23 @@ const EditProfilePage = () => {
             </View>
 
             <View style={styles.inputGroup}>
-              <AppText weight="medium" style={styles.inputLabel}>
-                เบอร์โทรศัพท์
+              <AppText
+                weight="medium"
+                numberOfLines={1}
+                style={styles.inputLabel}
+              >
+                Phone Number
               </AppText>
               <View style={styles.inputWrapper}>
                 <Image
                   source={image.phone}
-                  style={[styles.inputIcon, { width: 18, height: 18 }]}
+                  style={[styles.inputIcon, { width: 15, height: 15 }]}
                 />
                 <TextInput
                   style={styles.textInput}
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
-                  placeholder="กรอกเบอร์โทรศัพท์"
+                  placeholder="Enter your phone number"
                   placeholderTextColor="#C0C0C0"
                   keyboardType="phone-pad"
                 />
@@ -401,51 +464,226 @@ const EditProfilePage = () => {
                   )}
               </View>
             </View>
+          </View>
 
-            {/* User ID (read-only) */}
-            <View style={styles.inputGroup}>
-              <AppText weight="medium" style={styles.inputLabel}>
-                User ID
+          {/* Reset Password Section */}
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.sectionHeaderBtn}
+              onPress={() => {
+                setShowResetSection(!showResetSection);
+                if (showResetSection) {
+                  setTokenSent(false);
+                  setResetToken("");
+                  setNewPassword("");
+                  setConfirmPassword("");
+                  setCooldown(0);
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <AppText
+                weight="semibold"
+                numberOfLines={1}
+                style={styles.sectionTitle}
+              >
+                Reset Password
               </AppText>
-              <View style={[styles.inputWrapper, styles.inputDisabled]}>
-                <AppText style={{ fontSize: 16, marginRight: 10 }}>🆔</AppText>
-                <AppText weight="regular" style={styles.disabledText}>
-                  {user?.id}
-                </AppText>
-              </View>
-            </View>
+              <AppText style={styles.expandArrow}>
+                {showResetSection ? "▲" : "▼"}
+              </AppText>
+            </TouchableOpacity>
 
-            {/* Role (read-only) */}
-            <View style={styles.inputGroup}>
-              <AppText weight="medium" style={styles.inputLabel}>
-                บทบาท
-              </AppText>
-              <View style={[styles.inputWrapper, styles.inputDisabled]}>
-                <AppText style={{ fontSize: 16, marginRight: 10 }}>👤</AppText>
-                <AppText weight="regular" style={styles.disabledText}>
-                  {user?.role === "admin" ? "ผู้ดูแลระบบ" : "ผู้ใช้ทั่วไป"}
-                </AppText>
-                <View
-                  style={[
-                    styles.roleBadge,
-                    {
-                      backgroundColor:
-                        user?.role === "admin" ? "#FEF3C7" : "#E8F0FF",
-                    },
-                  ]}
-                >
+            {showResetSection && (
+              <View style={styles.resetFields}>
+                {/* Info text */}
+                <AppText weight="regular" style={styles.resetInfoText}>
+                  We will send a token to your email{"\n"}
                   <AppText
                     weight="semibold"
-                    style={{
-                      fontSize: 10,
-                      color: user?.role === "admin" ? "#D97706" : "#3B82F6",
-                    }}
+                    style={{ color: "#3B82F6", fontSize: 13 }}
                   >
-                    {user?.role === "admin" ? "ADMIN" : "USER"}
+                    {email}
                   </AppText>
-                </View>
+                  {"\n"}to use for resetting your password
+                </AppText>
+
+                {/* Send Token Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.sendTokenBtn,
+                    (sendingToken || cooldown > 0) && { opacity: 0.5 },
+                  ]}
+                  onPress={handleSendToken}
+                  disabled={sendingToken || cooldown > 0}
+                  activeOpacity={0.7}
+                >
+                  <LinearGradient
+                    colors={
+                      tokenSent
+                        ? ["#10B981", "#059669"]
+                        : ["#3B82F6", "#2563EB"]
+                    }
+                    style={styles.sendTokenGradient}
+                  >
+                    {sendingToken ? (
+                      <ActivityIndicator size="small" color="#FFF" />
+                    ) : (
+                      <AppText
+                        weight="semibold"
+                        numberOfLines={1}
+                        style={styles.sendTokenText}
+                      >
+                        {tokenSent
+                          ? cooldown > 0
+                            ? `Resend in ${cooldown} seconds`
+                            : "Resend Token"
+                          : "Sent Token to Email"}
+                      </AppText>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {tokenSent && (
+                  <>
+                    {/* Token Input */}
+                    <View style={styles.inputGroup}>
+                      <AppText
+                        weight="medium"
+                        numberOfLines={1}
+                        style={styles.inputLabel}
+                      >
+                        Token
+                      </AppText>
+                      <View style={styles.inputWrapper}>
+                        <Image source={image.key} style={{ marginRight: 8, width: 18, height: 10 }} />
+                        <TextInput
+                          style={styles.textInput}
+                          value={resetToken}
+                          onChangeText={setResetToken}
+                          placeholder="Enter the token received via email"
+                          placeholderTextColor="#C0C0C0"
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                        />
+                      </View>
+                    </View>
+
+                    {/* New Password */}
+                    <View style={styles.inputGroup}>
+                      <AppText
+                        weight="medium"
+                        numberOfLines={1}
+                        style={styles.inputLabel}
+                      >
+                        New Password
+                      </AppText>
+                      <View style={styles.inputWrapper}>
+                        <Image
+                          source={image.password}
+                          style={{ marginRight: 10, width: 12, height: 16 }}
+                        />
+                        <TextInput
+                          style={[styles.textInput, { flex: 1 }]}
+                          value={newPassword}
+                          onChangeText={setNewPassword}
+                          placeholder="Enter your new password (at least 6 characters)"
+                          placeholderTextColor="#C0C0C0"
+                          secureTextEntry={!showNewPw}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                        />
+                        <TouchableOpacity
+                          onPress={() => setShowNewPw(!showNewPw)}
+                        >
+                          <Image
+                            source={
+                              showNewPw ? image.close_eye : image.show_eye
+                            }
+                            style={{
+                              width: 16,
+                              height: 16,
+                              resizeMode: "contain",
+                              tintColor: "#999",
+                            }}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Confirm Password */}
+                    <View style={styles.inputGroup}>
+                      <AppText
+                        weight="medium"
+                        numberOfLines={1}
+                        style={styles.inputLabel}
+                      >
+                        Confirm New Password
+                      </AppText>
+                      <View style={styles.inputWrapper}>
+                        <Image
+                          source={image.password}
+                          style={{ marginRight: 10, width: 12, height: 16 }}
+                        />
+                        <TextInput
+                          style={[styles.textInput, { flex: 1 }]}
+                          value={confirmPassword}
+                          onChangeText={setConfirmPassword}
+                          placeholder="Re-enter your new password"
+                          placeholderTextColor="#C0C0C0"
+                          secureTextEntry={!showConfirmPw}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                        />
+                        <TouchableOpacity
+                          onPress={() => setShowConfirmPw(!showConfirmPw)}
+                        >
+                          <Image
+                            source={
+                              showConfirmPw ? image.close_eye : image.show_eye
+                            }
+                            style={{
+                              width: 16,
+                              height: 16,
+                              resizeMode: "contain",
+                              tintColor: "#999",
+                            }}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Reset Password Button */}
+                    <TouchableOpacity
+                      style={[
+                        styles.changePasswordBtn,
+                        resettingPassword && { opacity: 0.5 },
+                      ]}
+                      onPress={handleResetPassword}
+                      disabled={resettingPassword}
+                      activeOpacity={0.7}
+                    >
+                      <LinearGradient
+                        colors={["#EF4444", "#DC2626"]}
+                        style={styles.changePasswordGradient}
+                      >
+                        {resettingPassword ? (
+                          <ActivityIndicator size="small" color="#FFF" />
+                        ) : (
+                          <AppText
+                            weight="semibold"
+                            numberOfLines={1}
+                            style={styles.changePasswordText}
+                          >
+                            Change Password
+                          </AppText>
+                        )}
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
-            </View>
+            )}
           </View>
 
           <View style={{ height: 40 }} />
@@ -485,7 +723,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: "#FFF",
   },
   saveBtn: {
@@ -497,7 +735,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.3)",
   },
   saveBtnText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#FFF",
   },
   successToast: {
@@ -547,21 +785,19 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  cameraBtn: {
+  avatarEditOverlay: {
     position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
     bottom: 0,
-    right: -4,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#3B82F6",
+    borderRadius: 50,
+    backgroundColor: "rgba(0,0,0,0.25)",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 3,
-    borderColor: "#FFF",
   },
   changePhotoText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#3B82F6",
   },
   defaultAvatar: {
@@ -600,7 +836,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     color: "#111827",
-    marginBottom: 16,
   },
   sectionHeaderBtn: {
     flexDirection: "row",
@@ -669,6 +904,30 @@ const styles = StyleSheet.create({
   // Password
   passwordFields: {
     marginTop: 16,
+  },
+  resetFields: {
+    marginTop: 12,
+  },
+  resetInfoText: {
+    fontSize: 13,
+    color: "#6B7280",
+    lineHeight: 20,
+    marginBottom: 14,
+    textAlign: "center",
+  },
+  sendTokenBtn: {
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+  sendTokenGradient: {
+    paddingVertical: 13,
+    alignItems: "center",
+    borderRadius: 12,
+  },
+  sendTokenText: {
+    fontSize: 14,
+    color: "#FFF",
   },
   changePasswordBtn: {
     borderRadius: 12,

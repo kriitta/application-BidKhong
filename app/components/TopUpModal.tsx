@@ -109,7 +109,11 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
             <View style={styles.modalContent}>
               {/* Header with close button */}
               <View style={styles.headerBar}>
-                <AppText weight="semibold" style={styles.headerTitle}>
+                <AppText
+                  weight="semibold"
+                  numberOfLines={1}
+                  style={styles.headerTitle}
+                >
                   Top Up Wallet
                 </AppText>
                 <TouchableOpacity onPress={onClose}>
@@ -121,7 +125,11 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
 
               {/* Select Amount */}
               <View style={styles.section}>
-                <AppText weight="medium" style={styles.sectionTitle}>
+                <AppText
+                  weight="medium"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
                   Select Amount
                 </AppText>
                 <View style={styles.amountsGrid}>
@@ -141,6 +149,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
                           >
                             <AppText
                               weight="medium"
+                              numberOfLines={1}
                               style={styles.amountButtonTextActive}
                             >
                               {qa.label}
@@ -150,6 +159,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
                           <View style={styles.amountButton}>
                             <AppText
                               weight="medium"
+                              numberOfLines={1}
                               style={styles.amountButtonText}
                             >
                               {qa.label}
@@ -164,7 +174,11 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
 
               {/* Custom Amount */}
               <View style={styles.section}>
-                <AppText weight="medium" style={styles.sectionTitle}>
+                <AppText
+                  weight="medium"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
                   Or Enter Custom Amount
                 </AppText>
                 <View style={styles.customAmountWrapper}>
@@ -182,7 +196,11 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
 
               {/* Payment Method */}
               <View style={styles.section}>
-                <AppText weight="medium" style={styles.sectionTitle}>
+                <AppText
+                  weight="medium"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
                   Payment Method
                 </AppText>
                 <View style={styles.methodsContainer}>
@@ -212,6 +230,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
                         </View>
                         <AppText
                           weight="medium"
+                          numberOfLines={1}
                           style={[
                             styles.methodName,
                             selectedMethod === method.id &&
@@ -242,7 +261,12 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
                     end={{ x: 1, y: 0 }}
                     style={styles.confirmButton}
                   >
-                    <AppText weight="semibold" style={styles.confirmButtonText}>
+                    <AppText
+                      weight="semibold"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      style={styles.confirmButtonText}
+                    >
                       {loading ? "Processing..." : `Confirm Top Up ฿${amount}`}
                     </AppText>
                   </LinearGradient>
@@ -250,6 +274,8 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
                   <View style={styles.confirmButtonDisabled}>
                     <AppText
                       weight="semibold"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
                       style={styles.confirmButtonTextDisabled}
                     >
                       Select Amount & Payment Method

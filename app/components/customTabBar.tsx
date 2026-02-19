@@ -95,6 +95,7 @@ export function CustomTabBar({
 
               <AppText
                 weight={isFocused ? "semibold" : "regular"}
+                numberOfLines={1}
                 style={[
                   { color: isFocused ? "#2555C0" : "#6B7280" },
                   styles.label,
@@ -181,7 +182,7 @@ const styles = StyleSheet.create({
     borderTopColor: "transparent",
   },
   label: {
-    fontSize: 14,
+    fontSize: 10,
     marginTop: 4,
   },
   centerWrapper: {

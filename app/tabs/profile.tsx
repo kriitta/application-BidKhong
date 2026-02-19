@@ -91,7 +91,7 @@ const ProfilePage = () => {
         </View>
 
         {/* User Info */}
-        <AppText weight="bold" style={styles.userName}>
+        <AppText weight="bold" numberOfLines={1} style={styles.userName}>
           {user?.name || "Unknown User"}
         </AppText>
 
@@ -100,7 +100,7 @@ const ProfilePage = () => {
             source={image.calendar}
             style={{ width: 13, height: 16, marginRight: 4 }}
           />
-          <AppText weight="regular" style={styles.infoLabel}>
+          <AppText weight="regular" numberOfLines={1} style={styles.infoLabel}>
             Joined {formatJoinDate(user?.join_date || user?.created_at)}
           </AppText>
         </View>
@@ -111,7 +111,11 @@ const ProfilePage = () => {
               source={image.mail}
               style={{ width: 18, height: 14, marginRight: 4 }}
             />
-            <AppText weight="regular" style={styles.contactValue}>
+            <AppText
+              weight="regular"
+              numberOfLines={1}
+              style={styles.contactValue}
+            >
               {user?.email || "-"}
             </AppText>
           </View>
@@ -121,7 +125,11 @@ const ProfilePage = () => {
               source={image.phone}
               style={{ width: 15, height: 14, marginRight: 4 }}
             />
-            <AppText weight="regular" style={styles.contactValue}>
+            <AppText
+              weight="regular"
+              numberOfLines={1}
+              style={styles.contactValue}
+            >
               {user?.phone_number || "-"}
             </AppText>
           </View>
@@ -131,20 +139,35 @@ const ProfilePage = () => {
         {user?.wallet && (
           <View style={styles.walletSummary}>
             <View style={styles.walletItem}>
-              <AppText weight="regular" style={styles.walletLabel}>
+              <AppText
+                weight="regular"
+                numberOfLines={1}
+                style={styles.walletLabel}
+              >
                 Balance
               </AppText>
-              <AppText weight="bold" style={styles.walletValue}>
+              <AppText
+                weight="bold"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={styles.walletValue}
+              >
                 {formatBalance(user.wallet.balance_available)}
               </AppText>
             </View>
             <View style={styles.walletDivider} />
             <View style={styles.walletItem}>
-              <AppText weight="regular" style={styles.walletLabel}>
+              <AppText
+                weight="regular"
+                numberOfLines={1}
+                style={styles.walletLabel}
+              >
                 Pending
               </AppText>
               <AppText
                 weight="bold"
+                numberOfLines={1}
+                adjustsFontSizeToFit
                 style={[styles.walletValue, { color: "#FF9800" }]}
               >
                 {formatBalance(user.wallet.balance_pending)}
@@ -152,11 +175,17 @@ const ProfilePage = () => {
             </View>
             <View style={styles.walletDivider} />
             <View style={styles.walletItem}>
-              <AppText weight="regular" style={styles.walletLabel}>
+              <AppText
+                weight="regular"
+                numberOfLines={1}
+                style={styles.walletLabel}
+              >
                 Total
               </AppText>
               <AppText
                 weight="bold"
+                numberOfLines={1}
+                adjustsFontSizeToFit
                 style={[styles.walletValue, { color: "#003994" }]}
               >
                 {formatBalance(user.wallet.balance_total)}
@@ -171,12 +200,14 @@ const ProfilePage = () => {
           onPress={() => router.push("/screens/edit-profile")}
         >
           <View style={styles.menuIconContainer}>
-            <AppText weight="semibold" style={styles.menuIcon}>
-              ✏️
-            </AppText>
+            <Image source={image.editprofile} style={{ width: 20, height: 20 }} />
           </View>
           <View style={styles.menuContent}>
-            <AppText weight="semibold" style={styles.menuTitle}>
+            <AppText
+              weight="semibold"
+              numberOfLines={1}
+              style={styles.menuTitle}
+            >
               Edit Profile
             </AppText>
           </View>
@@ -192,12 +223,15 @@ const ProfilePage = () => {
           <View
             style={[styles.menuIconContainer, { backgroundColor: "#E8F5E9" }]}
           >
-            <AppText weight="semibold" style={styles.menuIcon}>
-              ✅
-            </AppText>
+            <Image source={image.verify} style={{ width: 20, height: 20 }} />
+            
           </View>
           <View style={styles.menuContent}>
-            <AppText weight="semibold" style={styles.menuTitle}>
+            <AppText
+              weight="semibold"
+              numberOfLines={1}
+              style={styles.menuTitle}
+            >
               Verify Product
             </AppText>
           </View>
@@ -213,12 +247,14 @@ const ProfilePage = () => {
           <View
             style={[styles.menuIconContainer, { backgroundColor: "#FFF3E0" }]}
           >
-            <AppText weight="semibold" style={styles.menuIcon}>
-              🛟
-            </AppText>
+            <Image source={image.support} style={{ width: 20, height: 20 }} />
           </View>
           <View style={styles.menuContent}>
-            <AppText weight="semibold" style={styles.menuTitle}>
+            <AppText
+              weight="semibold"
+              numberOfLines={1}
+              style={styles.menuTitle}
+            >
               Help & Support
             </AppText>
           </View>
@@ -232,13 +268,15 @@ const ProfilePage = () => {
           style={styles.menuItem}
           onPress={() => router.push("/screens/about-app")}
         >
-          <View style={styles.menuIconContainer}>
-            <AppText weight="semibold" style={styles.menuIcon}>
-              ℹ️
-            </AppText>
+          <View style={[styles.menuIconContainer, { backgroundColor: "#f2def9" }]}>
+            <Image source={image.about} style={{ width: 20, height: 20 }} />
           </View>
           <View style={styles.menuContent}>
-            <AppText weight="semibold" style={styles.menuTitle}>
+            <AppText
+              weight="semibold"
+              numberOfLines={1}
+              style={styles.menuTitle}
+            >
               About app
             </AppText>
           </View>
@@ -257,10 +295,12 @@ const ProfilePage = () => {
             style={styles.logoutButton}
           >
             <View style={styles.logoutContent}>
-              <AppText weight="semibold" style={styles.logoutIcon}>
-                🚪
-              </AppText>
-              <AppText weight="semibold" style={styles.logoutText}>
+              <Image source={image.logout} style={{ width: 16, height: 16, marginRight: 16, }} />
+              <AppText
+                weight="semibold"
+                numberOfLines={1}
+                style={styles.logoutText}
+              >
                 Log out
               </AppText>
             </View>
@@ -343,7 +383,7 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
   userName: {
-    fontSize: 20,
+    fontSize: 18,
     color: "#00112E",
     marginTop: 20,
     marginBottom: 8,
@@ -375,7 +415,7 @@ const styles = StyleSheet.create({
     width: 10,
   },
   contactValue: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#666",
   },
   skeletonBar: {
@@ -401,7 +441,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   menuTitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#00112E",
   },
   menuArrow: {
@@ -425,6 +465,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    paddingLeft: 12
   },
   logoutIcon: {
     fontSize: 18,
@@ -467,7 +508,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   walletValue: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#2E7D32",
   },
   walletDivider: {

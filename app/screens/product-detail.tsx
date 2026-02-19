@@ -174,7 +174,11 @@ const ProductDetailPage = () => {
           {/* Image Counter Badge */}
           {productData.images.length > 1 && (
             <View style={styles.imageCounterBadge}>
-              <AppText weight="medium" style={styles.imageCounterText}>
+              <AppText
+                weight="medium"
+                style={styles.imageCounterText}
+                numberOfLines={1}
+              >
                 {currentImageIndex + 1} / {productData.images.length}
               </AppText>
             </View>
@@ -185,7 +189,7 @@ const ProductDetailPage = () => {
         <View style={styles.tagsContainer}>
           {productData.tags.map((tag, index) => (
             <View key={index} style={styles.tag}>
-              <AppText weight="medium" style={styles.tagText}>
+              <AppText weight="medium" style={styles.tagText} numberOfLines={1}>
                 {tag}
               </AppText>
             </View>
@@ -194,7 +198,7 @@ const ProductDetailPage = () => {
 
         {/* Product Title */}
         <View style={styles.titleSection}>
-          <AppText weight="bold" style={styles.productTitle}>
+          <AppText weight="bold" numberOfLines={2} style={styles.productTitle}>
             {productData.name}
           </AppText>
         </View>
@@ -206,7 +210,11 @@ const ProductDetailPage = () => {
             style={styles.sellerAvatar}
           />
           <View style={{ flex: 1 }}>
-            <AppText weight="semibold" style={styles.sellerName}>
+            <AppText
+              weight="semibold"
+              style={styles.sellerName}
+              numberOfLines={1}
+            >
               {productData.seller.name}
             </AppText>
             <View style={styles.userIdRow}>
@@ -219,7 +227,11 @@ const ProductDetailPage = () => {
                   marginRight: 4,
                 }}
               />
-              <AppText weight="regular" style={styles.sellerUserId}>
+              <AppText
+                weight="regular"
+                style={styles.sellerUserId}
+                numberOfLines={1}
+              >
                 {productData.seller.userId}
               </AppText>
             </View>
@@ -236,10 +248,18 @@ const ProductDetailPage = () => {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <AppText weight="semibold" style={styles.incomingBannerTitle}>
+              <AppText
+                weight="semibold"
+                style={styles.incomingBannerTitle}
+                numberOfLines={1}
+              >
                 Upcoming Auction
               </AppText>
-              <AppText weight="regular" style={styles.incomingBannerSub}>
+              <AppText
+                weight="regular"
+                style={styles.incomingBannerSub}
+                numberOfLines={2}
+              >
                 This auction hasn't started yet. Starts in {productData.time}.
               </AppText>
             </View>
@@ -272,14 +292,24 @@ const ProductDetailPage = () => {
                 <AppText
                   weight="medium"
                   style={[styles.bidLabel, { color: "#22C55E" }]}
+                  numberOfLines={1}
                 >
                   0 Bids
                 </AppText>
               </View>
-              <AppText weight="regular" style={styles.bidLabelSmall}>
+              <AppText
+                weight="regular"
+                style={styles.bidLabelSmall}
+                numberOfLines={1}
+              >
                 Current Bid
               </AppText>
-              <AppText weight="bold" style={styles.bidAmount}>
+              <AppText
+                weight="bold"
+                style={styles.bidAmount}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 ฿8,000
               </AppText>
             </View>
@@ -306,14 +336,24 @@ const ProductDetailPage = () => {
                 <AppText
                   weight="medium"
                   style={[styles.bidLabel, { color: "#2C7BFC" }]}
+                  numberOfLines={1}
                 >
                   Buy Now
                 </AppText>
               </View>
-              <AppText weight="regular" style={styles.bidLabelSmall}>
+              <AppText
+                weight="regular"
+                style={styles.bidLabelSmall}
+                numberOfLines={1}
+              >
                 Buyout Price
               </AppText>
-              <AppText weight="bold" style={styles.bidAmount}>
+              <AppText
+                weight="bold"
+                style={styles.bidAmount}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 ฿{buyNowPrice.toLocaleString("en-US")}
               </AppText>
             </View>
@@ -332,7 +372,11 @@ const ProductDetailPage = () => {
                 marginRight: 6,
               }}
             />
-            <AppText weight="regular" style={styles.minimumBidText}>
+            <AppText
+              weight="regular"
+              style={styles.minimumBidText}
+              numberOfLines={1}
+            >
               Minimum bid increment: ฿100
             </AppText>
           </View>
@@ -365,14 +409,24 @@ const ProductDetailPage = () => {
                 <AppText
                   weight="medium"
                   style={[styles.bidLabel, { color: "#22C55E" }]}
+                  numberOfLines={1}
                 >
                   {productData.totalBids} Bids
                 </AppText>
               </View>
-              <AppText weight="regular" style={styles.bidLabelSmall}>
+              <AppText
+                weight="regular"
+                style={styles.bidLabelSmall}
+                numberOfLines={1}
+              >
                 Current Bid
               </AppText>
-              <AppText weight="bold" style={styles.bidAmount}>
+              <AppText
+                weight="bold"
+                style={styles.bidAmount}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 ฿{currentBid.toLocaleString("en-US")}
               </AppText>
             </View>
@@ -401,14 +455,24 @@ const ProductDetailPage = () => {
                 <AppText
                   weight="medium"
                   style={[styles.bidLabel, { color: "#2C7BFC" }]}
+                  numberOfLines={1}
                 >
                   Buy Now
                 </AppText>
               </View>
-              <AppText weight="regular" style={styles.bidLabelSmall}>
+              <AppText
+                weight="regular"
+                style={styles.bidLabelSmall}
+                numberOfLines={1}
+              >
                 Buyout Price
               </AppText>
-              <AppText weight="bold" style={styles.bidAmount}>
+              <AppText
+                weight="bold"
+                style={styles.bidAmount}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 ฿{buyNowPrice.toLocaleString("en-US")}
               </AppText>
             </View>
@@ -420,7 +484,11 @@ const ProductDetailPage = () => {
           <View style={styles.biddingSection}>
             <View style={styles.biddingInputContainer}>
               <View style={styles.bidInputWrapper}>
-                <AppText weight="regular" style={styles.minBidLabel}>
+                <AppText
+                  weight="regular"
+                  style={styles.minBidLabel}
+                  numberOfLines={1}
+                >
                   Place Your Bid
                 </AppText>
                 <View style={styles.inputRow}>
@@ -439,7 +507,11 @@ const ProductDetailPage = () => {
                       end={{ x: 1, y: 0 }}
                       style={styles.primaryButton}
                     >
-                      <AppText weight="bold" style={styles.bidButtonText}>
+                      <AppText
+                        weight="bold"
+                        style={styles.bidButtonText}
+                        numberOfLines={1}
+                      >
                         Bid
                       </AppText>
                     </LinearGradient>
@@ -455,7 +527,11 @@ const ProductDetailPage = () => {
                       marginRight: 6,
                     }}
                   />
-                  <AppText weight="regular" style={styles.minimumBidText}>
+                  <AppText
+                    weight="regular"
+                    style={styles.minimumBidText}
+                    numberOfLines={1}
+                  >
                     Minimum bid increment: ฿100
                   </AppText>
                 </View>
@@ -466,7 +542,7 @@ const ProductDetailPage = () => {
 
         {/* Auction Information */}
         <View style={styles.auctionInfoSection}>
-          <AppText weight="bold" style={styles.sectionTitle}>
+          <AppText weight="bold" style={styles.sectionTitle} numberOfLines={1}>
             Auction Information
           </AppText>
 
@@ -478,10 +554,18 @@ const ProductDetailPage = () => {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <AppText weight="regular" style={styles.infoLabel}>
+              <AppText
+                weight="regular"
+                style={styles.infoLabel}
+                numberOfLines={1}
+              >
                 {productData.isIncoming ? "Starts" : "Ends"}
               </AppText>
-              <AppText weight="semibold" style={styles.infoValue}>
+              <AppText
+                weight="semibold"
+                style={styles.infoValue}
+                numberOfLines={1}
+              >
                 {productData.auctionInfo.ends}
               </AppText>
             </View>
@@ -495,7 +579,11 @@ const ProductDetailPage = () => {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <AppText weight="regular" style={styles.infoLabel}>
+              <AppText
+                weight="regular"
+                style={styles.infoLabel}
+                numberOfLines={1}
+              >
                 {productData.isIncoming ? "Starts In" : "Time Remaining"}
               </AppText>
               <AppText
@@ -504,6 +592,7 @@ const ProductDetailPage = () => {
                   styles.infoValue,
                   productData.isIncoming && { color: "#9B27B0" },
                 ]}
+                numberOfLines={1}
               >
                 {productData.isIncoming
                   ? productData.time
@@ -520,10 +609,18 @@ const ProductDetailPage = () => {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <AppText weight="regular" style={styles.infoLabel}>
+              <AppText
+                weight="regular"
+                style={styles.infoLabel}
+                numberOfLines={1}
+              >
                 Starting Bid
               </AppText>
-              <AppText weight="semibold" style={styles.infoValue}>
+              <AppText
+                weight="semibold"
+                style={styles.infoValue}
+                numberOfLines={1}
+              >
                 {productData.auctionInfo.startingBid}
               </AppText>
             </View>
@@ -537,10 +634,18 @@ const ProductDetailPage = () => {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <AppText weight="regular" style={styles.infoLabel}>
+              <AppText
+                weight="regular"
+                style={styles.infoLabel}
+                numberOfLines={1}
+              >
                 Location
               </AppText>
-              <AppText weight="semibold" style={styles.infoValue}>
+              <AppText
+                weight="semibold"
+                style={styles.infoValue}
+                numberOfLines={1}
+              >
                 {productData.auctionInfo.location}
               </AppText>
             </View>
@@ -549,10 +654,14 @@ const ProductDetailPage = () => {
 
         {/* Description */}
         <View style={styles.descriptionSection}>
-          <AppText weight="bold" style={styles.sectionTitle}>
+          <AppText weight="bold" style={styles.sectionTitle} numberOfLines={1}>
             Description
           </AppText>
-          <AppText weight="regular" style={styles.descriptionText}>
+          <AppText
+            weight="regular"
+            style={styles.descriptionText}
+            numberOfLines={10}
+          >
             {productData.description}
           </AppText>
         </View>
@@ -560,9 +669,17 @@ const ProductDetailPage = () => {
         {/* Bid History — hidden for incoming */}
         {!productData.isIncoming && (
           <View style={styles.bidHistorySection}>
-            <AppText weight="bold" style={styles.sectionTitle}>
+            <AppText
+              weight="bold"
+              style={styles.sectionTitle}
+              numberOfLines={1}
+            >
               Bid History
-              <AppText weight="regular" style={styles.bidHistoryCount}>
+              <AppText
+                weight="regular"
+                style={styles.bidHistoryCount}
+                numberOfLines={1}
+              >
                 {" "}
                 ( 5 lastest bid )
               </AppText>
@@ -571,14 +688,27 @@ const ProductDetailPage = () => {
             {productData.biddingHistory.map((bid) => (
               <View key={bid.id} style={styles.bidHistoryItem}>
                 <View>
-                  <AppText weight="semibold" style={styles.bidHistoryName}>
+                  <AppText
+                    weight="semibold"
+                    style={styles.bidHistoryName}
+                    numberOfLines={1}
+                  >
                     {bid.bidder}
                   </AppText>
-                  <AppText weight="regular" style={styles.bidHistoryTime}>
+                  <AppText
+                    weight="regular"
+                    style={styles.bidHistoryTime}
+                    numberOfLines={1}
+                  >
                     {bid.time}
                   </AppText>
                 </View>
-                <AppText weight="bold" style={styles.bidHistoryAmount}>
+                <AppText
+                  weight="bold"
+                  style={styles.bidHistoryAmount}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
                   ฿{bid.amount.toLocaleString("en-US")}
                 </AppText>
               </View>
@@ -602,7 +732,11 @@ const ProductDetailPage = () => {
               end={{ x: 1, y: 0 }}
               style={styles.primaryButton2}
             >
-              <AppText weight="bold" style={styles.placeBidButtonText}>
+              <AppText
+                weight="bold"
+                style={styles.placeBidButtonText}
+                numberOfLines={1}
+              >
                 Place Bid
               </AppText>
             </LinearGradient>
@@ -615,7 +749,11 @@ const ProductDetailPage = () => {
               end={{ x: 1, y: 0 }}
               style={styles.primaryButton2}
             >
-              <AppText weight="bold" style={styles.buyNowButtonText}>
+              <AppText
+                weight="bold"
+                style={styles.buyNowButtonText}
+                numberOfLines={1}
+              >
                 Buy Now
               </AppText>
             </LinearGradient>
@@ -726,7 +864,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   productTitle: {
-    fontSize: 22,
+    fontSize: 20,
     color: "#111827",
   },
   primaryButton: {
@@ -762,7 +900,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   sellerName: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#111827",
     marginBottom: 4,
   },
@@ -831,7 +969,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   bidAmount: {
-    fontSize: 20,
+    fontSize: 18,
     color: "#111827",
   },
   biddingSection: {
@@ -951,7 +1089,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F3F4F6",
   },
   bidHistoryName: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#111827",
     marginBottom: 4,
   },
@@ -960,7 +1098,7 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
   },
   bidHistoryAmount: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#111827",
   },
   bottomButtonsContainer: {
@@ -994,7 +1132,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   placeBidButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     color: "#fff",
     fontWeight: 600,
   },
@@ -1007,7 +1145,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   buyNowButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     color: "#fff",
     fontWeight: 600,
   },

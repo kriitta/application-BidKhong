@@ -101,5 +101,12 @@ export const image = {
     music: require("./music.jpg"),
     pet: require("./pet.jpg"),
     furniture: require("./furniture.jpg"),
+    key: require("./key.png"),
+    editprofile: require("./editprofile.png"),
+    verify: require("./verify.png"),
+    support: require("./support.png"),
+    about: require("./about.png"),
+    logout: require("./logout.png"),
+    
     
 };

@@ -193,7 +193,12 @@ const AboutAppPage = () => {
           >
             <Image source={image.back} style={{ width: 32, height: 32 }} />
           </TouchableOpacity>
-          <AppText weight="bold" style={styles.headerTitle}>
+          <AppText
+            weight="bold"
+            style={styles.headerTitle}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
             About BidKhong
           </AppText>
           <View style={{ width: 40 }} />
@@ -218,10 +223,10 @@ const AboutAppPage = () => {
               resizeMode="contain"
             />
           </View>
-          <AppText weight="bold" style={styles.appName}>
+          <AppText weight="bold" style={styles.appName} numberOfLines={1}>
             BidKhong
           </AppText>
-          <AppText weight="regular" style={styles.appVersion}>
+          <AppText weight="regular" style={styles.appVersion} numberOfLines={1}>
             Version 1.0.0
           </AppText>
           <View style={styles.appDescContainer}>
@@ -234,28 +239,55 @@ const AboutAppPage = () => {
           {/* Stats Row */}
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <AppText weight="bold" style={styles.statNumber}>
+              <AppText
+                weight="bold"
+                style={styles.statNumber}
+                numberOfLines={1}
+              >
                 10K+
               </AppText>
-              <AppText weight="regular" style={styles.statLabel}>
+              <AppText
+                weight="regular"
+                style={styles.statLabel}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 ผู้ใช้งาน
               </AppText>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <AppText weight="bold" style={styles.statNumber}>
+              <AppText
+                weight="bold"
+                style={styles.statNumber}
+                numberOfLines={1}
+              >
                 5K+
               </AppText>
-              <AppText weight="regular" style={styles.statLabel}>
+              <AppText
+                weight="regular"
+                style={styles.statLabel}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 สินค้า
               </AppText>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <AppText weight="bold" style={styles.statNumber}>
+              <AppText
+                weight="bold"
+                style={styles.statNumber}
+                numberOfLines={1}
+              >
                 99%
               </AppText>
-              <AppText weight="regular" style={styles.statLabel}>
+              <AppText
+                weight="regular"
+                style={styles.statLabel}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 ปลอดภัย
               </AppText>
             </View>
@@ -265,10 +297,18 @@ const AboutAppPage = () => {
         {/* ─── How To Use Section ─────────────────────── */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <AppText weight="bold" style={styles.sectionTitle}>
+            <AppText
+              weight="bold"
+              style={styles.sectionTitle}
+              numberOfLines={1}
+            >
               📖 วิธีใช้งาน BidKhong
             </AppText>
-            <AppText weight="regular" style={styles.sectionSubtitle}>
+            <AppText
+              weight="regular"
+              style={styles.sectionSubtitle}
+              numberOfLines={1}
+            >
               ขั้นตอนการใช้งานทั้งหมด
             </AppText>
           </View>
@@ -303,10 +343,18 @@ const AboutAppPage = () => {
                   <AppText style={styles.stepIcon}>{step.icon}</AppText>
                 </View>
 
-                <AppText weight="bold" style={styles.stepTitle}>
+                <AppText
+                  weight="bold"
+                  style={styles.stepTitle}
+                  numberOfLines={1}
+                >
                   {step.title}
                 </AppText>
-                <AppText weight="regular" style={styles.stepSubtitle}>
+                <AppText
+                  weight="regular"
+                  style={styles.stepSubtitle}
+                  numberOfLines={2}
+                >
                   {step.subtitle}
                 </AppText>
 
@@ -338,7 +386,11 @@ const AboutAppPage = () => {
         {/* ─── Features Highlight ─────────────────────── */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <AppText weight="bold" style={styles.sectionTitle}>
+            <AppText
+              weight="bold"
+              style={styles.sectionTitle}
+              numberOfLines={1}
+            >
               ⭐ ฟีเจอร์เด่น
             </AppText>
           </View>
@@ -358,10 +410,18 @@ const AboutAppPage = () => {
             ].map((feat, i) => (
               <View key={i} style={styles.featureCard}>
                 <AppText style={styles.featureIcon}>{feat.icon}</AppText>
-                <AppText weight="semibold" style={styles.featureTitle}>
+                <AppText
+                  weight="semibold"
+                  numberOfLines={1}
+                  style={styles.featureTitle}
+                >
                   {feat.title}
                 </AppText>
-                <AppText weight="regular" style={styles.featureDesc}>
+                <AppText
+                  weight="regular"
+                  numberOfLines={2}
+                  style={styles.featureDesc}
+                >
                   {feat.desc}
                 </AppText>
               </View>
@@ -372,7 +432,11 @@ const AboutAppPage = () => {
         {/* ─── FAQ Section ────────────────────────────── */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <AppText weight="bold" style={styles.sectionTitle}>
+            <AppText
+              weight="bold"
+              style={styles.sectionTitle}
+              numberOfLines={1}
+            >
               ❓ คำถามที่พบบ่อย (FAQ)
             </AppText>
           </View>
@@ -390,10 +454,18 @@ const AboutAppPage = () => {
                     Q
                   </AppText>
                 </View>
-                <AppText weight="semibold" style={styles.faqQuestion}>
+                <AppText
+                  weight="semibold"
+                  style={styles.faqQuestion}
+                  numberOfLines={2}
+                >
                   {faq.q}
                 </AppText>
-                <AppText weight="regular" style={styles.faqArrow}>
+                <AppText
+                  weight="regular"
+                  style={styles.faqArrow}
+                  numberOfLines={1}
+                >
                   {expandedFaq === index ? "▲" : "▼"}
                 </AppText>
               </View>
@@ -419,29 +491,45 @@ const AboutAppPage = () => {
             colors={["#00112E", "#003994"]}
             style={styles.footerGradient}
           >
-            <AppText weight="bold" style={styles.footerTitle}>
+            <AppText weight="bold" style={styles.footerTitle} numberOfLines={1}>
               ต้องการความช่วยเหลือ?
             </AppText>
-            <AppText weight="regular" style={styles.footerDesc}>
+            <AppText
+              weight="regular"
+              style={styles.footerDesc}
+              numberOfLines={1}
+            >
               ติดต่อทีมสนับสนุนของเราได้ตลอด 24 ชั่วโมง
             </AppText>
 
             <View style={styles.contactCards}>
               <View style={styles.contactCard}>
                 <AppText style={styles.contactCardIcon}>📧</AppText>
-                <AppText weight="regular" style={styles.contactCardText}>
+                <AppText
+                  weight="regular"
+                  style={styles.contactCardText}
+                  numberOfLines={1}
+                >
                   support@bidkhong.com
                 </AppText>
               </View>
               <View style={styles.contactCard}>
                 <AppText style={styles.contactCardIcon}>📞</AppText>
-                <AppText weight="regular" style={styles.contactCardText}>
+                <AppText
+                  weight="regular"
+                  style={styles.contactCardText}
+                  numberOfLines={1}
+                >
                   02-XXX-XXXX
                 </AppText>
               </View>
               <View style={styles.contactCard}>
                 <AppText style={styles.contactCardIcon}>💬</AppText>
-                <AppText weight="regular" style={styles.contactCardText}>
+                <AppText
+                  weight="regular"
+                  style={styles.contactCardText}
+                  numberOfLines={1}
+                >
                   Line: @bidkhong
                 </AppText>
               </View>
@@ -449,10 +537,18 @@ const AboutAppPage = () => {
 
             <View style={styles.footerDivider} />
 
-            <AppText weight="regular" style={styles.footerCopyright}>
+            <AppText
+              weight="regular"
+              style={styles.footerCopyright}
+              numberOfLines={1}
+            >
               © 2024 BidKhong. All rights reserved.
             </AppText>
-            <AppText weight="regular" style={styles.footerMadeWith}>
+            <AppText
+              weight="regular"
+              style={styles.footerMadeWith}
+              numberOfLines={1}
+            >
               Made with ❤️ in Thailand 🇹🇭
             </AppText>
           </LinearGradient>
@@ -487,7 +583,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: "#FFF",
   },
   scrollContent: {
@@ -528,7 +624,7 @@ const styles = StyleSheet.create({
     height: 60,
   },
   appName: {
-    fontSize: 26,
+    fontSize: 22,
     color: "#00112E",
     letterSpacing: 1,
   },
@@ -562,11 +658,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   statNumber: {
-    fontSize: 22,
+    fontSize: 20,
     color: "#003994",
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#999",
     marginTop: 2,
   },
@@ -593,7 +689,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: "#00112E",
     marginBottom: 4,
   },
@@ -645,7 +741,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   stepTitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: "#00112E",
     marginBottom: 2,
   },
@@ -698,13 +794,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   featureTitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#00112E",
     marginBottom: 2,
     textAlign: "center",
   },
   featureDesc: {
-    fontSize: 10,
+    fontSize: 9,
     color: "#999",
     textAlign: "center",
   },
@@ -784,7 +880,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   footerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: "#FFF",
     marginBottom: 6,
   },
@@ -810,7 +906,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   contactCardText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "rgba(255,255,255,0.9)",
   },
   footerDivider: {

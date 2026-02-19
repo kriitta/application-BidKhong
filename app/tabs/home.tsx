@@ -308,7 +308,7 @@ const HomePage = () => {
                 )}
               </View>
               <TouchableOpacity onPress={closeSearch} style={s.cancelBtn}>
-                <AppText weight="medium" style={s.cancelText}>
+                <AppText weight="medium" style={s.cancelText} numberOfLines={1}>
                   Cancel
                 </AppText>
               </TouchableOpacity>
@@ -325,11 +325,19 @@ const HomePage = () => {
                   {/* Recent Searches */}
                   <View style={s.searchSection}>
                     <View style={s.searchSectionHeader}>
-                      <AppText weight="semibold" style={s.searchSectionTitle}>
+                      <AppText
+                        weight="semibold"
+                        style={s.searchSectionTitle}
+                        numberOfLines={1}
+                      >
                         🕐 ค้นหาล่าสุด
                       </AppText>
                       <TouchableOpacity>
-                        <AppText weight="regular" style={s.clearAllText}>
+                        <AppText
+                          weight="regular"
+                          style={s.clearAllText}
+                          numberOfLines={1}
+                        >
                           ล้างทั้งหมด
                         </AppText>
                       </TouchableOpacity>
@@ -345,7 +353,11 @@ const HomePage = () => {
                             ↻
                           </AppText>
                         </View>
-                        <AppText weight="regular" style={s.recentText}>
+                        <AppText
+                          weight="regular"
+                          style={s.recentText}
+                          numberOfLines={1}
+                        >
                           {term}
                         </AppText>
                         <AppText
@@ -363,7 +375,11 @@ const HomePage = () => {
 
                   {/* Hot Auctions */}
                   <View style={s.searchSection}>
-                    <AppText weight="semibold" style={s.searchSectionTitle}>
+                    <AppText
+                      weight="semibold"
+                      style={s.searchSectionTitle}
+                      numberOfLines={1}
+                    >
                       🔥 Hot Auctions
                     </AppText>
                     <ScrollView
@@ -453,12 +469,14 @@ const HomePage = () => {
                           <AppText
                             weight="semibold"
                             style={styles.searchHotViewAllText}
+                            numberOfLines={1}
                           >
                             View All
                           </AppText>
                           <AppText
                             weight="regular"
                             style={styles.searchHotViewAllSub}
+                            numberOfLines={1}
                           >
                             Hot Auctions
                           </AppText>
@@ -472,7 +490,11 @@ const HomePage = () => {
               {/* Search Results */}
               {searchQuery.length > 0 && (
                 <View style={s.resultsSection}>
-                  <AppText weight="medium" style={s.resultsCount}>
+                  <AppText
+                    weight="medium"
+                    style={s.resultsCount}
+                    numberOfLines={1}
+                  >
                     {searchResults.length > 0
                       ? `พบ ${searchResults.length} รายการ`
                       : ""}
@@ -480,10 +502,18 @@ const HomePage = () => {
                   {searchResults.length === 0 ? (
                     <View style={s.noResults}>
                       <AppText style={s.noResultsEmoji}>🔍</AppText>
-                      <AppText weight="semibold" style={s.noResultsTitle}>
+                      <AppText
+                        weight="semibold"
+                        style={s.noResultsTitle}
+                        numberOfLines={1}
+                      >
                         ไม่พบสินค้า
                       </AppText>
-                      <AppText weight="regular" style={s.noResultsSub}>
+                      <AppText
+                        weight="regular"
+                        style={s.noResultsSub}
+                        numberOfLines={1}
+                      >
                         ลองค้นหาด้วยคำอื่น
                       </AppText>
                     </View>
@@ -516,11 +546,16 @@ const HomePage = () => {
                                 <AppText
                                   weight="medium"
                                   style={s.resultBadgeText}
+                                  numberOfLines={1}
                                 >
                                   {badge.label}
                                 </AppText>
                               </View>
-                              <AppText weight="regular" style={s.resultTime}>
+                              <AppText
+                                weight="regular"
+                                style={s.resultTime}
+                                numberOfLines={1}
+                              >
                                 ⏱ {item.time}
                               </AppText>
                             </View>
@@ -547,17 +582,26 @@ const HomePage = () => {
       >
         <View style={styles.headerLeft}>
           <Image source={image.logo} style={{ width: 36, height: 36 }} />
-          <AppText weight="bold" style={styles.logoText}>
+          <AppText weight="bold" numberOfLines={1} style={styles.logoText}>
             BidKhong
           </AppText>
         </View>
         {isLoggedIn && !isGuest ? (
           <View style={styles.balanceContainer}>
             <View>
-              <AppText weight="regular" style={styles.balanceLabel}>
+              <AppText
+                weight="regular"
+                numberOfLines={1}
+                style={styles.balanceLabel}
+              >
                 Total Balance
               </AppText>
-              <AppText weight="bold" style={styles.balanceAmount}>
+              <AppText
+                weight="bold"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={styles.balanceAmount}
+              >
                 {formatBalance(user?.wallet?.balance_total)}
               </AppText>
             </View>
@@ -585,7 +629,11 @@ const HomePage = () => {
                 ?
               </AppText>
             </View>
-            <AppText weight="semibold" style={styles.guestSignInText}>
+            <AppText
+              weight="semibold"
+              numberOfLines={1}
+              style={styles.guestSignInText}
+            >
               Sign In
             </AppText>
           </TouchableOpacity>
@@ -628,7 +676,11 @@ const HomePage = () => {
           </View>
           {isSearching && (
             <TouchableOpacity onPress={cancelSearch} style={styles.cancelBtn}>
-              <AppText weight="medium" style={styles.cancelText}>
+              <AppText
+                weight="medium"
+                style={styles.cancelText}
+                numberOfLines={1}
+              >
                 Cancel
               </AppText>
             </TouchableOpacity>
@@ -645,11 +697,16 @@ const HomePage = () => {
                     <AppText
                       weight="semibold"
                       style={styles.searchSectionTitle}
+                      numberOfLines={1}
                     >
                       Recent
                     </AppText>
                     <TouchableOpacity>
-                      <AppText weight="regular" style={styles.clearAllText}>
+                      <AppText
+                        weight="regular"
+                        style={styles.clearAllText}
+                        numberOfLines={1}
+                      >
                         Clear All
                       </AppText>
                     </TouchableOpacity>
@@ -665,7 +722,11 @@ const HomePage = () => {
                           ↻
                         </AppText>
                       </View>
-                      <AppText weight="regular" style={styles.recentText}>
+                      <AppText
+                        weight="regular"
+                        style={styles.recentText}
+                        numberOfLines={1}
+                      >
                         {term}
                       </AppText>
                       <AppText
@@ -683,7 +744,11 @@ const HomePage = () => {
 
                 {/* Hot Auctions */}
                 <View style={styles.searchSection}>
-                  <AppText weight="semibold" style={styles.searchSectionTitle}>
+                  <AppText
+                    weight="semibold"
+                    style={styles.searchSectionTitle}
+                    numberOfLines={1}
+                  >
                     🔥 Hot Auctions
                   </AppText>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -761,12 +826,14 @@ const HomePage = () => {
                         <AppText
                           weight="semibold"
                           style={styles.searchHotViewAllText}
+                          numberOfLines={1}
                         >
                           View All
                         </AppText>
                         <AppText
                           weight="regular"
                           style={styles.searchHotViewAllSub}
+                          numberOfLines={1}
                         >
                           Hot Auctions
                         </AppText>
@@ -808,7 +875,11 @@ const HomePage = () => {
                               source={image.incoming_time}
                               style={{ width: 12, height: 12, marginRight: 4 }}
                             />
-                            <AppText weight="medium" style={styles.srTimeText}>
+                            <AppText
+                              weight="medium"
+                              style={styles.srTimeText}
+                              numberOfLines={1}
+                            >
                               {item.time}
                             </AppText>
                           </View>
@@ -817,7 +888,11 @@ const HomePage = () => {
                             style={styles.productImage}
                           />
                         </View>
-                        <AppText weight="medium" style={styles.productName}>
+                        <AppText
+                          weight="medium"
+                          style={styles.productName}
+                          numberOfLines={1}
+                        >
                           {item.name}
                         </AppText>
                       </TouchableOpacity>
@@ -843,10 +918,15 @@ const HomePage = () => {
                         <AppText
                           weight="semibold"
                           style={styles.emptyStateTitle}
+                          numberOfLines={1}
                         >
                           No Products Found
                         </AppText>
-                        <AppText weight="regular" style={styles.emptyStateSub}>
+                        <AppText
+                          weight="regular"
+                          style={styles.emptyStateSub}
+                          numberOfLines={2}
+                        >
                           Try adjusting your search
                         </AppText>
                       </Animated.View>
@@ -861,7 +941,11 @@ const HomePage = () => {
             {/* Categories */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <AppText weight="semibold" style={styles.sectionTitle}>
+                <AppText
+                  weight="semibold"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
                   Categories
                 </AppText>
               </View>
@@ -884,7 +968,11 @@ const HomePage = () => {
                         style={[styles.categoryImage, styles.categoryOthers]}
                       />
                     )}
-                    <AppText weight="semibold" style={styles.categoryText}>
+                    <AppText
+                      weight="semibold"
+                      style={styles.categoryText}
+                      numberOfLines={1}
+                    >
                       {category.name}
                     </AppText>
                   </TouchableOpacity>
@@ -900,14 +988,22 @@ const HomePage = () => {
                     source={image.hot}
                     style={{ width: 22, height: 24, marginRight: 8 }}
                   />
-                  <AppText weight="semibold" style={styles.sectionTitle}>
+                  <AppText
+                    weight="semibold"
+                    numberOfLines={1}
+                    style={styles.sectionTitle}
+                  >
                     Hot Auctions
                   </AppText>
                 </View>
                 <TouchableOpacity
                   onPress={() => router.push("/screens/view-all?type=hot")}
                 >
-                  <AppText weight="regular" style={styles.viewAll}>
+                  <AppText
+                    weight="regular"
+                    numberOfLines={1}
+                    style={styles.viewAll}
+                  >
                     View All →
                   </AppText>
                 </TouchableOpacity>
@@ -953,7 +1049,11 @@ const HomePage = () => {
                         source={image.incoming_time}
                         style={{ width: 12, height: 12 }}
                       />
-                      <AppText weight="medium" style={styles.timeText}>
+                      <AppText
+                        weight="medium"
+                        numberOfLines={1}
+                        style={styles.timeText}
+                      >
                         {item.time}
                       </AppText>
                     </View>
@@ -961,7 +1061,11 @@ const HomePage = () => {
                       source={item.image}
                       style={[styles.auctionImage, { marginBottom: 8 }]}
                     />
-                    <AppText weight="medium" style={styles.auctionName}>
+                    <AppText
+                      weight="medium"
+                      style={styles.auctionName}
+                      numberOfLines={1}
+                    >
                       {item.name}
                     </AppText>
                   </TouchableOpacity>
@@ -977,14 +1081,22 @@ const HomePage = () => {
                     source={image.ending}
                     style={{ width: 24, height: 24, marginRight: 8 }}
                   />
-                  <AppText weight="semibold" style={styles.sectionTitle}>
+                  <AppText
+                    weight="semibold"
+                    numberOfLines={1}
+                    style={styles.sectionTitle}
+                  >
                     Ending Soon
                   </AppText>
                 </View>
                 <TouchableOpacity
                   onPress={() => router.push("/screens/view-all?type=ending")}
                 >
-                  <AppText weight="regular" style={styles.viewAll}>
+                  <AppText
+                    weight="regular"
+                    numberOfLines={1}
+                    style={styles.viewAll}
+                  >
                     View All →
                   </AppText>
                 </TouchableOpacity>
@@ -1028,7 +1140,11 @@ const HomePage = () => {
                         source={image.incoming_time}
                         style={{ width: 12, height: 12 }}
                       />
-                      <AppText weight="medium" style={styles.timeText}>
+                      <AppText
+                        weight="medium"
+                        numberOfLines={1}
+                        style={styles.timeText}
+                      >
                         {item.time}
                       </AppText>
                     </View>
@@ -1036,7 +1152,11 @@ const HomePage = () => {
                       source={item.image}
                       style={[styles.auctionImage, { marginBottom: 8 }]}
                     />
-                    <AppText weight="medium" style={styles.auctionName}>
+                    <AppText
+                      weight="medium"
+                      style={styles.auctionName}
+                      numberOfLines={1}
+                    >
                       {item.name}
                     </AppText>
                   </TouchableOpacity>
@@ -1052,14 +1172,22 @@ const HomePage = () => {
                     source={image.incoming}
                     style={{ width: 27, height: 25, marginRight: 8 }}
                   />
-                  <AppText weight="semibold" style={styles.sectionTitle}>
+                  <AppText
+                    weight="semibold"
+                    numberOfLines={1}
+                    style={styles.sectionTitle}
+                  >
                     Incoming
                   </AppText>
                 </View>
                 <TouchableOpacity
                   onPress={() => router.push("/screens/view-all?type=incoming")}
                 >
-                  <AppText weight="regular" style={styles.viewAll}>
+                  <AppText
+                    weight="regular"
+                    numberOfLines={1}
+                    style={styles.viewAll}
+                  >
                     View All →
                   </AppText>
                 </TouchableOpacity>
@@ -1102,7 +1230,11 @@ const HomePage = () => {
                         source={image.incoming_time}
                         style={{ width: 14, height: 14, marginRight: 4 }}
                       />
-                      <AppText weight="medium" style={styles.incomingText}>
+                      <AppText
+                        weight="medium"
+                        numberOfLines={1}
+                        style={styles.incomingText}
+                      >
                         {item.time}
                       </AppText>
                     </View>
@@ -1110,7 +1242,11 @@ const HomePage = () => {
                       source={item.image}
                       style={[styles.auctionImage, { marginBottom: 8 }]}
                     />
-                    <AppText weight="medium" style={styles.auctionName}>
+                    <AppText
+                      weight="medium"
+                      style={styles.auctionName}
+                      numberOfLines={1}
+                    >
                       {item.name}
                     </AppText>
                   </TouchableOpacity>
@@ -1128,6 +1264,8 @@ const HomePage = () => {
     </View>
   );
 };
+
+const CARD_WIDTH = SCREEN_WIDTH * 0.44;
 
 const styles = StyleSheet.create({
   container: {
@@ -1160,7 +1298,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   logoText: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "bold",
     color: "#fff",
   },
@@ -1179,7 +1317,7 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   balanceAmount: {
-    fontSize: 18,
+    fontSize: 15,
     color: "#fff",
   },
   avatar: {
@@ -1251,12 +1389,12 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#000",
   },
   viewAll: {
-    fontSize: 15,
+    fontSize: 13,
     color: "#4285F4",
     fontWeight: "600",
   },
@@ -1286,8 +1424,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 10,
     left: 10,
+    right: 10,
     color: "#fff",
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: "bold",
     textShadowColor: "rgba(0,0,0,0.9)",
     textShadowOffset: { width: 0, height: 1 },
@@ -1298,8 +1437,8 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   auctionCard: {
-    width: 180,
-    marginRight: 15,
+    width: CARD_WIDTH,
+    marginRight: 12,
     backgroundColor: "#fff",
     borderRadius: 15,
     alignItems: "center",
@@ -1379,10 +1518,12 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   auctionName: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "600",
     color: "#000",
     marginTop: 8,
+    textAlign: "center",
+    paddingHorizontal: 4,
   },
   searchWrapper: {
     flex: 1,

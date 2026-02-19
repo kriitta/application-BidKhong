@@ -1,13 +1,11 @@
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Image,
-  TextInput,
-} from "react-native";
 import React, { useState } from "react";
+import {
+  Image,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
 import { AppText } from "../components/appText";
@@ -156,11 +154,15 @@ const MyBidPage = () => {
             <View>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <Image source={image.mybids} style={styles.headerIcon} />
-                <AppText weight="semibold" style={styles.headerText}>
+                <AppText
+                  weight="semibold"
+                  numberOfLines={1}
+                  style={styles.headerText}
+                >
                   My Bids
                 </AppText>
               </View>
-              <AppText style={styles.headerSubtext}>
+              <AppText numberOfLines={1} style={styles.headerSubtext}>
                 Track all your auction activities
               </AppText>
             </View>
@@ -185,11 +187,17 @@ const MyBidPage = () => {
                   >
                     <AppText
                       weight="medium"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
                       style={[styles.statLabel, { color: stat.textColor }]}
                     >
                       {stat.label}
                     </AppText>
-                    <AppText weight="semibold" style={styles.statValue}>
+                    <AppText
+                      weight="semibold"
+                      numberOfLines={1}
+                      style={styles.statValue}
+                    >
                       {stat.value}
                     </AppText>
                   </View>
@@ -220,6 +228,7 @@ const MyBidPage = () => {
                 style={{ width: 16, height: 16 }}
               />
               <AppText
+                numberOfLines={1}
                 style={[
                   styles.filterButtonText,
                   showHistory && styles.filterButtonTextActive,
@@ -257,7 +266,11 @@ const MyBidPage = () => {
                     }}
                   />
                 )}
-                <AppText weight="medium" style={styles.statusText}>
+                <AppText
+                  weight="medium"
+                  numberOfLines={1}
+                  style={styles.statusText}
+                >
                   {bid.status}
                 </AppText>
               </View>
@@ -266,7 +279,11 @@ const MyBidPage = () => {
               <Image source={bid.image} style={styles.productImage} />
 
               {/* Product Title */}
-              <AppText weight="semibold" style={styles.productTitle}>
+              <AppText
+                weight="semibold"
+                numberOfLines={2}
+                style={styles.productTitle}
+              >
                 {bid.title}
               </AppText>
 
@@ -281,15 +298,27 @@ const MyBidPage = () => {
                 ]}
               >
                 <View style={styles.bidInfoRow}>
-                  <AppText style={styles.bidInfoLabel}>Your Bid</AppText>
-                  <AppText weight="semibold" style={styles.bidInfoValue}>
+                  <AppText numberOfLines={1} style={styles.bidInfoLabel}>
+                    Your Bid
+                  </AppText>
+                  <AppText
+                    weight="semibold"
+                    numberOfLines={1}
+                    style={styles.bidInfoValue}
+                  >
                     {bid.yourBid}
                   </AppText>
                 </View>
                 {bid.currentBid && (
                   <View style={styles.bidInfoRow}>
-                    <AppText style={styles.bidInfoLabel}>Current Bid</AppText>
-                    <AppText weight="semibold" style={styles.bidInfoValue}>
+                    <AppText numberOfLines={1} style={styles.bidInfoLabel}>
+                      Current Bid
+                    </AppText>
+                    <AppText
+                      weight="semibold"
+                      numberOfLines={1}
+                      style={styles.bidInfoValue}
+                    >
                       {bid.currentBid}
                     </AppText>
                   </View>
@@ -300,9 +329,13 @@ const MyBidPage = () => {
               <View style={[styles.timeInfo, { paddingVertical: 6 }]}>
                 <View style={styles.timeLeft}>
                   <Image source={image.time_icon} style={styles.clockIcon} />
-                  <AppText style={styles.timeLabel}>{bid.timeLabel}</AppText>
+                  <AppText numberOfLines={1} style={styles.timeLabel}>
+                    {bid.timeLabel}
+                  </AppText>
                 </View>
-                <AppText style={styles.timeAgo}>{bid.time}</AppText>
+                <AppText numberOfLines={1} style={styles.timeAgo}>
+                  {bid.time}
+                </AppText>
               </View>
 
               {/* Action Button */}
@@ -318,7 +351,11 @@ const MyBidPage = () => {
                   },
                 ]}
               >
-                <AppText weight="semibold" style={styles.actionButtonText}>
+                <AppText
+                  weight="semibold"
+                  numberOfLines={1}
+                  style={styles.actionButtonText}
+                >
                   {bid.buttonText}
                 </AppText>
               </TouchableOpacity>
@@ -356,7 +393,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   headerText: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#000",
   },
@@ -379,8 +416,8 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
     borderRadius: 12,
     marginHorizontal: 4,
     alignItems: "center",
@@ -394,12 +431,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#666",
     marginBottom: 6,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#000",
   },
@@ -491,7 +528,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   productTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "bold",
     color: "#000",
     paddingVertical: 16,
@@ -511,10 +548,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   bidInfoLabel: {
-    fontSize: 13,
+    fontSize: 12,
   },
   bidInfoValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "bold",
     color: "#000",
   },
@@ -547,7 +584,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   actionButtonText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "bold",
     color: "#fff",
   },

@@ -270,7 +270,7 @@ const ViewAllPage = () => {
           <TouchableOpacity onPress={() => router.back()}>
             <Image source={image.back} style={{ width: 32, height: 32 }} />
           </TouchableOpacity>
-          <AppText weight="semibold" style={styles.title}>
+          <AppText weight="semibold" style={styles.title} numberOfLines={1}>
             {typeTitle}
           </AppText>
           <View style={{ width: 40 }} />
@@ -302,7 +302,9 @@ const ViewAllPage = () => {
                 onPress={() => setSearchQuery("")}
                 style={styles.clearBtn}
               >
-                <AppText style={styles.clearBtnText}>✕</AppText>
+                <AppText style={styles.clearBtnText} numberOfLines={1}>
+                  ✕
+                </AppText>
               </TouchableOpacity>
             )}
           </View>
@@ -315,7 +317,11 @@ const ViewAllPage = () => {
               }}
               style={styles.cancelBtn}
             >
-              <AppText weight="medium" style={styles.cancelText}>
+              <AppText
+                weight="medium"
+                style={styles.cancelText}
+                numberOfLines={1}
+              >
                 Cancel
               </AppText>
             </TouchableOpacity>
@@ -362,13 +368,21 @@ const ViewAllPage = () => {
                         source={image.incoming_time}
                         style={{ width: 12, height: 12, marginRight: 4 }}
                       />
-                      <AppText weight="medium" style={styles.timeText}>
+                      <AppText
+                        weight="medium"
+                        style={styles.timeText}
+                        numberOfLines={1}
+                      >
                         {item.time}
                       </AppText>
                     </View>
                     <Image source={item.image} style={styles.auctionImage} />
                   </View>
-                  <AppText weight="medium" style={styles.auctionName}>
+                  <AppText
+                    weight="medium"
+                    numberOfLines={1}
+                    style={styles.auctionName}
+                  >
                     {item.name}
                   </AppText>
                 </TouchableOpacity>
@@ -392,10 +406,18 @@ const ViewAllPage = () => {
                   loop
                   style={{ width: 180, height: 180, opacity: 0.8 }}
                 />
-                <AppText weight="semibold" style={styles.emptyTitle}>
+                <AppText
+                  weight="semibold"
+                  style={styles.emptyTitle}
+                  numberOfLines={1}
+                >
                   No Products Found
                 </AppText>
-                <AppText weight="regular" style={styles.emptySubtitle}>
+                <AppText
+                  weight="regular"
+                  style={styles.emptySubtitle}
+                  numberOfLines={2}
+                >
                   Try adjusting your search
                 </AppText>
               </Animated.View>
@@ -570,7 +592,7 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   auctionName: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#111827",
     paddingHorizontal: 8,
     paddingVertical: 8,

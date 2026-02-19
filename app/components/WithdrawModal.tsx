@@ -115,7 +115,11 @@ export function WithdrawModal({
             <View style={styles.modalContent}>
               {/* Header with close button */}
               <View style={styles.headerBar}>
-                <AppText weight="semibold" style={styles.headerTitle}>
+                <AppText
+                  weight="semibold"
+                  numberOfLines={1}
+                  style={styles.headerTitle}
+                >
                   Withdraw Wallet
                 </AppText>
                 <TouchableOpacity onPress={onClose}>
@@ -127,7 +131,11 @@ export function WithdrawModal({
 
               {/* Select Amount */}
               <View style={styles.section}>
-                <AppText weight="medium" style={styles.sectionTitle}>
+                <AppText
+                  weight="medium"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
                   Select Amount
                 </AppText>
                 <View style={styles.amountsGrid}>
@@ -150,6 +158,7 @@ export function WithdrawModal({
                           >
                             <AppText
                               weight="medium"
+                              numberOfLines={1}
                               style={styles.amountButtonTextActive}
                             >
                               {qa.label}
@@ -164,6 +173,7 @@ export function WithdrawModal({
                           >
                             <AppText
                               weight="medium"
+                              numberOfLines={1}
                               style={[
                                 styles.amountButtonText,
                                 qa.disabled && styles.amountButtonTextDisabled,
@@ -181,7 +191,11 @@ export function WithdrawModal({
 
               {/* Custom Amount */}
               <View style={styles.section}>
-                <AppText weight="medium" style={styles.sectionTitle}>
+                <AppText
+                  weight="medium"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
                   Or Enter Custom Amount
                 </AppText>
                 <View style={styles.customAmountWrapper}>
@@ -199,7 +213,11 @@ export function WithdrawModal({
 
               {/* Select Bank */}
               <View style={styles.section}>
-                <AppText weight="medium" style={styles.sectionTitle}>
+                <AppText
+                  weight="medium"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
                   Select Bank
                 </AppText>
                 <View style={styles.banksContainer}>
@@ -231,6 +249,7 @@ export function WithdrawModal({
                       </View>
                       <AppText
                         weight="medium"
+                        numberOfLines={1}
                         style={[
                           styles.bankName,
                           selectedBank === bank.id && styles.bankNameActive,
@@ -248,7 +267,11 @@ export function WithdrawModal({
 
               {/* Account Number */}
               <View style={styles.section}>
-                <AppText weight="medium" style={styles.sectionTitle}>
+                <AppText
+                  weight="medium"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
                   Account Number
                 </AppText>
                 <View style={styles.inputWrapper}>
@@ -265,7 +288,11 @@ export function WithdrawModal({
 
               {/* Account Name */}
               <View style={styles.section}>
-                <AppText weight="medium" style={styles.sectionTitle}>
+                <AppText
+                  weight="medium"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
                   Account Name
                 </AppText>
                 <View style={styles.inputWrapper}>
@@ -291,7 +318,12 @@ export function WithdrawModal({
                   end={{ x: 1, y: 0 }}
                   style={styles.confirmButton}
                 >
-                  <AppText weight="semibold" style={styles.confirmButtonText}>
+                  <AppText
+                    weight="semibold"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={styles.confirmButtonText}
+                  >
                     {loading ? "Processing..." : `Confirm Withdraw ฿${amount}`}
                   </AppText>
                 </LinearGradient>

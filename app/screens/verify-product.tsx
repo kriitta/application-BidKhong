@@ -377,7 +377,12 @@ const VerifyProductPage = () => {
         <TouchableOpacity onPress={() => router.back()}>
           <Image source={image.back} style={{ width: 32, height: 32 }} />
         </TouchableOpacity>
-        <AppText weight="bold" style={styles.headerTitle}>
+        <AppText
+          weight="bold"
+          style={styles.headerTitle}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
           Verify Product
         </AppText>
         <View style={{ width: 28 }} />
@@ -406,6 +411,7 @@ const VerifyProductPage = () => {
                   styles.tabText,
                   activeTab === tab.key && styles.tabTextActive,
                 ]}
+                numberOfLines={1}
               >
                 {tab.label}{" "}
                 <AppText
@@ -432,10 +438,14 @@ const VerifyProductPage = () => {
         {filteredProducts.length === 0 ? (
           <View style={styles.emptyState}>
             <AppText style={{ fontSize: 48, marginBottom: 16 }}>📭</AppText>
-            <AppText weight="semibold" style={styles.emptyTitle}>
+            <AppText
+              weight="semibold"
+              style={styles.emptyTitle}
+              numberOfLines={1}
+            >
               No products found
             </AppText>
-            <AppText weight="regular" style={styles.emptySub}>
+            <AppText weight="regular" style={styles.emptySub} numberOfLines={2}>
               {activeTab === "all"
                 ? "You haven't won any auctions yet"
                 : `No products in this status`}
@@ -469,7 +479,11 @@ const VerifyProductPage = () => {
                   >
                     {product.name}
                   </AppText>
-                  <AppText weight="regular" style={styles.productDate}>
+                  <AppText
+                    weight="regular"
+                    style={styles.productDate}
+                    numberOfLines={1}
+                  >
                     Won on {product.wonDate}
                   </AppText>
                   {product.status === "won" && (
@@ -480,7 +494,12 @@ const VerifyProductPage = () => {
                     />
                   )}
                   {product.status !== "won" && (
-                    <AppText weight="bold" style={styles.productPrice}>
+                    <AppText
+                      weight="bold"
+                      style={styles.productPrice}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
                       ฿{product.winPrice.toLocaleString("en-US")}
                     </AppText>
                   )}
@@ -494,6 +513,8 @@ const VerifyProductPage = () => {
                   <AppText
                     weight="semibold"
                     style={[styles.statusText, { color: statusConfig.color }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
                   >
                     {statusConfig.icon} {statusConfig.label}
                   </AppText>
@@ -514,11 +535,19 @@ const VerifyProductPage = () => {
           <SafeAreaView style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <AppText weight="medium" style={styles.modalClose}>
+                <AppText
+                  weight="medium"
+                  style={styles.modalClose}
+                  numberOfLines={1}
+                >
                   ✕
                 </AppText>
               </TouchableOpacity>
-              <AppText weight="bold" style={styles.modalTitle}>
+              <AppText
+                weight="bold"
+                style={styles.modalTitle}
+                numberOfLines={1}
+              >
                 Product Details
               </AppText>
               <View style={{ width: 28 }} />
@@ -535,22 +564,43 @@ const VerifyProductPage = () => {
                   style={styles.modalProductImage}
                   resizeMode="contain"
                 />
-                <AppText weight="bold" style={styles.modalProductName}>
+                <AppText
+                  weight="bold"
+                  numberOfLines={2}
+                  style={styles.modalProductName}
+                >
                   {selectedProduct.name}
                 </AppText>
                 <View style={styles.modalPriceRow}>
-                  <AppText weight="regular" style={styles.modalPriceLabel}>
+                  <AppText
+                    weight="regular"
+                    style={styles.modalPriceLabel}
+                    numberOfLines={1}
+                  >
                     Winning Price
                   </AppText>
-                  <AppText weight="bold" style={styles.modalPriceValue}>
+                  <AppText
+                    weight="bold"
+                    style={styles.modalPriceValue}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
                     ฿{selectedProduct.winPrice.toLocaleString("en-US")}
                   </AppText>
                 </View>
                 <View style={styles.modalDateRow}>
-                  <AppText weight="regular" style={styles.modalDateLabel}>
+                  <AppText
+                    weight="regular"
+                    style={styles.modalDateLabel}
+                    numberOfLines={1}
+                  >
                     Won on
                   </AppText>
-                  <AppText weight="medium" style={styles.modalDateValue}>
+                  <AppText
+                    weight="medium"
+                    style={styles.modalDateValue}
+                    numberOfLines={1}
+                  >
                     {selectedProduct.wonDate}
                   </AppText>
                 </View>
@@ -568,7 +618,11 @@ const VerifyProductPage = () => {
 
               {/* Status Progress */}
               <View style={styles.progressSection}>
-                <AppText weight="bold" style={styles.progressTitle}>
+                <AppText
+                  weight="bold"
+                  style={styles.progressTitle}
+                  numberOfLines={1}
+                >
                   Order Progress
                 </AppText>
                 <View style={styles.progressTrack}>
@@ -586,7 +640,11 @@ const VerifyProductPage = () => {
                         {selectedProduct.status === "expired" ? "✗" : "✓"}
                       </AppText>
                     </View>
-                    <AppText weight="semibold" style={styles.progressLabel}>
+                    <AppText
+                      weight="semibold"
+                      style={styles.progressLabel}
+                      numberOfLines={1}
+                    >
                       Won Auction
                     </AppText>
                   </View>
@@ -702,7 +760,11 @@ const VerifyProductPage = () => {
 
               {/* Seller Contact */}
               <View style={styles.sellerSection}>
-                <AppText weight="bold" style={styles.sellerSectionTitle}>
+                <AppText
+                  weight="bold"
+                  style={styles.sellerSectionTitle}
+                  numberOfLines={1}
+                >
                   Seller Contact
                 </AppText>
                 <View style={styles.sellerCard}>
@@ -711,7 +773,11 @@ const VerifyProductPage = () => {
                     style={styles.sellerAvatar}
                   />
                   <View style={{ flex: 1 }}>
-                    <AppText weight="semibold" style={styles.sellerName}>
+                    <AppText
+                      weight="semibold"
+                      style={styles.sellerName}
+                      numberOfLines={1}
+                    >
                       {selectedProduct.seller.name}
                     </AppText>
                     <View style={styles.sellerContactRow}>
@@ -724,7 +790,11 @@ const VerifyProductPage = () => {
                           marginRight: 8,
                         }}
                       />
-                      <AppText weight="regular" style={styles.sellerContact}>
+                      <AppText
+                        weight="regular"
+                        style={styles.sellerContact}
+                        numberOfLines={1}
+                      >
                         {selectedProduct.seller.phone}
                       </AppText>
                     </View>
@@ -738,7 +808,11 @@ const VerifyProductPage = () => {
                           marginRight: 8,
                         }}
                       />
-                      <AppText weight="regular" style={styles.sellerContact}>
+                      <AppText
+                        weight="regular"
+                        style={styles.sellerContact}
+                        numberOfLines={1}
+                      >
                         {selectedProduct.seller.email}
                       </AppText>
                     </View>
@@ -759,7 +833,11 @@ const VerifyProductPage = () => {
                         marginRight: 10,
                       }}
                     />
-                    <AppText weight="regular" style={styles.actionNoteText}>
+                    <AppText
+                      weight="regular"
+                      style={styles.actionNoteText}
+                      numberOfLines={2}
+                    >
                       Please contact the seller to arrange shipping before
                       verifying.
                     </AppText>
@@ -774,7 +852,11 @@ const VerifyProductPage = () => {
                       end={{ x: 1, y: 0 }}
                       style={styles.actionButton}
                     >
-                      <AppText weight="bold" style={styles.actionButtonText}>
+                      <AppText
+                        weight="bold"
+                        style={styles.actionButtonText}
+                        numberOfLines={1}
+                      >
                         ✓ Verify Contact
                       </AppText>
                     </LinearGradient>
@@ -788,10 +870,18 @@ const VerifyProductPage = () => {
                     <View style={styles.shippingIconCircle}>
                       <AppText style={{ fontSize: 28 }}>📦</AppText>
                     </View>
-                    <AppText weight="semibold" style={styles.shippingTitle}>
+                    <AppText
+                      weight="semibold"
+                      style={styles.shippingTitle}
+                      numberOfLines={1}
+                    >
                       Waiting for Delivery
                     </AppText>
-                    <AppText weight="regular" style={styles.shippingSub}>
+                    <AppText
+                      weight="regular"
+                      style={styles.shippingSub}
+                      numberOfLines={3}
+                    >
                       Your product is being shipped. Once you receive it, press
                       the button below to confirm.
                     </AppText>
@@ -806,7 +896,11 @@ const VerifyProductPage = () => {
                       end={{ x: 1, y: 0 }}
                       style={styles.actionButton}
                     >
-                      <AppText weight="bold" style={styles.actionButtonText}>
+                      <AppText
+                        weight="bold"
+                        style={styles.actionButtonText}
+                        numberOfLines={1}
+                      >
                         Product Received
                       </AppText>
                     </LinearGradient>
@@ -821,7 +915,11 @@ const VerifyProductPage = () => {
                       end={{ x: 1, y: 0 }}
                       style={[styles.actionButton, { marginTop: 12 }]}
                     >
-                      <AppText weight="bold" style={styles.actionButtonText}>
+                      <AppText
+                        weight="bold"
+                        style={styles.actionButtonText}
+                        numberOfLines={1}
+                      >
                         Report an Issue
                       </AppText>
                     </LinearGradient>
@@ -835,10 +933,18 @@ const VerifyProductPage = () => {
                     <View style={styles.completedIconCircle}>
                       <AppText style={{ fontSize: 32 }}>🎉</AppText>
                     </View>
-                    <AppText weight="bold" style={styles.completedTitle}>
+                    <AppText
+                      weight="bold"
+                      style={styles.completedTitle}
+                      numberOfLines={1}
+                    >
                       Completed!
                     </AppText>
-                    <AppText weight="regular" style={styles.completedSub}>
+                    <AppText
+                      weight="regular"
+                      style={styles.completedSub}
+                      numberOfLines={3}
+                    >
                       This transaction has been completed successfully. Thank
                       you for using BidKhong!
                     </AppText>
@@ -852,10 +958,18 @@ const VerifyProductPage = () => {
                     <View style={styles.expiredIconCircle}>
                       <AppText style={{ fontSize: 32 }}>⛔</AppText>
                     </View>
-                    <AppText weight="bold" style={styles.expiredTitle}>
+                    <AppText
+                      weight="bold"
+                      style={styles.expiredTitle}
+                      numberOfLines={1}
+                    >
                       Auction Voided
                     </AppText>
-                    <AppText weight="regular" style={styles.expiredSub}>
+                    <AppText
+                      weight="regular"
+                      style={styles.expiredSub}
+                      numberOfLines={3}
+                    >
                       The 24-hour verification deadline has passed without
                       contact confirmation. This auction has been voided.
                     </AppText>
@@ -886,7 +1000,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F3F4F6",
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: "#111827",
   },
   tabsContainer: {
@@ -956,7 +1070,7 @@ const styles = StyleSheet.create({
     marginLeft: 14,
   },
   productName: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#111827",
     marginBottom: 4,
   },
@@ -966,7 +1080,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   productPrice: {
-    fontSize: 16,
+    fontSize: 15,
     color: "#003994",
   },
   statusBadge: {
@@ -1012,7 +1126,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   modalProductName: {
-    fontSize: 22,
+    fontSize: 20,
     color: "#111827",
     marginBottom: 16,
     textAlign: "center",
@@ -1033,7 +1147,7 @@ const styles = StyleSheet.create({
     color: "#6B7280",
   },
   modalPriceValue: {
-    fontSize: 20,
+    fontSize: 18,
     color: "#003994",
   },
   modalDateRow: {
@@ -1085,7 +1199,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#003994",
   },
   progressLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#111827",
     textAlign: "center",
   },
@@ -1164,7 +1278,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   actionButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     color: "#fff",
   },
 
@@ -1186,7 +1300,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   shippingTitle: {
-    fontSize: 17,
+    fontSize: 15,
     color: "#1565C0",
     marginBottom: 8,
   },
@@ -1214,7 +1328,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   completedTitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: "#2E7D32",
     marginBottom: 8,
   },
@@ -1282,7 +1396,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   expiredTitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: "#C62828",
     marginBottom: 8,
   },

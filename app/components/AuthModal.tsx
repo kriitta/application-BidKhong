@@ -223,10 +223,14 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
 
             {/* Modal Header */}
             <View style={styles.header}>
-              <AppText weight="semibold" style={styles.title}>
+              <AppText weight="semibold" numberOfLines={1} style={styles.title}>
                 {getTitle()}
               </AppText>
-              <AppText weight="regular" style={styles.subtitle}>
+              <AppText
+                weight="regular"
+                numberOfLines={3}
+                style={styles.subtitle}
+              >
                 {getSubtitle()}
               </AppText>
             </View>
@@ -243,7 +247,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                 <View>
                   {/* Email */}
                   <View style={styles.inputGroup}>
-                    <AppText weight="medium" style={styles.label}>
+                    <AppText
+                      weight="medium"
+                      numberOfLines={1}
+                      style={styles.label}
+                    >
                       Email Address
                     </AppText>
                     <View style={styles.inputWrapper}>
@@ -261,7 +269,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
 
                   {/* Password */}
                   <View style={styles.inputGroup}>
-                    <AppText weight="medium" style={styles.label}>
+                    <AppText
+                      weight="medium"
+                      numberOfLines={1}
+                      style={styles.label}
+                    >
                       Password
                     </AppText>
                     <View style={styles.inputWrapper}>
@@ -296,7 +308,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                     }}
                     style={styles.forgotPasswordContainer}
                   >
-                    <AppText weight="medium" style={styles.forgotPassword}>
+                    <AppText
+                      weight="medium"
+                      numberOfLines={1}
+                      style={styles.forgotPassword}
+                    >
                       Forgot Password?
                     </AppText>
                   </TouchableOpacity>
@@ -315,6 +331,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                     >
                       <AppText
                         weight="semibold"
+                        numberOfLines={1}
                         style={styles.primaryButtonText}
                       >
                         {loading ? "Logging in..." : "Log In"}
@@ -325,7 +342,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                   {/* Divider */}
                   <View style={styles.dividerContainer}>
                     <View style={styles.dividerLine} />
-                    <AppText weight="regular" style={styles.dividerText}>
+                    <AppText
+                      weight="regular"
+                      numberOfLines={1}
+                      style={styles.dividerText}
+                    >
                       Don't have an account?
                     </AppText>
                     <View style={styles.dividerLine} />
@@ -339,7 +360,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                     }}
                     style={styles.signupLinkButton}
                   >
-                    <AppText weight="semibold" style={styles.signupLinkText}>
+                    <AppText
+                      weight="semibold"
+                      numberOfLines={1}
+                      style={styles.signupLinkText}
+                    >
                       Sign Up
                     </AppText>
                   </TouchableOpacity>
@@ -353,7 +378,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                 <View>
                   {/* Full Name */}
                   <View style={styles.inputGroup}>
-                    <AppText weight="medium" style={styles.label}>
+                    <AppText
+                      weight="medium"
+                      numberOfLines={1}
+                      style={styles.label}
+                    >
                       Full Name
                     </AppText>
                     <View style={styles.inputWrapper}>
@@ -370,7 +399,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
 
                   {/* Email */}
                   <View style={styles.inputGroup}>
-                    <AppText weight="medium" style={styles.label}>
+                    <AppText
+                      weight="medium"
+                      numberOfLines={1}
+                      style={styles.label}
+                    >
                       Email Address
                     </AppText>
                     <View style={styles.inputWrapper}>
@@ -388,7 +421,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
 
                   {/* Phone Number */}
                   <View style={styles.inputGroup}>
-                    <AppText weight="medium" style={styles.label}>
+                    <AppText
+                      weight="medium"
+                      numberOfLines={1}
+                      style={styles.label}
+                    >
                       Phone Number
                     </AppText>
                     <View style={styles.inputWrapper}>
@@ -406,7 +443,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
 
                   {/* Password */}
                   <View style={styles.inputGroup}>
-                    <AppText weight="medium" style={styles.label}>
+                    <AppText
+                      weight="medium"
+                      numberOfLines={1}
+                      style={styles.label}
+                    >
                       Password
                     </AppText>
                     <View style={styles.inputWrapper}>
@@ -435,7 +476,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
 
                   {/* Confirm Password */}
                   <View style={styles.inputGroup}>
-                    <AppText weight="medium" style={styles.label}>
+                    <AppText
+                      weight="medium"
+                      numberOfLines={1}
+                      style={styles.label}
+                    >
                       Confirm Password
                     </AppText>
                     <View style={styles.inputWrapper}>
@@ -480,6 +525,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                     >
                       <AppText
                         weight="semibold"
+                        numberOfLines={1}
                         style={styles.primaryButtonText}
                       >
                         {loading ? "Creating Account..." : "Create Account"}
@@ -490,7 +536,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                   {/* Divider */}
                   <View style={styles.dividerContainer}>
                     <View style={styles.dividerLine} />
-                    <AppText weight="regular" style={styles.dividerText}>
+                    <AppText
+                      weight="regular"
+                      numberOfLines={1}
+                      style={styles.dividerText}
+                    >
                       Already have an account?
                     </AppText>
                     <View style={styles.dividerLine} />
@@ -504,7 +554,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                     }}
                     style={styles.loginLinkButton}
                   >
-                    <AppText weight="semibold" style={styles.loginLinkText}>
+                    <AppText
+                      weight="semibold"
+                      numberOfLines={1}
+                      style={styles.loginLinkText}
+                    >
                       Log In
                     </AppText>
                   </TouchableOpacity>
@@ -518,7 +572,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                 <View>
                   {/* Email */}
                   <View style={styles.inputGroup}>
-                    <AppText weight="medium" style={styles.label}>
+                    <AppText
+                      weight="medium"
+                      numberOfLines={1}
+                      style={styles.label}
+                    >
                       Email Address
                     </AppText>
                     <View style={styles.inputWrapper}>
@@ -548,6 +606,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                     >
                       <AppText
                         weight="semibold"
+                        numberOfLines={1}
                         style={styles.primaryButtonText}
                       >
                         {loading ? "Sending..." : "Send Reset Token"}
@@ -563,7 +622,12 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                     }}
                     style={styles.alreadyHaveTokenContainer}
                   >
-                    <AppText weight="medium" style={styles.alreadyHaveToken}>
+                    <AppText
+                      weight="medium"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      style={styles.alreadyHaveToken}
+                    >
                       Already have a token? Reset Password
                     </AppText>
                   </TouchableOpacity>
@@ -571,7 +635,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                   {/* Divider */}
                   <View style={styles.dividerContainer}>
                     <View style={styles.dividerLine} />
-                    <AppText weight="regular" style={styles.dividerText}>
+                    <AppText
+                      weight="regular"
+                      numberOfLines={1}
+                      style={styles.dividerText}
+                    >
                       Remember your password?
                     </AppText>
                     <View style={styles.dividerLine} />
@@ -585,7 +653,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                     }}
                     style={styles.loginLinkButton}
                   >
-                    <AppText weight="semibold" style={styles.loginLinkText}>
+                    <AppText
+                      weight="semibold"
+                      numberOfLines={1}
+                      style={styles.loginLinkText}
+                    >
                       Back to Log In
                     </AppText>
                   </TouchableOpacity>
@@ -599,7 +671,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                 <View>
                   {/* Email (pre-filled, editable) */}
                   <View style={styles.inputGroup}>
-                    <AppText weight="medium" style={styles.label}>
+                    <AppText
+                      weight="medium"
+                      numberOfLines={1}
+                      style={styles.label}
+                    >
                       Email Address
                     </AppText>
                     <View style={styles.inputWrapper}>
@@ -617,7 +693,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
 
                   {/* Token */}
                   <View style={styles.inputGroup}>
-                    <AppText weight="medium" style={styles.label}>
+                    <AppText
+                      weight="medium"
+                      numberOfLines={1}
+                      style={styles.label}
+                    >
                       Reset Token
                     </AppText>
                     <View style={styles.inputWrapper}>
@@ -634,7 +714,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
 
                   {/* New Password */}
                   <View style={styles.inputGroup}>
-                    <AppText weight="medium" style={styles.label}>
+                    <AppText
+                      weight="medium"
+                      numberOfLines={1}
+                      style={styles.label}
+                    >
                       New Password
                     </AppText>
                     <View style={styles.inputWrapper}>
@@ -675,6 +759,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                     >
                       <AppText
                         weight="semibold"
+                        numberOfLines={1}
                         style={styles.primaryButtonText}
                       >
                         {loading ? "Resetting..." : "Reset Password"}
@@ -685,7 +770,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                   {/* Divider */}
                   <View style={styles.dividerContainer}>
                     <View style={styles.dividerLine} />
-                    <AppText weight="regular" style={styles.dividerText}>
+                    <AppText
+                      weight="regular"
+                      numberOfLines={1}
+                      style={styles.dividerText}
+                    >
                       Remember your password?
                     </AppText>
                     <View style={styles.dividerLine} />
@@ -699,7 +788,11 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                     }}
                     style={styles.loginLinkButton}
                   >
-                    <AppText weight="semibold" style={styles.loginLinkText}>
+                    <AppText
+                      weight="semibold"
+                      numberOfLines={1}
+                      style={styles.loginLinkText}
+                    >
                       Back to Log In
                     </AppText>
                   </TouchableOpacity>

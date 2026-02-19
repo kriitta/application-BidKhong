@@ -132,7 +132,7 @@ const SellerPage = () => {
         <TouchableOpacity onPress={() => router.back()}>
           <Image source={image.back} style={{ width: 32, height: 32 }} />
         </TouchableOpacity>
-        <AppText weight="semibold" style={styles.headerTitle}>
+        <AppText weight="semibold" numberOfLines={1} style={styles.headerTitle}>
           Create Auction
         </AppText>
         <View style={{ width: 40 }} />
@@ -146,7 +146,11 @@ const SellerPage = () => {
         <View style={styles.section}>
           <View style={[styles.sectionHeader]}>
             <Image source={image.camera} style={{ width: 16.25, height: 13 }} />
-            <AppText weight="medium" style={styles.sectionTitle}>
+            <AppText
+              weight="medium"
+              numberOfLines={1}
+              style={styles.sectionTitle}
+            >
               Product Photos * (Max 8)
             </AppText>
           </View>
@@ -182,7 +186,7 @@ const SellerPage = () => {
 
         {/* Product Title */}
         <View style={styles.section}>
-          <AppText weight="medium" style={styles.label}>
+          <AppText weight="medium" numberOfLines={1} style={styles.label}>
             Product Title *
           </AppText>
           <TextInput
@@ -196,7 +200,7 @@ const SellerPage = () => {
 
         {/* Category */}
         <View style={styles.section}>
-          <AppText weight="medium" style={styles.label}>
+          <AppText weight="medium" numberOfLines={1} style={styles.label}>
             Category *
           </AppText>
           <View style={styles.gridContainer}>
@@ -215,6 +219,7 @@ const SellerPage = () => {
                   weight={
                     selectedCategory === category.id ? "semibold" : "regular"
                   }
+                  numberOfLines={1}
                   style={[
                     styles.categoryText,
                     selectedCategory === category.id &&
@@ -231,7 +236,7 @@ const SellerPage = () => {
         {/* Subcategory - Only show when category is selected */}
         {selectedCategory && (
           <View style={styles.section}>
-            <AppText weight="medium" style={styles.label}>
+            <AppText weight="medium" numberOfLines={1} style={styles.label}>
               Subcategory *
             </AppText>
             <View style={styles.gridContainer}>
@@ -252,6 +257,7 @@ const SellerPage = () => {
                         ? "semibold"
                         : "regular"
                     }
+                    numberOfLines={1}
                     style={[
                       styles.categoryText,
                       selectedSubcategory === subcategory.id &&
@@ -273,7 +279,11 @@ const SellerPage = () => {
               source={image.description}
               style={{ width: 13, height: 15 }}
             />
-            <AppText weight="medium" style={styles.sectionTitle}>
+            <AppText
+              weight="medium"
+              numberOfLines={1}
+              style={styles.sectionTitle}
+            >
               Description *
             </AppText>
           </View>
@@ -303,13 +313,21 @@ const SellerPage = () => {
           >
             <View style={[styles.sectionHeader, { marginBottom: 16 }]}>
               <Image source={image.pricing} style={{ width: 16, height: 16 }} />
-              <AppText weight="medium" style={styles.sectionTitle}>
+              <AppText
+                weight="medium"
+                numberOfLines={1}
+                style={styles.sectionTitle}
+              >
                 Pricing
               </AppText>
             </View>
 
             <View style={styles.priceInputContainer}>
-              <AppText weight="regular" style={styles.priceLabel}>
+              <AppText
+                weight="regular"
+                numberOfLines={1}
+                style={styles.priceLabel}
+              >
                 Starting Bid
               </AppText>
               <View style={styles.priceInputWrapper}>
@@ -326,7 +344,11 @@ const SellerPage = () => {
             </View>
 
             <View style={styles.priceInputContainer}>
-              <AppText weight="regular" style={styles.priceLabel}>
+              <AppText
+                weight="regular"
+                numberOfLines={1}
+                style={styles.priceLabel}
+              >
                 Buyout Price
               </AppText>
               <View style={styles.priceInputWrapper}>
@@ -357,7 +379,11 @@ const SellerPage = () => {
               source={image.auction_time}
               style={{ width: 15.59, height: 17 }}
             />
-            <AppText weight="medium" style={styles.sectionTitle}>
+            <AppText
+              weight="medium"
+              numberOfLines={1}
+              style={styles.sectionTitle}
+            >
               Auction Start *
             </AppText>
           </View>
@@ -400,7 +426,11 @@ const SellerPage = () => {
               source={image.auction_time}
               style={{ width: 15.59, height: 17 }}
             />
-            <AppText weight="medium" style={styles.sectionTitle}>
+            <AppText
+              weight="medium"
+              numberOfLines={1}
+              style={styles.sectionTitle}
+            >
               Auction Duration *
             </AppText>
           </View>
@@ -418,6 +448,7 @@ const SellerPage = () => {
                   weight={
                     auctionDuration === duration.id ? "semibold" : "regular"
                   }
+                  numberOfLines={1}
                   style={[
                     styles.durationText,
                     auctionDuration === duration.id &&
@@ -442,7 +473,11 @@ const SellerPage = () => {
             onPress={handleCreateAuction}
             style={styles.createButtonInner}
           >
-            <AppText weight="semibold" style={styles.createButtonText}>
+            <AppText
+              weight="semibold"
+              numberOfLines={1}
+              style={styles.createButtonText}
+            >
               Create Auction
             </AppText>
           </TouchableOpacity>
@@ -565,10 +600,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   photoHint: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#6B7280",
     marginTop: 4,
-    width: 100,
+    width: 140,
   },
   addPhotoBox: {
     width: 140,
@@ -614,9 +649,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   categoryText: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#374151",
     textAlign: "center",
+    paddingHorizontal: 2,
   },
   categoryTextSelected: {
     color: "#2563EB",
@@ -721,7 +757,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#EFF6FF",
   },
   durationText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#374151",
   },
   durationTextSelected: {
@@ -739,7 +775,7 @@ const styles = StyleSheet.create({
   },
   createButtonText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 15,
   },
 });
 

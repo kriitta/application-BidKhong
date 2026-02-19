@@ -4,6 +4,7 @@ import LottieView from "lottie-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Dimensions,
   Image,
   Keyboard,
   ScrollView,
@@ -14,6 +15,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppText } from "../components/appText";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const AUCTION_CARD_WIDTH = SCREEN_WIDTH * 0.44;
 
 const SUBCATEGORIES: Record<
   string,
@@ -426,7 +430,7 @@ const CategoryPage = () => {
         >
           <Image source={image.back} style={{ width: 32, height: 32 }} />
         </TouchableOpacity>
-        <AppText weight="semibold" style={styles.title}>
+        <AppText weight="semibold" style={styles.title} numberOfLines={1}>
           {selectedSub
             ? selectedSub.charAt(0).toUpperCase() + selectedSub.slice(1)
             : category
@@ -439,7 +443,11 @@ const CategoryPage = () => {
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         {!selectedSub ? (
           <View>
-            <AppText weight="medium" style={styles.sectionLabel}>
+            <AppText
+              weight="medium"
+              style={styles.sectionLabel}
+              numberOfLines={1}
+            >
               Select a subcategory
             </AppText>
             <View style={styles.grid}>
@@ -454,12 +462,20 @@ const CategoryPage = () => {
                       <Image source={s.image} style={styles.cardImage} />
                     )}
                     <View style={styles.itemCountBadge}>
-                      <AppText weight="semibold" style={styles.itemCountText}>
+                      <AppText
+                        weight="semibold"
+                        style={styles.itemCountText}
+                        numberOfLines={1}
+                      >
                         {(MOCK_PRODUCTS[s.id] || []).length} items
                       </AppText>
                     </View>
                   </View>
-                  <AppText weight="semibold" style={styles.cardText}>
+                  <AppText
+                    weight="semibold"
+                    numberOfLines={1}
+                    style={styles.cardText}
+                  >
                     {s.name}
                   </AppText>
                 </TouchableOpacity>
@@ -494,7 +510,9 @@ const CategoryPage = () => {
                     onPress={() => setSearchQuery("")}
                     style={styles.clearBtn}
                   >
-                    <AppText style={styles.clearBtnText}>✕</AppText>
+                    <AppText style={styles.clearBtnText} numberOfLines={1}>
+                      ✕
+                    </AppText>
                   </TouchableOpacity>
                 )}
               </View>
@@ -507,7 +525,11 @@ const CategoryPage = () => {
                   }}
                   style={styles.cancelBtn}
                 >
-                  <AppText weight="medium" style={styles.cancelText}>
+                  <AppText
+                    weight="medium"
+                    style={styles.cancelText}
+                    numberOfLines={1}
+                  >
                     Cancel
                   </AppText>
                 </TouchableOpacity>
@@ -556,13 +578,21 @@ const CategoryPage = () => {
                           source={image.incoming_time}
                           style={{ width: 12, height: 12, marginRight: 4 }}
                         />
-                        <AppText weight="medium" style={styles.timeText}>
+                        <AppText
+                          weight="medium"
+                          style={styles.timeText}
+                          numberOfLines={1}
+                        >
                           {p.time}
                         </AppText>
                       </View>
                       <Image source={p.image} style={styles.productImage} />
                     </View>
-                    <AppText weight="medium" style={styles.productName}>
+                    <AppText
+                      weight="medium"
+                      numberOfLines={1}
+                      style={styles.productName}
+                    >
                       {p.name}
                     </AppText>
                   </TouchableOpacity>
@@ -585,10 +615,18 @@ const CategoryPage = () => {
                       loop
                       style={{ width: 180, height: 180, opacity: 0.8 }}
                     />
-                    <AppText weight="semibold" style={styles.emptyStateTitle}>
+                    <AppText
+                      weight="semibold"
+                      style={styles.emptyStateTitle}
+                      numberOfLines={1}
+                    >
                       No Products Found
                     </AppText>
-                    <AppText weight="regular" style={styles.emptyStateSubtitle}>
+                    <AppText
+                      weight="regular"
+                      style={styles.emptyStateSubtitle}
+                      numberOfLines={2}
+                    >
                       Try adjusting your search
                     </AppText>
                   </Animated.View>
@@ -615,7 +653,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F3F4F6",
   },
   title: { fontSize: 18, color: "#111827" },
-  sectionLabel: { fontSize: 16, marginBottom: 12, color: "#374151" },
+  sectionLabel: { fontSize: 14, marginBottom: 12, color: "#374151" },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -647,9 +685,10 @@ const styles = StyleSheet.create({
   itemCountText: { fontSize: 12, color: "#fff" },
   cardText: {
     textAlign: "center",
-    fontSize: 14,
+    fontSize: 12,
     color: "#111827",
     paddingVertical: 8,
+    paddingHorizontal: 4,
   },
   searchContainer: {
     flexDirection: "row",
@@ -737,7 +776,7 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
   },
   productName: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#111827",
     paddingHorizontal: 8,
     paddingVertical: 8,
@@ -771,7 +810,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   auctionCard: {
-    width: 180,
+    width: AUCTION_CARD_WIDTH,
     marginRight: 15,
     backgroundColor: "#fff",
     borderRadius: 15,
@@ -827,7 +866,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   auctionName: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#111827",
     paddingHorizontal: 8,
     textAlign: "center",

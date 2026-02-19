@@ -152,7 +152,11 @@ const WalletPage = () => {
                 source={image.mywallet}
                 style={{ width: 24, height: 24, marginRight: 10 }}
               />
-              <AppText weight="bold" style={styles.headerText}>
+              <AppText
+                weight="bold"
+                numberOfLines={1}
+                style={styles.headerText}
+              >
                 My Wallet
               </AppText>
             </View>
@@ -169,7 +173,11 @@ const WalletPage = () => {
               pointerEvents={disablePointer ? "none" : "auto"}
             >
               <View style={styles.balanceHeader}>
-                <AppText weight="regular" style={styles.balanceLabel}>
+                <AppText
+                  weight="regular"
+                  numberOfLines={1}
+                  style={styles.balanceLabel}
+                >
                   Total Balance
                 </AppText>
               </View>
@@ -181,14 +189,23 @@ const WalletPage = () => {
                   marginBottom: 16,
                 }}
               >
-                <AppText weight="semibold" style={styles.balanceAmount}>
+                <AppText
+                  weight="semibold"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={styles.balanceAmount}
+                >
                   {formatBalance(wallet?.balance_total)}
                 </AppText>
                 <TouchableOpacity
                   style={styles.topUpButton}
                   onPress={() => setTopUpModalVisible(true)}
                 >
-                  <AppText weight="medium" style={styles.topUpText}>
+                  <AppText
+                    weight="medium"
+                    numberOfLines={1}
+                    style={styles.topUpText}
+                  >
                     + Top Up
                   </AppText>
                 </TouchableOpacity>
@@ -198,16 +215,28 @@ const WalletPage = () => {
 
               <View style={styles.balanceDetails}>
                 <View style={styles.balanceItem}>
-                  <AppText style={styles.balanceSubLabel}>Available</AppText>
-                  <AppText weight="medium" style={styles.availableAmount}>
+                  <AppText numberOfLines={1} style={styles.balanceSubLabel}>
+                    Available
+                  </AppText>
+                  <AppText
+                    weight="medium"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={styles.availableAmount}
+                  >
                     {formatBalance(wallet?.balance_available)}
                   </AppText>
                 </View>
                 <View style={styles.balanceItem}>
-                  <AppText style={styles.balanceSubLabel}>
+                  <AppText numberOfLines={1} style={styles.balanceSubLabel}>
                     In Pending Bids
                   </AppText>
-                  <AppText weight="medium" style={styles.pendingAmount}>
+                  <AppText
+                    weight="medium"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={styles.pendingAmount}
+                  >
                     {formatBalance(wallet?.balance_pending)}
                   </AppText>
                 </View>
@@ -251,7 +280,9 @@ const WalletPage = () => {
                   resizeMode="contain"
                 />
               </View>
-              <AppText style={styles.actionText}>{action.name}</AppText>
+              <AppText numberOfLines={1} style={styles.actionText}>
+                {action.name}
+              </AppText>
             </TouchableOpacity>
           ))}
         </View>
@@ -263,7 +294,11 @@ const WalletPage = () => {
               source={image.recent_trans}
               style={{ width: 20, height: 20, marginRight: 8 }}
             />
-            <AppText weight="semibold" style={styles.sectionTitle}>
+            <AppText
+              weight="semibold"
+              numberOfLines={1}
+              style={styles.sectionTitle}
+            >
               {selectedMonth && selectedYear
                 ? `Transactions - ${new Date(selectedYear, selectedMonth - 1).toLocaleDateString("en-US", { month: "long", year: "numeric" })}`
                 : "Recent Transactions"}
@@ -290,16 +325,17 @@ const WalletPage = () => {
                 </View>
 
                 <View style={styles.transactionInfo}>
-                  <AppText style={styles.transactionTitle}>
+                  <AppText numberOfLines={1} style={styles.transactionTitle}>
                     {transaction.title}
                   </AppText>
-                  <AppText style={styles.transactionTime}>
+                  <AppText numberOfLines={1} style={styles.transactionTime}>
                     {transaction.time}
                   </AppText>
                 </View>
 
                 <AppText
                   weight="semibold"
+                  numberOfLines={1}
                   style={[
                     styles.transactionAmount,
                     transaction.isNegative
@@ -377,7 +413,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   headerText: {
-    fontSize: 21,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#fff",
   },
@@ -394,7 +430,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   balanceLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#fff",
     opacity: 0.9,
   },
@@ -405,12 +441,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   topUpText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
     color: "#003d82",
   },
   balanceAmount: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: "bold",
     color: "#fff",
   },
@@ -433,12 +469,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   availableAmount: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "bold",
     color: "#90EE90",
   },
   pendingAmount: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "bold",
     color: "#FFD700",
   },
@@ -475,7 +511,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   actionText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
     color: "#333",
   },
@@ -499,9 +535,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "bold",
     color: "#000",
+    flex: 1,
   },
   transactionsList: {
     gap: 8,
@@ -536,7 +573,7 @@ const styles = StyleSheet.create({
     color: "#999",
   },
   transactionAmount: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "bold",
   },
   negativeAmount: {

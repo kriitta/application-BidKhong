@@ -37,7 +37,11 @@ const WelcomePage = () => {
             <View style={styles.header}>
               <View style={styles.logoContainer}>
                 <Image source={image.logo} style={{ width: 56, height: 56 }} />
-                <AppText weight="semibold" style={styles.logoText}>
+                <AppText
+                  weight="semibold"
+                  style={styles.logoText}
+                  numberOfLines={1}
+                >
                   BidKhong
                 </AppText>
               </View>
@@ -45,10 +49,11 @@ const WelcomePage = () => {
               <AppText
                 weight="medium"
                 style={[styles.subtitle, { fontWeight: 600 }]}
+                numberOfLines={1}
               >
                 Your Ultimate Auction Platform
               </AppText>
-              <AppText style={styles.description}>
+              <AppText style={styles.description} numberOfLines={3}>
                 Discover unique items, place bids in real-time, and win amazing
                 deals. Join thousands of happy bidders today!
               </AppText>
@@ -61,10 +66,19 @@ const WelcomePage = () => {
                   source={image.activeusers}
                   style={{ width: 37, height: 20 }}
                 />
-                <AppText weight="medium" style={styles.statNumber}>
+                <AppText
+                  weight="medium"
+                  style={styles.statNumber}
+                  numberOfLines={1}
+                >
                   122
                 </AppText>
-                <AppText weight="medium" style={styles.statLabel}>
+                <AppText
+                  weight="medium"
+                  style={styles.statLabel}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
                   Active Users
                 </AppText>
               </View>
@@ -74,10 +88,19 @@ const WelcomePage = () => {
                   source={image.product}
                   style={{ width: 24, height: 24 }}
                 />
-                <AppText weight="medium" style={styles.statNumber}>
+                <AppText
+                  weight="medium"
+                  style={styles.statNumber}
+                  numberOfLines={1}
+                >
                   51
                 </AppText>
-                <AppText weight="medium" style={styles.statLabel}>
+                <AppText
+                  weight="medium"
+                  style={styles.statLabel}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
                   Product Auctions
                 </AppText>
               </View>
@@ -97,10 +120,14 @@ const WelcomePage = () => {
                   />
                 </LinearGradient>
 
-                <AppText weight="semibold" style={styles.featureTitle}>
+                <AppText
+                  weight="semibold"
+                  style={styles.featureTitle}
+                  numberOfLines={1}
+                >
                   Real-Time Bidding
                 </AppText>
-                <AppText style={styles.featureDescription}>
+                <AppText style={styles.featureDescription} numberOfLines={2}>
                   Place bids instantly and track live auctions
                 </AppText>
               </View>
@@ -118,10 +145,14 @@ const WelcomePage = () => {
                   />
                 </LinearGradient>
 
-                <AppText weight="semibold" style={styles.featureTitle}>
+                <AppText
+                  weight="semibold"
+                  style={styles.featureTitle}
+                  numberOfLines={1}
+                >
                   Instant Alerts
                 </AppText>
-                <AppText style={styles.featureDescription}>
+                <AppText style={styles.featureDescription} numberOfLines={2}>
                   Get notified when you are outbid
                 </AppText>
               </View>
@@ -139,10 +170,14 @@ const WelcomePage = () => {
                   />
                 </LinearGradient>
 
-                <AppText weight="semibold" style={styles.featureTitle}>
+                <AppText
+                  weight="semibold"
+                  style={styles.featureTitle}
+                  numberOfLines={1}
+                >
                   Win Great Deals
                 </AppText>
-                <AppText style={styles.featureDescription}>
+                <AppText style={styles.featureDescription} numberOfLines={2}>
                   Amazing products at competitive prices
                 </AppText>
               </View>
@@ -163,10 +198,18 @@ const WelcomePage = () => {
                   end={{ x: 1, y: 0 }}
                   style={styles.gradientButton}
                 >
-                  <AppText weight="semibold" style={styles.primaryButtonText}>
+                  <AppText
+                    weight="semibold"
+                    style={styles.primaryButtonText}
+                    numberOfLines={1}
+                  >
                     Get Started Now
                   </AppText>
-                  <AppText weight="semibold" style={styles.arrow}>
+                  <AppText
+                    weight="semibold"
+                    style={styles.arrow}
+                    numberOfLines={1}
+                  >
                     →
                   </AppText>
                 </LinearGradient>
@@ -176,7 +219,11 @@ const WelcomePage = () => {
                 onPress={() => setAuthModalVisible(true)}
                 style={styles.secondaryButton}
               >
-                <AppText weight="semibold" style={styles.secondaryButtonText}>
+                <AppText
+                  weight="semibold"
+                  style={styles.secondaryButtonText}
+                  numberOfLines={1}
+                >
                   I Have an Account
                 </AppText>
               </TouchableOpacity>
@@ -231,12 +278,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   logoText: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "bold",
     color: "white",
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: "white",
     marginBottom: 15,
   },
@@ -267,13 +314,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   statNumber: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 400,
     color: "white",
     marginVertical: 8,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#B0C4DE",
   },
   featuresContainer: {
@@ -300,7 +347,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   featureTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "bold",
     color: "white",
     marginBottom: 8,

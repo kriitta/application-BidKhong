@@ -1,6 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  Animated,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -8,7 +9,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
-  Animated,
 } from "react-native";
 import { AppText } from "./appText";
 
@@ -146,10 +146,14 @@ export function HistoryFilterModal({
 
             {/* Header */}
             <View style={styles.header}>
-              <AppText weight="bold" style={styles.headerTitle}>
+              <AppText
+                weight="bold"
+                numberOfLines={1}
+                style={styles.headerTitle}
+              >
                 Filter History
               </AppText>
-              <AppText style={styles.headerSubtitle}>
+              <AppText numberOfLines={1} style={styles.headerSubtitle}>
                 Select period to view
               </AppText>
             </View>
@@ -161,7 +165,11 @@ export function HistoryFilterModal({
             >
               {/* Year Selection - Moved to top for better flow */}
               <View style={styles.section}>
-                <AppText weight="semibold" style={styles.sectionTitle}>
+                <AppText
+                  weight="semibold"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
                   YEAR
                 </AppText>
                 <View style={styles.yearGrid}>
@@ -177,6 +185,7 @@ export function HistoryFilterModal({
                     >
                       <AppText
                         weight={selectedYear === year ? "bold" : "medium"}
+                        numberOfLines={1}
                         style={[
                           styles.yearButtonText,
                           selectedYear === year && styles.yearButtonTextActive,
@@ -191,7 +200,11 @@ export function HistoryFilterModal({
 
               {/* Month Selection - Grid layout for better visibility */}
               <View style={styles.section}>
-                <AppText weight="semibold" style={styles.sectionTitle}>
+                <AppText
+                  weight="semibold"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
                   MONTH
                 </AppText>
                 <View style={styles.monthGrid}>
@@ -207,6 +220,7 @@ export function HistoryFilterModal({
                     >
                       <AppText
                         weight={selectedMonth === month.id ? "bold" : "medium"}
+                        numberOfLines={1}
                         style={[
                           styles.monthButtonText,
                           selectedMonth === month.id &&
@@ -226,10 +240,18 @@ export function HistoryFilterModal({
                   <AppText style={styles.iconText}>📅</AppText>
                 </View>
                 <View style={styles.selectedTextContainer}>
-                  <AppText weight="medium" style={styles.selectedLabel}>
+                  <AppText
+                    weight="medium"
+                    numberOfLines={1}
+                    style={styles.selectedLabel}
+                  >
                     Selected Period
                   </AppText>
-                  <AppText weight="bold" style={styles.selectedValue}>
+                  <AppText
+                    weight="bold"
+                    numberOfLines={1}
+                    style={styles.selectedValue}
+                  >
                     {months.find((m) => m.id === selectedMonth)?.name}{" "}
                     {selectedYear}
                   </AppText>
@@ -244,7 +266,11 @@ export function HistoryFilterModal({
                 style={styles.resetButton}
                 activeOpacity={0.7}
               >
-                <AppText weight="semibold" style={styles.resetButtonText}>
+                <AppText
+                  weight="semibold"
+                  numberOfLines={1}
+                  style={styles.resetButtonText}
+                >
                   Reset
                 </AppText>
               </TouchableOpacity>
@@ -260,7 +286,11 @@ export function HistoryFilterModal({
                   end={{ x: 1, y: 0 }}
                   style={styles.applyButton}
                 >
-                  <AppText weight="bold" style={styles.applyButtonText}>
+                  <AppText
+                    weight="bold"
+                    numberOfLines={1}
+                    style={styles.applyButtonText}
+                  >
                     Apply Filter
                   </AppText>
                 </LinearGradient>
@@ -361,8 +391,8 @@ const styles = StyleSheet.create({
     color: "#374151",
   },
   yearButtonTextActive: {
-      color: "#0087F5",
-      fontWeight: 600
+    color: "#0087F5",
+    fontWeight: 600,
   },
   monthGrid: {
     flexDirection: "row",
@@ -377,7 +407,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: "#F3F4F6",
     borderWidth: 2,
-      borderColor: "transparent",
+    borderColor: "transparent",
   },
   monthButtonActive: {
     backgroundColor: "#D4ECFF",
@@ -389,8 +419,8 @@ const styles = StyleSheet.create({
     color: "#374151",
   },
   monthButtonTextActive: {
-      color: "#0087F5",
-      fontWeight: 600
+    color: "#0087F5",
+    fontWeight: 600,
   },
   selectedBox: {
     flexDirection: "row",
