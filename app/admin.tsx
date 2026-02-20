@@ -463,10 +463,10 @@ const AdminScreen = () => {
             </View>
             <View style={styles.statCard}>
               <AppText weight="bold" style={styles.statNumber}>
-                ฿98K
+                51
               </AppText>
               <AppText weight="regular" style={styles.statLabel}>
-                Revenue
+                Product
               </AppText>
             </View>
           </View>

@@ -54,6 +54,13 @@ export const ENDPOINTS = {
     PROFILE_IMAGE: "/profile/image",
   },
 
+  // 📦 Product
+  PRODUCT: {
+    LIST: "/products",
+    CREATE: "/products",
+    DETAIL: (id: number) => `/products/${id}`,
+  },
+
   // 🏷️ Auction
   AUCTION: {
     LIST: "/auctions",
@@ -85,6 +92,8 @@ export const ENDPOINTS = {
   // 📂 Category
   CATEGORY: {
     LIST: "/categories",
+    DETAIL: (id: number) => `/categories/${id}`,
+    ALL_SUBCATEGORIES: "/subcategories",
     SUBCATEGORIES: (id: string) => `/categories/${id}/subcategories`,
     PRODUCTS: (id: string) => `/categories/${id}/products`,
   },

@@ -107,6 +107,8 @@ export const image = {
     support: require("./support.png"),
     about: require("./about.png"),
     logout: require("./logout.png"),
+    all_product: require("./all_product.png"),
+    location_seller: require("./location_seller.png"),
     
     
 };

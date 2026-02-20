@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Image,
   Keyboard,
@@ -13,17 +14,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
+import { apiService, getFullImageUrl } from "../../utils/api";
+import { Product } from "../../utils/api/types";
 import { AppText } from "../components/appText";
-
-interface Auction {
-  id: number;
-  name: string;
-  time: string;
-  image: any;
-  isHot?: boolean;
-  isEnding?: boolean;
-  isIncoming?: boolean;
-}
 
 const ViewAllPage = () => {
   const { type } = useLocalSearchParams();
@@ -34,6 +27,36 @@ const ViewAllPage = () => {
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const lottieRef = useRef<LottieView>(null);
   const searchInputRef = useRef<TextInput>(null);
+
+  // ─── Products from API ───
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const typeStr = (type as string) || "hot";
+  const typeTitle =
+    {
+      hot: "Hot Auctions",
+      ending: "Ending Soon",
+      default: "All Product",
+      incoming: "Incoming",
+    }[typeStr] || "All Auctions";
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const res = await apiService.product.getProducts({ per_page: 100 });
+        const all = res.data ?? [];
+        // filter ด้วย tag ฝั่ง frontend
+        setProducts(all.filter((p) => p.tag === typeStr));
+      } catch (error: any) {
+        console.error("Failed to fetch products:", error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProducts();
+  }, [typeStr]);
 
   useEffect(() => {
     Animated.parallel([
@@ -49,176 +72,42 @@ const ViewAllPage = () => {
     ]).start();
   }, [scaleAnim, opacityAnim]);
 
-  // Mock data for different auction types
-  const allAuctions: { [key: string]: Auction[] } = {
-    hot: [
-      {
-        id: 1,
-        name: "Macbook Pro M3",
-        time: "21:17:56",
-        image: image.macbook,
-        isHot: true,
-      },
-      {
-        id: 2,
-        name: "BMW i8",
-        time: "21:17:56",
-        image: image.i8,
-        isHot: true,
-      },
-      {
-        id: 3,
-        name: "Labubu New Collection",
-        time: "21:17:56",
-        image: image.labubu,
-        isHot: true,
-      },
-      {
-        id: 4,
-        name: "iPhone 14 Pro",
-        time: "18:45:30",
-        image: image.macbook,
-        isHot: true,
-      },
-      {
-        id: 5,
-        name: "Samsung S23",
-        time: "14:20:15",
-        image: image.i8,
-        isHot: true,
-      },
-      {
-        id: 6,
-        name: "iPad Pro",
-        time: "10:30:45",
-        image: image.labubu,
-        isHot: true,
-      },
-      {
-        id: 7,
-        name: "Apple Watch Series 8",
-        time: "09:15:20",
-        image: image.macbook,
-        isHot: true,
-      },
-      {
-        id: 8,
-        name: "Sony WH-1000XM5",
-        time: "08:45:00",
-        image: image.i8,
-        isHot: true,
-      },
-    ],
-    ending: [
-      {
-        id: 1,
-        name: "Macbook Pro M3",
-        time: "21:17:56",
-        image: image.macbook,
-        isEnding: true,
-      },
-      {
-        id: 2,
-        name: "BMW i8",
-        time: "21:17:56",
-        image: image.i8,
-        isEnding: true,
-      },
-      {
-        id: 3,
-        name: "Labubu New Collection",
-        time: "21:17:56",
-        image: image.labubu,
-        isEnding: true,
-      },
-      {
-        id: 4,
-        name: "Gaming Laptop ASUS ROG",
-        time: "19:30:22",
-        image: image.macbook,
-        isEnding: true,
-      },
-      {
-        id: 5,
-        name: "Nintendo Switch Pro",
-        time: "16:45:10",
-        image: image.i8,
-        isEnding: true,
-      },
-      {
-        id: 6,
-        name: "Vintage Camera",
-        time: "12:20:55",
-        image: image.labubu,
-        isEnding: true,
-      },
-    ],
-    incoming: [
-      {
-        id: 1,
-        name: "Macbook Pro M3",
-        time: "15 mins",
-        image: image.macbook,
-        isIncoming: true,
-      },
-      {
-        id: 2,
-        name: "BMW i8",
-        time: "2 hours",
-        image: image.i8,
-        isIncoming: true,
-      },
-      {
-        id: 3,
-        name: "Labubu New Collection",
-        time: "2 days",
-        image: image.labubu,
-        isIncoming: true,
-      },
-      {
-        id: 4,
-        name: "Playstation 5",
-        time: "3 hours",
-        image: image.macbook,
-        isIncoming: true,
-      },
-      {
-        id: 5,
-        name: "Mac Mini M2",
-        time: "1 day",
-        image: image.i8,
-        isIncoming: true,
-      },
-      {
-        id: 6,
-        name: "Studio Display",
-        time: "5 days",
-        image: image.labubu,
-        isIncoming: true,
-      },
-      {
-        id: 7,
-        name: "AirPods Pro 2",
-        time: "8 hours",
-        image: image.macbook,
-        isIncoming: true,
-      },
-    ],
+  /** ดึงรูปของ product */
+  const getProductImage = (product: Product) => {
+    if (product.images && product.images.length > 0) {
+      const url = getFullImageUrl(product.images[0].image_url);
+      if (url) return { uri: url };
+    }
+    if (product.image_url) {
+      const url = getFullImageUrl(product.image_url);
+      if (url) return { uri: url };
+    }
+    if (product.picture) {
+      const url = getFullImageUrl(product.picture);
+      if (url) return { uri: url };
+    }
+    return image.macbook;
   };
 
-  const typeStr = (type as string) || "hot";
-  const typeTitle =
-    {
-      hot: "Hot Auctions",
-      ending: "Ending Soon",
-      incoming: "Incoming",
-    }[typeStr] || "All Auctions";
+  /** แปลง auction_end_time เป็นข้อความเวลาที่เหลือ */
+  const formatTimeRemaining = (endTime: string) => {
+    const now = new Date();
+    const end = new Date(endTime);
+    const diff = end.getTime() - now.getTime();
+    if (diff <= 0) return "Ended";
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  };
 
   // Re-trigger empty state animation when search yields no results
   useEffect(() => {
     if (searchQuery.length > 0) {
-      const items = allAuctions[typeStr] || [];
-      const filtered = items.filter((item) =>
+      const filtered = products.filter((item) =>
         item.name.toLowerCase().includes(searchQuery.toLowerCase()),
       );
       if (filtered.length === 0) {
@@ -234,27 +123,20 @@ const ViewAllPage = () => {
         ]).start();
       }
     }
-  }, [searchQuery, typeStr]);
+  }, [searchQuery]);
 
   const filteredAuctions = useMemo(() => {
-    const items = allAuctions[typeStr] || [];
-    if (!searchQuery.trim()) return items;
-    return items.filter((item) =>
+    if (!searchQuery.trim()) return products;
+    return products.filter((item) =>
       item.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
-  }, [searchQuery, typeStr]);
+  }, [searchQuery, products]);
 
-  const handleProductPress = (item: Auction) => {
+  const handleProductPress = (item: Product) => {
     router.push({
       pathname: "/screens/product-detail",
       params: {
         productId: item.id.toString(),
-        productName: item.name,
-        productImage: JSON.stringify(item.image),
-        time: item.time,
-        isHot: item.isHot ? "true" : "false",
-        isEnding: item.isEnding ? "true" : "false",
-        isIncoming: item.isIncoming ? "true" : "false",
       },
     });
   };
@@ -330,7 +212,17 @@ const ViewAllPage = () => {
 
         {/* Auctions Grid */}
         <View style={styles.gridContainer}>
-          {filteredAuctions.length > 0 ? (
+          {loading ? (
+            <View style={styles.emptyContainer}>
+              <ActivityIndicator size="large" color="#0088FF" />
+              <AppText
+                weight="medium"
+                style={{ color: "#6B7280", fontSize: 14, marginTop: 12 }}
+              >
+                Loading...
+              </AppText>
+            </View>
+          ) : filteredAuctions.length > 0 ? (
             <View style={styles.grid}>
               {filteredAuctions.map((item) => (
                 <TouchableOpacity
@@ -338,46 +230,55 @@ const ViewAllPage = () => {
                   style={styles.auctionCard}
                   onPress={() => handleProductPress(item)}
                 >
-                  <View style={styles.auctionImageContainer}>
-                    {item.isHot && (
-                      <View style={styles.hotBadge}>
-                        <Image
-                          source={image.hot_badge}
-                          style={{ width: 13, height: 14 }}
-                        />
-                      </View>
-                    )}
-                    {item.isEnding && (
-                      <View style={styles.endingBadge}>
-                        <Image
-                          source={image.ending_badge}
-                          style={{ width: 18, height: 18 }}
-                        />
-                      </View>
-                    )}
-                    {item.isIncoming && (
-                      <View style={styles.incomingBadgeCard}>
-                        <Image
-                          source={image.incoming}
-                          style={{ width: 16, height: 16 }}
-                        />
-                      </View>
-                    )}
-                    <View style={styles.timeBadge}>
+                  {item.tag === "hot" && (
+                    <View style={styles.hotBadge}>
                       <Image
-                        source={image.incoming_time}
-                        style={{ width: 12, height: 12, marginRight: 4 }}
+                        source={image.hot_badge}
+                        style={{ width: 13, height: 14 }}
                       />
-                      <AppText
-                        weight="medium"
-                        style={styles.timeText}
-                        numberOfLines={1}
-                      >
-                        {item.time}
-                      </AppText>
                     </View>
-                    <Image source={item.image} style={styles.auctionImage} />
+                  )}
+                  {item.tag === "ending" && (
+                    <View style={styles.endingBadge}>
+                      <Image
+                        source={image.ending_badge}
+                        style={{ width: 18, height: 18 }}
+                      />
+                    </View>
+                  )}
+
+                  <View
+                    style={[
+                      styles.timeBadge,
+                      {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        backgroundColor:
+                          item.tag === "incoming"
+                            ? "#9b27b0b4"
+                            : "rgba(0,0,0,0.7)",
+                      },
+                    ]}
+                  >
+                    <Image
+                      source={image.incoming_time}
+                      style={{ width: 12, height: 12 }}
+                    />
+                    <AppText
+                      weight="medium"
+                      numberOfLines={1}
+                      style={styles.timeText}
+                    >
+                      {item.tag === "incoming"
+                        ? formatTimeRemaining(item.auction_start_time)
+                        : formatTimeRemaining(item.auction_end_time)}
+                    </AppText>
                   </View>
+                  <Image
+                    source={getProductImage(item)}
+                    style={[styles.auctionImage, { marginBottom: 8 }]}
+                  />
                   <AppText
                     weight="medium"
                     numberOfLines={1}
@@ -524,20 +425,23 @@ const styles = StyleSheet.create({
   auctionCard: {
     width: "48%",
     backgroundColor: "#fff",
-    borderRadius: 12,
-    marginBottom: 12,
-    overflow: "hidden",
-  },
-  auctionImageContainer: {
-    position: "relative",
-    width: "100%",
-    height: 160,
-    backgroundColor: "#f0f0f0",
+    borderRadius: 15,
+    marginBottom: 16,
+    alignItems: "center",
   },
   auctionImage: {
     width: "100%",
-    height: "100%",
-    resizeMode: "cover",
+    height: 140,
+    borderRadius: 10,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   hotBadge: {
     position: "absolute",
@@ -545,7 +449,7 @@ const styles = StyleSheet.create({
     left: 8,
     width: 24,
     height: 24,
-    borderRadius: 12,
+    borderRadius: 18,
     backgroundColor: "#FF0000",
     justifyContent: "center",
     alignItems: "center",
@@ -555,9 +459,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 8,
     left: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 18,
     backgroundColor: "#FF8C00",
     justifyContent: "center",
     alignItems: "center",
@@ -569,8 +473,20 @@ const styles = StyleSheet.create({
     left: 8,
     width: 24,
     height: 24,
-    borderRadius: 12,
+    borderRadius: 18,
     backgroundColor: "#9b27b0b4",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 2,
+  },
+  defaultBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 18,
+    backgroundColor: "#4285F4",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 2,
@@ -579,24 +495,24 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 8,
     right: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.6)",
-    paddingHorizontal: 6,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 4,
-    zIndex: 1,
+    borderRadius: 12,
+    zIndex: 2,
   },
   timeText: {
-    fontSize: 10,
     color: "#fff",
+    fontSize: 11,
+    fontWeight: "600",
   },
   auctionName: {
-    fontSize: 12,
-    color: "#111827",
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#000",
+    marginTop: 8,
     textAlign: "center",
+    paddingHorizontal: 4,
   },
   emptyContainer: {
     flex: 1,

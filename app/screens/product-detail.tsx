@@ -1,8 +1,9 @@
 import { image } from "@/assets/images";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   NativeScrollEvent,
@@ -18,90 +19,123 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
+import { apiService, getFullImageUrl } from "../../utils/api";
+import { Product } from "../../utils/api/types";
 import { AppText } from "../components/appText";
 import { AuthModal } from "../components/AuthModal";
 
 const { width } = Dimensions.get("window");
 
 const ProductDetailPage = () => {
-  const {
-    productId,
-    productName,
-    productImage,
-    time,
-    isHot,
-    isEnding,
-    isIncoming,
-  } = useLocalSearchParams();
+  const { productId } = useLocalSearchParams();
   const router = useRouter();
   const [bidAmount, setBidAmount] = useState("");
-  const [currentBid, setCurrentBid] = useState(12500);
-  const [buyNowPrice, setBuyNowPrice] = useState(19500);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const imageScrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
   const { isGuest } = useAuth();
   const [authModalVisible, setAuthModalVisible] = useState(false);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Mock product data - in real app, fetch from API
-  const productData = {
-    id: productId,
-    name: productName || "Macbook Pro M3",
-    images: [
-      productImage ? JSON.parse(productImage as string) : image.macbook,
-      image.i8,
-      image.labubu,
-    ],
-    image: productImage ? JSON.parse(productImage as string) : image.macbook,
-    time: time || "21:15:57",
-    isHot: isHot === "true",
-    isEnding: isEnding === "true",
-    isIncoming: isIncoming === "true",
-    seller: {
-      name: "Krittapas Wannawilai",
-      userId: "0816935880",
-      avatar: image.bang,
-    },
-    currentBid: currentBid,
-    buyNowPrice: buyNowPrice,
-    biddingHistory: [
-      {
-        id: 1,
-        bidder: "Krittapas Wannawilai",
-        amount: 12500,
-        time: "12 mins ago",
-      },
-      {
-        id: 2,
-        bidder: "Krittapas Wannawilai",
-        amount: 12500,
-        time: "12 mins ago",
-      },
-      {
-        id: 3,
-        bidder: "Krittapas Wannawilai",
-        amount: 12500,
-        time: "12 mins ago",
-      },
-    ],
-    auctionInfo: {
-      ends: "Dec 25, 2025 at 10:00 PM",
-      timeRemaining: "21:15:57",
-      startingBid: "฿8,000",
-      location: "Bangkok, Thailand",
-    },
-    description:
-      "Macbook Pro M3 Silver Macbook Pro M3 Silver Macbook Pro M3 Silver Macbook Pro M3 Silver Macbook Pro M3 Silver Macbook Pro M3 Silver Macbook Pro M3 Silver Macbook Pro M3 Silver",
-    tags: ["Electronics", "Computer"],
-    totalBids: 47,
+  // ─── Real-time countdown tick (re-render every second) ───
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        setLoading(true);
+        const id = Number(productId);
+        if (!id) return;
+        const data = await apiService.product.getProduct(id);
+        setProduct(data);
+      } catch (error: any) {
+        console.error("Failed to fetch product:", error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProduct();
+  }, [productId]);
+
+  /** ดึงรูป product เป็น array เพื่อแสดง carousel */
+  const getProductImages = () => {
+    if (!product) return [image.macbook];
+    const imgs: any[] = [];
+    if (product.images && product.images.length > 0) {
+      product.images.forEach((img) => {
+        const url = getFullImageUrl(img.image_url);
+        if (url) imgs.push({ uri: url });
+      });
+    }
+    if (imgs.length === 0 && product.image_url) {
+      const url = getFullImageUrl(product.image_url);
+      if (url) imgs.push({ uri: url });
+    }
+    if (imgs.length === 0 && product.picture) {
+      const url = getFullImageUrl(product.picture);
+      if (url) imgs.push({ uri: url });
+    }
+    if (imgs.length === 0) imgs.push(image.macbook);
+    return imgs;
   };
+
+  /** แปลง string ราคาเป็นตัวเลข format */
+  const formatPrice = (price: string | undefined) => {
+    if (!price) return "฿0";
+    const num = parseFloat(price);
+    return `฿${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  };
+
+  /** แปลง auction_end_time เป็นข้อความ */
+  const formatEndTime = (endTime: string) => {
+    const d = new Date(endTime);
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  /** คำนวณเวลาที่เหลือ */
+  const formatTimeRemaining = (endTime: string) => {
+    const now = new Date();
+    const end = new Date(endTime);
+    const diff = end.getTime() - now.getTime();
+    if (diff <= 0) return "Ended";
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  };
+
+  const isIncoming = product?.tag === "incoming";
+  const isHot = product?.tag === "hot";
+  const isEnding = product?.tag === "ending";
+  const isDefault = product?.tag === "default";
+  const currentBid = product ? parseFloat(product.current_price) : 0;
+  const buyNowPrice = product ? parseFloat(product.buyout_price) : 0;
+  const startingPrice = product ? parseFloat(product.starting_price) : 0;
+  const bidIncrement = product?.bid_increment
+    ? parseFloat(product.bid_increment)
+    : 0;
+  const minBidAmount = currentBid + bidIncrement;
+  const productImages = getProductImages();
 
   const handleBid = () => {
     if (isGuest) {
       setAuthModalVisible(true);
       return;
     }
-    // Handle bid logic
     console.log("Bid placed:", bidAmount);
   };
 
@@ -110,9 +144,44 @@ const ProductDetailPage = () => {
       setAuthModalVisible(true);
       return;
     }
-    // Handle buy now logic
     console.log("Buy now clicked");
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <ActivityIndicator size="large" color="#003d82" />
+      </SafeAreaView>
+    );
+  }
+
+  if (!product) {
+    return (
+      <SafeAreaView
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <AppText weight="medium" style={{ color: "#999", fontSize: 16 }}>
+          Product not found
+        </AppText>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{ marginTop: 16 }}
+        >
+          <AppText weight="semibold" style={{ color: "#003d82", fontSize: 16 }}>
+            Go Back
+          </AppText>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -141,9 +210,9 @@ const ProductDetailPage = () => {
               );
               setCurrentImageIndex(newIndex);
             }}
-            scrollEnabled={productData.images.length > 1}
+            scrollEnabled={productImages.length > 1}
           >
-            {productData.images.map((img, idx) => (
+            {productImages.map((img, idx) => (
               <View key={idx} style={[styles.imageContainer, { width }]}>
                 <Image
                   source={img}
@@ -155,9 +224,9 @@ const ProductDetailPage = () => {
           </ScrollView>
 
           {/* Image Counter Dots */}
-          {productData.images.length > 1 && (
+          {productImages.length > 1 && (
             <View style={styles.dotsContainer}>
-              {productData.images.map((_, idx) => (
+              {productImages.map((_, idx) => (
                 <View
                   key={idx}
                   style={[
@@ -172,14 +241,14 @@ const ProductDetailPage = () => {
           )}
 
           {/* Image Counter Badge */}
-          {productData.images.length > 1 && (
+          {productImages.length > 1 && (
             <View style={styles.imageCounterBadge}>
               <AppText
                 weight="medium"
                 style={styles.imageCounterText}
                 numberOfLines={1}
               >
-                {currentImageIndex + 1} / {productData.images.length}
+                {currentImageIndex + 1} / {productImages.length}
               </AppText>
             </View>
           )}
@@ -187,35 +256,102 @@ const ProductDetailPage = () => {
 
         {/* Tags */}
         <View style={styles.tagsContainer}>
-          {productData.tags.map((tag, index) => (
-            <View key={index} style={styles.tag}>
-              <AppText weight="medium" style={styles.tagText} numberOfLines={1}>
-                {tag}
+          {product.tag && (
+            <View
+              style={[
+                styles.tag,
+                {
+                  backgroundColor: isHot
+                    ? "#FFE5E5"
+                    : isEnding
+                      ? "#FFF3E0"
+                      : isDefault
+                        ? "#fff"
+                        : "#F3E5F5",
+                },
+              ]}
+            >
+              <AppText
+                weight="medium"
+                style={[
+                  styles.tagText,
+                  {
+                    color: isHot
+                      ? "#FF3B30"
+                      : isEnding
+                        ? "#FF8C00"
+                        : isDefault
+                          ? "#4285F4"
+                          : "#9B27B0",
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {isHot
+                  ? "🔥 Hot"
+                  : isEnding
+                    ? "⏰ Ending Soon"
+                    : isDefault
+                      ? ""
+                      : "🔜 Incoming"}
               </AppText>
             </View>
-          ))}
+          )}
+          {product.category && (
+            <View style={styles.tag}>
+              <AppText weight="medium" style={styles.tagText} numberOfLines={1}>
+                {product.category.name}
+              </AppText>
+            </View>
+          )}
+          {product.subcategory && (
+            <View style={styles.tag}>
+              <AppText weight="medium" style={styles.tagText} numberOfLines={1}>
+                {product.subcategory.name}
+              </AppText>
+            </View>
+          )}
         </View>
 
         {/* Product Title */}
         <View style={styles.titleSection}>
           <AppText weight="bold" numberOfLines={2} style={styles.productTitle}>
-            {productData.name}
+            {product.name}
           </AppText>
         </View>
 
         {/* Seller Info */}
         <View style={styles.sellerContainer}>
-          <Image
-            source={productData.seller.avatar}
+          {product.user?.profile_image ? (
+            <Image
+              source={{
+                uri: getFullImageUrl(product.user.profile_image)!,
+              }}
+              style={styles.sellerAvatar}
+            />
+          ) : (
+            <View style={[styles.sellerAvatar, styles.defaultAvatar]}>
+              <AppText weight="bold" style={styles.defaultAvatarText}>
+                {product.user?.name?.charAt(0).toUpperCase() || "U"}
+              </AppText>
+            </View>
+          )}
+          {/* <Image
+            source={
+              product.user?.profile_image
+                ? { uri: getFullImageUrl(product.user.profile_image)! }
+                : image.bang
+            }
             style={styles.sellerAvatar}
-          />
+          /> */}
+
           <View style={{ flex: 1 }}>
             <AppText
               weight="semibold"
               style={styles.sellerName}
               numberOfLines={1}
             >
-              {productData.seller.name}
+              {product.user?.name || "Unknown Seller"}
             </AppText>
             <View style={styles.userIdRow}>
               <Image
@@ -232,14 +368,16 @@ const ProductDetailPage = () => {
                 style={styles.sellerUserId}
                 numberOfLines={1}
               >
-                {productData.seller.userId}
+                {product.user?.phone_number ||
+                  product.user?.email ||
+                  `ID: ${product.user_id}`}
               </AppText>
             </View>
           </View>
         </View>
 
         {/* Incoming Banner */}
-        {productData.isIncoming && (
+        {isIncoming && (
           <View style={styles.incomingBanner}>
             <View style={styles.incomingBannerIcon}>
               <Image
@@ -260,14 +398,15 @@ const ProductDetailPage = () => {
                 style={styles.incomingBannerSub}
                 numberOfLines={2}
               >
-                This auction hasn't started yet. Starts in {productData.time}.
+                This auction hasn't started yet. Starts in{" "}
+                {formatTimeRemaining(product.auction_start_time)}.
               </AppText>
             </View>
           </View>
         )}
 
         {/* Incoming — show starting bid + buy now price */}
-        {productData.isIncoming && (
+        {isIncoming && (
           <View style={styles.bidInfoContainer}>
             <View
               style={[
@@ -294,7 +433,7 @@ const ProductDetailPage = () => {
                   style={[styles.bidLabel, { color: "#22C55E" }]}
                   numberOfLines={1}
                 >
-                  0 Bids
+                  {product.bids_count} Bids
                 </AppText>
               </View>
               <AppText
@@ -310,7 +449,7 @@ const ProductDetailPage = () => {
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
-                ฿8,000
+                {formatPrice(product.starting_price)}
               </AppText>
             </View>
             <View
@@ -361,7 +500,7 @@ const ProductDetailPage = () => {
         )}
 
         {/* Minimum bid increment — for incoming */}
-        {productData.isIncoming && (
+        {isIncoming && (
           <View style={styles.incomingMinBidNote}>
             <Image
               source={image.info}
@@ -377,13 +516,13 @@ const ProductDetailPage = () => {
               style={styles.minimumBidText}
               numberOfLines={1}
             >
-              Minimum bid increment: ฿100
+              Minimum bid increment: ฿{bidIncrement.toLocaleString()}
             </AppText>
           </View>
         )}
 
         {/* Bidding Info Cards — hidden for incoming */}
-        {!productData.isIncoming && (
+        {!isIncoming && (
           <View style={styles.bidInfoContainer}>
             {/* Current Bid Card */}
             <View
@@ -411,7 +550,7 @@ const ProductDetailPage = () => {
                   style={[styles.bidLabel, { color: "#22C55E" }]}
                   numberOfLines={1}
                 >
-                  {productData.totalBids} Bids
+                  {product.bids_count} Bids
                 </AppText>
               </View>
               <AppText
@@ -480,7 +619,7 @@ const ProductDetailPage = () => {
         )}
 
         {/* Bidding Section — hidden for incoming */}
-        {!productData.isIncoming && (
+        {!isIncoming && (
           <View style={styles.biddingSection}>
             <View style={styles.biddingInputContainer}>
               <View style={styles.bidInputWrapper}>
@@ -494,7 +633,7 @@ const ProductDetailPage = () => {
                 <View style={styles.inputRow}>
                   <TextInput
                     style={styles.biddingInput}
-                    placeholder="Min : ฿12,600"
+                    placeholder={`Min : ฿${minBidAmount.toLocaleString()}`}
                     placeholderTextColor="#9CA3AF"
                     keyboardType="decimal-pad"
                     value={bidAmount}
@@ -532,7 +671,7 @@ const ProductDetailPage = () => {
                     style={styles.minimumBidText}
                     numberOfLines={1}
                   >
-                    Minimum bid increment: ฿100
+                    Minimum bid increment: ฿{bidIncrement.toLocaleString()}
                   </AppText>
                 </View>
               </View>
@@ -559,14 +698,16 @@ const ProductDetailPage = () => {
                 style={styles.infoLabel}
                 numberOfLines={1}
               >
-                {productData.isIncoming ? "Starts" : "Ends"}
+                {isIncoming ? "Starts" : "Ends"}
               </AppText>
               <AppText
                 weight="semibold"
                 style={styles.infoValue}
                 numberOfLines={1}
               >
-                {productData.auctionInfo.ends}
+                {isIncoming
+                  ? formatEndTime(product.auction_start_time)
+                  : formatEndTime(product.auction_end_time)}
               </AppText>
             </View>
           </View>
@@ -584,19 +725,16 @@ const ProductDetailPage = () => {
                 style={styles.infoLabel}
                 numberOfLines={1}
               >
-                {productData.isIncoming ? "Starts In" : "Time Remaining"}
+                {isIncoming ? "Starts In" : "Time Remaining"}
               </AppText>
               <AppText
                 weight="semibold"
-                style={[
-                  styles.infoValue,
-                  productData.isIncoming && { color: "#9B27B0" },
-                ]}
+                style={[styles.infoValue, isIncoming && { color: "#9B27B0" }]}
                 numberOfLines={1}
               >
-                {productData.isIncoming
-                  ? productData.time
-                  : productData.auctionInfo.timeRemaining}
+                {isIncoming
+                  ? formatTimeRemaining(product.auction_start_time)
+                  : formatTimeRemaining(product.auction_end_time)}
               </AppText>
             </View>
           </View>
@@ -621,7 +759,7 @@ const ProductDetailPage = () => {
                 style={styles.infoValue}
                 numberOfLines={1}
               >
-                {productData.auctionInfo.startingBid}
+                {formatPrice(product.starting_price)}
               </AppText>
             </View>
           </View>
@@ -646,7 +784,7 @@ const ProductDetailPage = () => {
                 style={styles.infoValue}
                 numberOfLines={1}
               >
-                {productData.auctionInfo.location}
+                {product.location}
               </AppText>
             </View>
           </View>
@@ -662,12 +800,12 @@ const ProductDetailPage = () => {
             style={styles.descriptionText}
             numberOfLines={10}
           >
-            {productData.description}
+            {product.description}
           </AppText>
         </View>
 
         {/* Bid History — hidden for incoming */}
-        {!productData.isIncoming && (
+        {!isIncoming && (
           <View style={styles.bidHistorySection}>
             <AppText
               weight="bold"
@@ -685,40 +823,27 @@ const ProductDetailPage = () => {
               </AppText>
             </AppText>
 
-            {productData.biddingHistory.map((bid) => (
-              <View key={bid.id} style={styles.bidHistoryItem}>
-                <View>
-                  <AppText
-                    weight="semibold"
-                    style={styles.bidHistoryName}
-                    numberOfLines={1}
-                  >
-                    {bid.bidder}
-                  </AppText>
-                  <AppText
-                    weight="regular"
-                    style={styles.bidHistoryTime}
-                    numberOfLines={1}
-                  >
-                    {bid.time}
-                  </AppText>
-                </View>
-                <AppText
-                  weight="bold"
-                  style={styles.bidHistoryAmount}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                >
-                  ฿{bid.amount.toLocaleString("en-US")}
-                </AppText>
-              </View>
-            ))}
+            {product.bids_count > 0 ? (
+              <AppText
+                weight="regular"
+                style={{ color: "#9CA3AF", fontSize: 13, marginTop: 8 }}
+              >
+                Total {product.bids_count} bids placed
+              </AppText>
+            ) : (
+              <AppText
+                weight="regular"
+                style={{ color: "#9CA3AF", fontSize: 13, marginTop: 8 }}
+              >
+                No bids yet
+              </AppText>
+            )}
           </View>
         )}
       </ScrollView>
 
       {/* Bottom Action Buttons — hidden for incoming */}
-      {!productData.isIncoming && (
+      {!isIncoming && (
         <View
           style={[
             styles.bottomButtonsContainer,
@@ -1148,6 +1273,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#fff",
     fontWeight: 600,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginLeft: 10,
+  },
+  defaultAvatar: {
+    backgroundColor: "#003994",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.5)",
+  },
+  defaultAvatarText: {
+    fontSize: 18,
+    color: "#FFF",
   },
 });
 

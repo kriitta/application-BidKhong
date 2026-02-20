@@ -24,21 +24,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
 import { useAuth } from "../../contexts/AuthContext";
-import { getFullImageUrl } from "../../utils/api";
+import { apiService, getFullImageUrl } from "../../utils/api";
+import { Category, Product } from "../../utils/api/types";
 import { AppText } from "../components/appText";
 import { AuthModal } from "../components/AuthModal";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const RECENT_SEARCHES = ["Macbook", "BMW", "Labubu", "iPhone 16", "Nike Dunk"];
-const TRENDING_TAGS = [
-  { label: "🔥 Macbook Pro", color: "#FF3B30" },
-  { label: "🚗 BMW i8", color: "#007AFF" },
-  { label: "🧸 Labubu", color: "#AF52DE" },
-  { label: "👟 Nike Dunk", color: "#34C759" },
-  { label: "📱 iPhone 16", color: "#FF9500" },
-  { label: "🎮 PS5 Pro", color: "#5856D6" },
-];
 
 const HomePage = () => {
   const insets = useSafeAreaInsets();
@@ -72,90 +65,106 @@ const HomePage = () => {
   const emptyOpacityAnim = useRef(new Animated.Value(0)).current;
   const lottieRef = useRef<LottieView>(null);
 
-  // Use string ids to map across routes
-  const categories = [
-    { id: "electronics", name: "Electronics", image: image.electronic },
-    { id: "fashion", name: "Fashion", image: image.shirt },
-    { id: "collectibles", name: "Collectibles", image: image.collectible },
-    { id: "home", name: "Home", image: image.house },
-    { id: "vehicles", name: "Vehicles", image: image.car },
-    { id: "others", name: "Others", image: image.other },
-  ];
+  // ─── Categories from API ───
+  const [categories, setCategories] = useState<Category[]>([]);
 
-  const hotAuctions = [
-    {
-      id: 1,
-      name: "Macbook Pro M3",
-      time: "21:17:56",
-      image: image.macbook,
-      isHot: true,
-    },
-    {
-      id: 2,
-      name: "BMW i8",
-      time: "21:17:56",
-      image: image.i8,
-      isHot: true,
-    },
-    {
-      id: 3,
-      name: "Labubu New Collection",
-      time: "21:17:56",
-      image: image.labubu,
-      isHot: true,
-    },
-  ];
+  // Image mapping สำหรับ category (API ไม่ส่งรูปมา)
+  const CATEGORY_IMAGES: Record<string, any> = {
+    Electronics: image.electronic,
+    Fashion: image.shirt,
+    Collectibles: image.collectible,
+    Home: image.house,
+    Vehicles: image.car,
+    Others: image.other,
+  };
 
-  const endingSoon = [
-    {
-      id: 1,
-      name: "Macbook Pro M3",
-      time: "21:17:56",
-      image: image.macbook,
-    },
-    {
-      id: 2,
-      name: "BMW i8",
-      time: "21:17:56",
-      image: image.i8,
-    },
-    {
-      id: 3,
-      name: "Labubu New Collection",
-      time: "21:17:56",
-      image: image.labubu,
-    },
-  ];
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await apiService.category.getCategories();
+        setCategories(data);
+      } catch (error: any) {
+        console.error("Failed to fetch categories:", error.message);
+      }
+    };
+    fetchCategories();
+  }, []);
 
-  const incoming = [
-    {
-      id: 1,
-      name: "Macbook Pro M3",
-      time: "15 mins",
-      image: image.macbook,
-    },
-    {
-      id: 2,
-      name: "BMW i8",
-      time: "2 hours",
-      image: image.i8,
-    },
-    {
-      id: 3,
-      name: "Labubu New Collection",
-      time: "2 days",
-      image: image.labubu,
-    },
-  ];
+  // ─── Products from API ───
+  const [hotAuctions, setHotAuctions] = useState<Product[]>([]);
+  const [endingSoon, setEndingSoon] = useState<Product[]>([]);
+  const [allProductDefault, setAllProductDefault] = useState<Product[]>([]);
+  const [incoming, setIncoming] = useState<Product[]>([]);
+
+  // ─── Real-time countdown tick (re-render every second) ───
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        // ดึงสินค้าทั้งหมดแล้ว filter ด้วย tag ฝั่ง frontend
+        // เพราะ backend อาจยังไม่รองรับ query param ?tag=xxx
+        const res = await apiService.product.getProducts({ per_page: 100 });
+        const all = res.data ?? [];
+        setHotAuctions(all.filter((p) => p.tag === "hot"));
+        setEndingSoon(all.filter((p) => p.tag === "ending"));
+        setAllProductDefault(all.filter((p) => p.tag === "default"));
+        setIncoming(all.filter((p) => p.tag === "incoming"));
+      } catch (error: any) {
+        console.error("Failed to fetch products:", error.message);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  /** ดึงรูปแรกของสินค้า หรือใช้ image_url / picture เป็น fallback */
+  const getProductImage = (product: Product) => {
+    if (product.images && product.images.length > 0) {
+      const url = getFullImageUrl(product.images[0].image_url);
+      if (url) return { uri: url };
+    }
+    if (product.image_url) {
+      const url = getFullImageUrl(product.image_url);
+      if (url) return { uri: url };
+    }
+    if (product.picture) {
+      const url = getFullImageUrl(product.picture);
+      if (url) return { uri: url };
+    }
+    return image.macbook; // fallback
+  };
+
+  /** แปลง auction_end_time เป็นข้อความเวลาที่เหลือ */
+  const formatTimeRemaining = (endTime: string) => {
+    const now = new Date();
+    const end = new Date(endTime);
+    const diff = end.getTime() - now.getTime();
+    if (diff <= 0) return "Ended";
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  };
 
   // Aggregate all products for search
   const allProducts = useMemo(
     () => [
       ...hotAuctions.map((item) => ({ ...item, type: "hot" as const })),
       ...endingSoon.map((item) => ({ ...item, type: "ending" as const })),
+      ...allProductDefault.map((item) => ({
+        ...item,
+        type: "default" as const,
+      })),
       ...incoming.map((item) => ({ ...item, type: "incoming" as const })),
     ],
-    [],
+    [hotAuctions, endingSoon, allProductDefault, incoming],
   );
 
   const searchResults = useMemo(() => {
@@ -243,12 +252,6 @@ const HomePage = () => {
       pathname: "/screens/product-detail",
       params: {
         productId: item.id.toString(),
-        productName: item.name,
-        productImage: JSON.stringify(item.image),
-        time: item.time,
-        isHot: item.type === "hot" ? "true" : "false",
-        isEnding: item.type === "ending" ? "true" : "false",
-        isIncoming: item.type === "incoming" ? "true" : "false",
       },
     });
   }, []);
@@ -259,6 +262,8 @@ const HomePage = () => {
         return { label: "🔥 Hot", bg: "#FF3B30" };
       case "ending":
         return { label: "⏰ Ending", bg: "#FF8C00" };
+      case "default":
+        return { label: "📦 All", bg: "#4285F4" };
       case "incoming":
         return { label: "🔜 Incoming", bg: "#9B27B0" };
       default:
@@ -397,11 +402,6 @@ const HomePage = () => {
                                 pathname: "/screens/product-detail",
                                 params: {
                                   productId: item.id.toString(),
-                                  productName: item.name,
-                                  productImage: JSON.stringify(item.image),
-                                  time: item.time,
-                                  isHot: "true",
-                                  isEnding: "false",
                                 },
                               });
                             }, 300);
@@ -410,7 +410,7 @@ const HomePage = () => {
                         >
                           <View style={styles.searchHotImageWrap}>
                             <Image
-                              source={item.image}
+                              source={getProductImage(item)}
                               style={styles.searchHotImage}
                             />
                             <View style={styles.searchHotBadge}>
@@ -432,7 +432,7 @@ const HomePage = () => {
                                 weight="medium"
                                 style={{ fontSize: 9, color: "#fff" }}
                               >
-                                {item.time}
+                                {formatTimeRemaining(item.auction_end_time)}
                               </AppText>
                             </View>
                           </View>
@@ -527,7 +527,10 @@ const HomePage = () => {
                           onPress={() => handleSearchItemPress(item)}
                           activeOpacity={0.7}
                         >
-                          <Image source={item.image} style={s.resultImage} />
+                          <Image
+                            source={getProductImage(item)}
+                            style={s.resultImage}
+                          />
                           <View style={s.resultInfo}>
                             <AppText
                               weight="semibold"
@@ -556,7 +559,7 @@ const HomePage = () => {
                                 style={s.resultTime}
                                 numberOfLines={1}
                               >
-                                ⏱ {item.time}
+                                ⏱ {formatTimeRemaining(item.auction_end_time)}
                               </AppText>
                             </View>
                           </View>
@@ -735,9 +738,7 @@ const HomePage = () => {
                           color: "#D1D5DB",
                           marginLeft: "auto",
                         }}
-                      >
-                        ↗
-                      </AppText>
+                      ></AppText>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -762,11 +763,6 @@ const HomePage = () => {
                             pathname: "/screens/product-detail",
                             params: {
                               productId: item.id.toString(),
-                              productName: item.name,
-                              productImage: JSON.stringify(item.image),
-                              time: item.time,
-                              isHot: "true",
-                              isEnding: "false",
                             },
                           });
                         }}
@@ -774,7 +770,7 @@ const HomePage = () => {
                       >
                         <View style={styles.searchHotImageWrap}>
                           <Image
-                            source={item.image}
+                            source={getProductImage(item)}
                             style={styles.searchHotImage}
                           />
                           <View style={styles.searchHotBadge}>
@@ -792,7 +788,7 @@ const HomePage = () => {
                               weight="medium"
                               style={{ fontSize: 9, color: "#fff" }}
                             >
-                              {item.time}
+                              {formatTimeRemaining(item.auction_end_time)}
                             </AppText>
                           </View>
                         </View>
@@ -880,11 +876,13 @@ const HomePage = () => {
                               style={styles.srTimeText}
                               numberOfLines={1}
                             >
-                              {item.time}
+                              {item.type === "incoming"
+                                ? formatTimeRemaining(item.auction_start_time)
+                                : formatTimeRemaining(item.auction_end_time)}
                             </AppText>
                           </View>
                           <Image
-                            source={item.image}
+                            source={getProductImage(item)}
                             style={styles.productImage}
                           />
                         </View>
@@ -950,17 +948,19 @@ const HomePage = () => {
                 </AppText>
               </View>
               <View style={styles.categoriesGrid}>
-                {categories.map((category) => (
+                {categories.map((cat) => (
                   <TouchableOpacity
-                    key={category.id}
+                    key={cat.id}
                     style={styles.categoryCard}
                     onPress={() =>
-                      router.push(`/screens/category?category=${category.id}`)
+                      router.push(
+                        `/screens/category?categoryId=${cat.id}&categoryName=${encodeURIComponent(cat.name)}`,
+                      )
                     }
                   >
-                    {category.image ? (
+                    {CATEGORY_IMAGES[cat.name] ? (
                       <Image
-                        source={category.image}
+                        source={CATEGORY_IMAGES[cat.name]}
                         style={styles.categoryImage}
                       />
                     ) : (
@@ -973,7 +973,7 @@ const HomePage = () => {
                       style={styles.categoryText}
                       numberOfLines={1}
                     >
-                      {category.name}
+                      {cat.name}
                     </AppText>
                   </TouchableOpacity>
                 ))}
@@ -1013,7 +1013,7 @@ const HomePage = () => {
                 showsHorizontalScrollIndicator={false}
                 style={styles.horizontalScroll}
               >
-                {hotAuctions.map((item) => (
+                {hotAuctions.slice(0, 5).map((item) => (
                   <TouchableOpacity
                     key={item.id}
                     style={styles.auctionCard}
@@ -1022,23 +1022,16 @@ const HomePage = () => {
                         pathname: "/screens/product-detail",
                         params: {
                           productId: item.id.toString(),
-                          productName: item.name,
-                          productImage: JSON.stringify(item.image),
-                          time: item.time,
-                          isHot: item.isHot ? "true" : "false",
-                          isEnding: "false",
                         },
                       })
                     }
                   >
-                    {item.isHot && (
-                      <View style={styles.hotBadge}>
-                        <Image
-                          source={image.hot_badge}
-                          style={{ width: 13, height: 14 }}
-                        />
-                      </View>
-                    )}
+                    <View style={styles.hotBadge}>
+                      <Image
+                        source={image.hot_badge}
+                        style={{ width: 13, height: 14 }}
+                      />
+                    </View>
                     <View
                       style={[
                         styles.timeBadge,
@@ -1054,11 +1047,11 @@ const HomePage = () => {
                         numberOfLines={1}
                         style={styles.timeText}
                       >
-                        {item.time}
+                        {formatTimeRemaining(item.auction_end_time)}
                       </AppText>
                     </View>
                     <Image
-                      source={item.image}
+                      source={getProductImage(item)}
                       style={[styles.auctionImage, { marginBottom: 8 }]}
                     />
                     <AppText
@@ -1106,7 +1099,7 @@ const HomePage = () => {
                 showsHorizontalScrollIndicator={false}
                 style={styles.horizontalScroll}
               >
-                {endingSoon.map((item) => (
+                {endingSoon.slice(0, 5).map((item) => (
                   <TouchableOpacity
                     key={item.id}
                     style={styles.auctionCard}
@@ -1115,11 +1108,6 @@ const HomePage = () => {
                         pathname: "/screens/product-detail",
                         params: {
                           productId: item.id.toString(),
-                          productName: item.name,
-                          productImage: JSON.stringify(item.image),
-                          time: item.time,
-                          isHot: "false",
-                          isEnding: "true",
                         },
                       })
                     }
@@ -1145,11 +1133,91 @@ const HomePage = () => {
                         numberOfLines={1}
                         style={styles.timeText}
                       >
-                        {item.time}
+                        {formatTimeRemaining(item.auction_end_time)}
                       </AppText>
                     </View>
                     <Image
-                      source={item.image}
+                      source={getProductImage(item)}
+                      style={[styles.auctionImage, { marginBottom: 8 }]}
+                    />
+                    <AppText
+                      weight="medium"
+                      style={styles.auctionName}
+                      numberOfLines={1}
+                    >
+                      {item.name}
+                    </AppText>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* All Product */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Image
+                    source={image.all_product}
+                    style={{ width: 24, height: 24, marginRight: 8 }}
+                  />
+                  <AppText
+                    weight="semibold"
+                    numberOfLines={1}
+                    style={styles.sectionTitle}
+                  >
+                    All Product
+                  </AppText>
+                </View>
+                <TouchableOpacity
+                  onPress={() => router.push("/screens/view-all?type=default")}
+                >
+                  <AppText
+                    weight="regular"
+                    numberOfLines={1}
+                    style={styles.viewAll}
+                  >
+                    View All →
+                  </AppText>
+                </TouchableOpacity>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.horizontalScroll}
+              >
+                {allProductDefault.slice(0, 5).map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.auctionCard}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/screens/product-detail",
+                        params: {
+                          productId: item.id.toString(),
+                        },
+                      })
+                    }
+                  >
+                    <View
+                      style={[
+                        styles.timeBadge,
+                        { flexDirection: "row", alignItems: "center", gap: 6 },
+                      ]}
+                    >
+                      <Image
+                        source={image.incoming_time}
+                        style={{ width: 12, height: 12 }}
+                      />
+                      <AppText
+                        weight="medium"
+                        numberOfLines={1}
+                        style={styles.timeText}
+                      >
+                        {formatTimeRemaining(item.auction_end_time)}
+                      </AppText>
+                    </View>
+                    <Image
+                      source={getProductImage(item)}
                       style={[styles.auctionImage, { marginBottom: 8 }]}
                     />
                     <AppText
@@ -1197,7 +1265,7 @@ const HomePage = () => {
                 showsHorizontalScrollIndicator={false}
                 style={styles.horizontalScroll}
               >
-                {incoming.map((item) => (
+                {incoming.slice(0, 5).map((item) => (
                   <TouchableOpacity
                     key={item.id}
                     style={styles.auctionCard}
@@ -1206,12 +1274,6 @@ const HomePage = () => {
                         pathname: "/screens/product-detail",
                         params: {
                           productId: item.id.toString(),
-                          productName: item.name,
-                          productImage: JSON.stringify(item.image),
-                          time: item.time,
-                          isHot: "false",
-                          isEnding: "false",
-                          isIncoming: "true",
                         },
                       })
                     }
@@ -1235,11 +1297,11 @@ const HomePage = () => {
                         numberOfLines={1}
                         style={styles.incomingText}
                       >
-                        {item.time}
+                        {formatTimeRemaining(item.auction_start_time)}
                       </AppText>
                     </View>
                     <Image
-                      source={item.image}
+                      source={getProductImage(item)}
                       style={[styles.auctionImage, { marginBottom: 8 }]}
                     />
                     <AppText
@@ -1466,6 +1528,18 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 18,
     backgroundColor: "#FF8C00",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 2,
+  },
+  allProductBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 18,
+    backgroundColor: "#4285F4",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 2,

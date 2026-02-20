@@ -74,7 +74,64 @@ export interface ResetPasswordRequest {
   password: string;
 }
 
-// ─── Auction / Product ───────────────────────────────────────
+// ─── Product (จาก API /products) ─────────────────────────────
+
+export type ProductTag = "hot" | "ending" | "incoming" | "default";
+export type ProductStatus = "active" | "ended" | "pending";
+
+export interface ProductImage {
+  id: number;
+  product_id: number;
+  image_url: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Product {
+  id: number;
+  user_id: number;
+  category_id: number;
+  subcategory_id: number;
+  name: string;
+  description: string;
+  location: string;
+  picture: string | null;
+  starting_price: string;
+  min_price: string;
+  bid_increment: string;
+  buyout_price: string;
+  current_price: string;
+  auction_start_time: string;
+  auction_end_time: string;
+  image_url: string | null;
+  status: ProductStatus;
+  created_at: string;
+  updated_at: string;
+  bids_count: number;
+  tag: ProductTag;
+  images: ProductImage[];
+  // Relations (populated when included)
+  category?: import("./types").Category;
+  subcategory?: import("./types").Subcategory;
+  user?: import("./types").User;
+}
+
+export interface ProductPaginatedResponse {
+  current_page: number;
+  data: Product[];
+  first_page_url: string;
+  from: number | null;
+  last_page: number;
+  last_page_url: string;
+  next_page_url: string | null;
+  path: string;
+  per_page: number;
+  prev_page_url: string | null;
+  to: number | null;
+  total: number;
+}
+
+// ─── Auction / Product (legacy) ──────────────────────────────
 
 export type AuctionStatus = "incoming" | "active" | "ending" | "ended";
 export type AuctionListType = "hot" | "ending" | "incoming";
@@ -252,19 +309,22 @@ export interface TransactionFilter {
 // ─── Category ────────────────────────────────────────────────
 
 export interface Category {
-  id: string;
+  id: number;
   name: string;
-  icon?: string;
-  image?: string;
-  itemCount: number;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  subcategories?: Subcategory[];
 }
 
 export interface Subcategory {
-  id: string;
-  categoryId: string;
+  id: number;
+  category_id: number;
   name: string;
-  icon?: string;
-  itemCount: number;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  category?: Category;
 }
 
 export interface CategoryProduct {

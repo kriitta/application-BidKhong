@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   Image,
@@ -14,347 +15,52 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { apiService, getFullImageUrl } from "../../utils/api";
+import { Category, Product, Subcategory } from "../../utils/api/types";
 import { AppText } from "../components/appText";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const AUCTION_CARD_WIDTH = SCREEN_WIDTH * 0.44;
 
-const SUBCATEGORIES: Record<
-  string,
-  Array<{ id: string; name: string; image?: any }>
-> = {
-  electronics: [
-    {
-      id: "smartphones",
-      name: "Smartphones & Tablets",
-      image: image.smartphone,
-    },
-    { id: "computers", name: "Computers & Laptops", image: image.computer },
-    { id: "cameras", name: "Cameras & Photography", image: image.photography },
-    { id: "audio", name: "Audio & Headphones", image: image.headphone },
-    { id: "gaming", name: "Gaming & Consoles", image: image.game },
-    {
-      id: "wearables",
-      name: "Wearables & Smartwatch",
-      image: image.smartwatch,
-    },
-  ],
-  fashion: [
-    { id: "mens", name: "Men's Clothing", image: image.men },
-    { id: "womens", name: "Women's Clothing", image: image.women },
-    { id: "shoes", name: "Shoes & Footwear", image: image.shoes },
-    { id: "bags", name: "Bags & Accessories", image: image.bags },
-    { id: "watches", name: "Watches & Jewelry", image: image.jew },
-  ],
-  collectibles: [
-    { id: "art", name: "Art & Paintings", image: image.art },
-    { id: "toys", name: "Toys & Figures", image: image.toy },
-    { id: "coins", name: "Coins & Stamps", image: image.coin },
-    { id: "cards", name: "Trading Cards", image: image.card },
-    { id: "antiques", name: "Antiques & Vintage", image: image.antique },
-  ],
-  home: [
-    { id: "furniture", name: "Furniture", image: image.furniture },
-    { id: "decor", name: "Home Decor", image: image.decor },
-    { id: "kitchen", name: "Kitchen & Dining", image: image.kitchen },
-    { id: "garden", name: "Garden & Outdoor", image: image.garden },
-  ],
-  vehicles: [
-    { id: "cars", name: "Cars", image: image.cars },
-    { id: "motorcycles", name: "Motorcycles", image: image.motorcycle },
-    { id: "parts", name: "Parts & Accessories", image: image.part },
-    { id: "ev", name: "Electric Vehicles", image: image.elec_car },
-  ],
-  others: [
-    { id: "books", name: "Books & Magazines", image: image.book },
-    { id: "sports", name: "Sports & Fitness", image: image.sport },
-    { id: "music", name: "Musical Instruments", image: image.music },
-    { id: "pets", name: "Pet Supplies", image: image.pet },
-  ],
-};
-
-// Mock products per subcategory with auction info
-const MOCK_PRODUCTS: Record<
-  string,
-  Array<{
-    id: string;
-    name: string;
-    image: any;
-    time: string;
-    isHot: boolean;
-    isEnding: boolean;
-  }>
-> = {
-  // Electronics
-  smartphones: [
-    {
-      id: "1",
-      name: "iPhone 14 Pro",
-      image: image.macbook,
-      time: "21:17:56",
-      isHot: true,
-      isEnding: false,
-    },
-    {
-      id: "2",
-      name: "Samsung S23",
-      image: image.macbook,
-      time: "18:45:30",
-      isHot: false,
-      isEnding: true,
-    },
-    {
-      id: "3",
-      name: "iPhone 13",
-      image: image.macbook,
-      time: "05:20:15",
-      isHot: false,
-      isEnding: false,
-    },
-  ],
-  computers: [
-    {
-      id: "4",
-      name: "Macbook Pro M3",
-      image: image.macbook,
-      time: "21:17:56",
-      isHot: true,
-      isEnding: false,
-    },
-    {
-      id: "5",
-      name: "Dell XPS 15",
-      image: image.macbook,
-      time: "12:30:45",
-      isHot: false,
-      isEnding: true,
-    },
-  ],
-  cameras: [
-    {
-      id: "10",
-      name: "Sony A7IV",
-      image: image.electronic,
-      time: "14:20:00",
-      isHot: true,
-      isEnding: false,
-    },
-    {
-      id: "11",
-      name: "Canon EOS R6",
-      image: image.electronic,
-      time: "08:15:30",
-      isHot: false,
-      isEnding: true,
-    },
-  ],
-  audio: [
-    {
-      id: "12",
-      name: "AirPods Max",
-      image: image.electronic,
-      time: "10:45:00",
-      isHot: false,
-      isEnding: false,
-    },
-  ],
-  gaming: [
-    {
-      id: "13",
-      name: "PS5 Pro",
-      image: image.electronic,
-      time: "16:30:00",
-      isHot: true,
-      isEnding: false,
-    },
-    {
-      id: "14",
-      name: "Nintendo Switch 2",
-      image: image.electronic,
-      time: "03:20:15",
-      isHot: false,
-      isEnding: true,
-    },
-    {
-      id: "15",
-      name: "Xbox Series X",
-      image: image.electronic,
-      time: "19:00:00",
-      isHot: false,
-      isEnding: false,
-    },
-  ],
-  wearables: [],
-
-  // Fashion
-  mens: [
-    {
-      id: "8",
-      name: "Nike Air Jordan",
-      image: image.shirt,
-      time: "21:17:56",
-      isHot: true,
-      isEnding: false,
-    },
-  ],
-  womens: [
-    {
-      id: "9",
-      name: "Designer Dress",
-      image: image.shirt,
-      time: "10:30:00",
-      isHot: false,
-      isEnding: true,
-    },
-  ],
-  shoes: [
-    {
-      id: "16",
-      name: "Nike Dunk Low",
-      image: image.other,
-      time: "12:00:00",
-      isHot: true,
-      isEnding: false,
-    },
-    {
-      id: "17",
-      name: "Adidas Yeezy 350",
-      image: image.other,
-      time: "06:45:30",
-      isHot: false,
-      isEnding: true,
-    },
-  ],
-  bags: [],
-  watches: [
-    {
-      id: "18",
-      name: "Rolex Submariner",
-      image: image.other,
-      time: "20:00:00",
-      isHot: true,
-      isEnding: false,
-    },
-  ],
-
-  // Collectibles
-  art: [
-    {
-      id: "19",
-      name: "Abstract Oil Painting",
-      image: image.collectible,
-      time: "15:30:00",
-      isHot: false,
-      isEnding: false,
-    },
-  ],
-  toys: [
-    {
-      id: "6",
-      name: "Labubu Figure",
-      image: image.labubu,
-      time: "21:17:56",
-      isHot: false,
-      isEnding: false,
-    },
-    {
-      id: "7",
-      name: "Funko Pop Rare",
-      image: image.labubu,
-      time: "15:45:20",
-      isHot: true,
-      isEnding: false,
-    },
-  ],
-  coins: [],
-  cards: [
-    {
-      id: "20",
-      name: "Pokemon Charizard 1st Ed",
-      image: image.collectible,
-      time: "04:30:00",
-      isHot: true,
-      isEnding: true,
-    },
-  ],
-  antiques: [],
-
-  // Home
-  furniture: [
-    {
-      id: "21",
-      name: "IKEA Desk Set",
-      image: image.house,
-      time: "11:00:00",
-      isHot: false,
-      isEnding: false,
-    },
-  ],
-  decor: [],
-  kitchen: [],
-  garden: [],
-
-  // Vehicles
-  cars: [
-    {
-      id: "22",
-      name: "BMW i8 2020",
-      image: image.i8,
-      time: "23:59:59",
-      isHot: true,
-      isEnding: false,
-    },
-    {
-      id: "23",
-      name: "Mercedes C300",
-      image: image.car,
-      time: "18:30:00",
-      isHot: false,
-      isEnding: true,
-    },
-  ],
-  motorcycles: [
-    {
-      id: "24",
-      name: "Ducati Panigale V4",
-      image: image.car,
-      time: "14:00:00",
-      isHot: true,
-      isEnding: false,
-    },
-  ],
-  parts: [],
-  ev: [
-    {
-      id: "25",
-      name: "Tesla Model 3",
-      image: image.car,
-      time: "20:15:00",
-      isHot: false,
-      isEnding: false,
-    },
-  ],
-
-  // Others
-  books: [],
-  sports: [
-    {
-      id: "26",
-      name: "Golf Club Set",
-      image: image.other,
-      time: "09:30:00",
-      isHot: false,
-      isEnding: true,
-    },
-  ],
-  music: [],
-  pets: [],
+// ─── Image mapping สำหรับ subcategory (ใช้ name จาก API map กับรูปใน local) ───
+const SUBCATEGORY_IMAGES: Record<string, any> = {
+  "Smartphones & Tablets": image.smartphone,
+  "Computers & Laptops": image.computer,
+  "Cameras & Photography": image.photography,
+  "Audio & Headphones": image.headphone,
+  "Gaming & Consoles": image.game,
+  "Wearables & Smartwatch": image.smartwatch,
+  "Men's Clothing": image.men,
+  "Women's Clothing": image.women,
+  "Shoes & Footwear": image.shoes,
+  "Bags & Accessories": image.bags,
+  "Watches & Jewelry": image.jew,
+  "Art & Paintings": image.art,
+  "Toys & Figures": image.toy,
+  "Coins & Stamps": image.coin,
+  "Trading Cards": image.card,
+  "Antiques & Vintage": image.antique,
+  Furniture: image.furniture,
+  "Home Decor": image.decor,
+  "Kitchen & Dining": image.kitchen,
+  "Garden & Outdoor": image.garden,
+  Cars: image.cars,
+  Motorcycles: image.motorcycle,
+  "Parts & Accessories": image.part,
+  "Electric Vehicles": image.elec_car,
+  "Books & Magazines": image.book,
+  "Sports & Fitness": image.sport,
+  "Musical Instruments": image.music,
+  "Pet Supplies": image.pet,
 };
 
 const CategoryPage = () => {
-  const { category } = useLocalSearchParams();
+  const { categoryId, categoryName } = useLocalSearchParams();
   const router = useRouter();
-  const [selectedSub, setSelectedSub] = useState<string | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [category, setCategory] = useState<Category | null>(null);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [selectedSub, setSelectedSub] = useState<Subcategory | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [scaleAnim] = useState(new Animated.Value(0.5));
@@ -362,6 +68,98 @@ const CategoryPage = () => {
   const lottieRef = useRef<LottieView>(null);
   const searchInputRef = useRef<TextInput>(null);
 
+  // ─── Products state ───
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+
+  // ─── Fetch products เมื่อเลือก subcategory ───
+  useEffect(() => {
+    if (!selectedSub) {
+      setProducts([]);
+      return;
+    }
+    const fetchProducts = async () => {
+      try {
+        setProductsLoading(true);
+        const res = await apiService.product.getProducts({
+          subcategory_id: selectedSub.id,
+        });
+        setProducts(res.data);
+      } catch (error: any) {
+        console.error("Failed to fetch products:", error.message);
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+    fetchProducts();
+  }, [selectedSub]);
+
+  /** ดึงรูปของ product */
+  const getProductImage = (product: Product) => {
+    if (product.images && product.images.length > 0) {
+      const url = getFullImageUrl(product.images[0].image_url);
+      if (url) return { uri: url };
+    }
+    if (product.image_url) {
+      const url = getFullImageUrl(product.image_url);
+      if (url) return { uri: url };
+    }
+    if (product.picture) {
+      const url = getFullImageUrl(product.picture);
+      if (url) return { uri: url };
+    }
+    return image.macbook;
+  };
+
+  /** แปลงราคา */
+  const formatPrice = (price: string) => {
+    const num = parseFloat(price);
+    return `฿${num.toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
+  };
+
+  /** แปลง auction_end_time เป็นข้อความเวลาที่เหลือ */
+  const formatTimeRemaining = (endTime: string) => {
+    const now = new Date();
+    const end = new Date(endTime);
+    const diff = end.getTime() - now.getTime();
+    if (diff <= 0) return "Ended";
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  };
+
+  // ─── Fetch subcategories จาก API /subcategories แล้ว filter ตาม categoryId ───
+  useEffect(() => {
+    const fetchSubcategories = async () => {
+      try {
+        setLoading(true);
+        const allSubs = await apiService.category.getAllSubcategories();
+        // filter เฉพาะ subcategory ที่อยู่ใน category นี้
+        const filtered = allSubs.filter(
+          (sub) => sub.category_id === Number(categoryId),
+        );
+        setSubcategories(filtered);
+        // เอาชื่อ category จาก parent ของ subcategory ตัวแรก (ถ้ามี)
+        if (filtered.length > 0 && filtered[0].category) {
+          setCategory(filtered[0].category);
+        }
+      } catch (error: any) {
+        console.error("Failed to fetch subcategories:", error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (categoryId) {
+      fetchSubcategories();
+    }
+  }, [categoryId]);
+
+  // ─── Animation for empty state ───
   useEffect(() => {
     Animated.parallel([
       Animated.spring(scaleAnim, {
@@ -376,45 +174,30 @@ const CategoryPage = () => {
     ]).start();
   }, [scaleAnim, opacityAnim]);
 
-  // Re-trigger empty state animation when search yields no results
-  useEffect(() => {
-    if (selectedSub && searchQuery.length > 0) {
-      const products = (MOCK_PRODUCTS as any)[selectedSub] || [];
-      const filtered = products.filter((p: any) =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()),
-      );
-      if (filtered.length === 0) {
-        scaleAnim.setValue(0.5);
-        opacityAnim.setValue(0);
-        Animated.parallel([
-          Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }),
-          Animated.timing(opacityAnim, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      }
-    }
-  }, [searchQuery, selectedSub]);
-
-  const subcategories = useMemo(() => {
-    if (!category || typeof category !== "string") return [];
-    return SUBCATEGORIES[category] || [];
-  }, [category]);
-
+  // ─── Filter products by search ───
   const filteredProducts = useMemo(() => {
-    if (!selectedSub) return [];
-    const products = (MOCK_PRODUCTS as any)[selectedSub] || [];
     if (!searchQuery.trim()) return products;
-    return products.filter((p: any) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    return products.filter((item) =>
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
-  }, [selectedSub, searchQuery]);
+  }, [searchQuery, products]);
 
-  const handleSelectSub = (subId: string) => {
-    setSelectedSub(subId);
-  };
+  const displayTitle = selectedSub
+    ? selectedSub.name
+    : category?.name || String(categoryName || "Category");
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0088FF" />
+          <AppText weight="medium" style={styles.loadingText}>
+            Loading...
+          </AppText>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -423,6 +206,7 @@ const CategoryPage = () => {
           onPress={() => {
             if (selectedSub) {
               setSelectedSub(null);
+              setSearchQuery("");
             } else {
               router.back();
             }
@@ -431,11 +215,7 @@ const CategoryPage = () => {
           <Image source={image.back} style={{ width: 32, height: 32 }} />
         </TouchableOpacity>
         <AppText weight="semibold" style={styles.title} numberOfLines={1}>
-          {selectedSub
-            ? selectedSub.charAt(0).toUpperCase() + selectedSub.slice(1)
-            : category
-              ? `${String(category).charAt(0).toUpperCase() + String(category).slice(1)}`
-              : "Category"}
+          {displayTitle}
         </AppText>
         <View style={{ width: 40 }} />
       </View>
@@ -450,41 +230,87 @@ const CategoryPage = () => {
             >
               Select a subcategory
             </AppText>
-            <View style={styles.grid}>
-              {subcategories.map((s) => (
-                <TouchableOpacity
-                  key={s.id}
-                  style={styles.card}
-                  onPress={() => handleSelectSub(s.id)}
-                >
-                  <View style={styles.cardImageContainer}>
-                    {s.image && (
-                      <Image source={s.image} style={styles.cardImage} />
-                    )}
-                    <View style={styles.itemCountBadge}>
-                      <AppText
-                        weight="semibold"
-                        style={styles.itemCountText}
-                        numberOfLines={1}
-                      >
-                        {(MOCK_PRODUCTS[s.id] || []).length} items
-                      </AppText>
+
+            {/* ─── Subcategory Grid ─── */}
+            {subcategories.length > 0 ? (
+              <View style={styles.grid}>
+                {subcategories.map((sub) => (
+                  <TouchableOpacity
+                    key={sub.id}
+                    style={styles.card}
+                    onPress={() => setSelectedSub(sub)}
+                  >
+                    <View style={styles.cardImageContainer}>
+                      {SUBCATEGORY_IMAGES[sub.name] ? (
+                        <Image
+                          source={SUBCATEGORY_IMAGES[sub.name]}
+                          style={styles.cardImage}
+                        />
+                      ) : (
+                        <View
+                          style={[
+                            styles.cardImage,
+                            {
+                              backgroundColor: "#E8F0FF",
+                              justifyContent: "center",
+                              alignItems: "center",
+                            },
+                          ]}
+                        >
+                          <AppText style={{ fontSize: 32 }}>📦</AppText>
+                        </View>
+                      )}
                     </View>
-                  </View>
+                    <AppText
+                      weight="semibold"
+                      numberOfLines={1}
+                      style={styles.cardText}
+                    >
+                      {sub.name}
+                    </AppText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyStateContainer}>
+                <Animated.View
+                  style={[
+                    styles.emptyStateContent,
+                    {
+                      transform: [{ scale: scaleAnim }],
+                      opacity: opacityAnim,
+                    },
+                  ]}
+                >
+                  <LottieView
+                    ref={lottieRef}
+                    source={require("../../assets/animations/search.json")}
+                    autoPlay
+                    loop
+                    style={{ width: 180, height: 180, opacity: 0.8 }}
+                  />
                   <AppText
                     weight="semibold"
+                    style={styles.emptyStateTitle}
                     numberOfLines={1}
-                    style={styles.cardText}
                   >
-                    {s.name}
+                    No Subcategories Found
                   </AppText>
-                </TouchableOpacity>
-              ))}
-            </View>
+                  <AppText
+                    weight="regular"
+                    style={styles.emptyStateSubtitle}
+                    numberOfLines={2}
+                  >
+                    Try adjusting your search
+                  </AppText>
+                </Animated.View>
+              </View>
+            )}
           </View>
         ) : (
+          /* ─── Selected Subcategory → Products ─── */
           <View style={{ flex: 1 }}>
-            {/* Search Bar */}
+            {/* ─── Search Bar ─── */}
             <View style={styles.searchContainer}>
               <View
                 style={[
@@ -496,7 +322,7 @@ const CategoryPage = () => {
                 <TextInput
                   ref={searchInputRef}
                   style={styles.searchInput}
-                  placeholder={`Search in ${selectedSub}...`}
+                  placeholder={`Search in ${selectedSub.name}...`}
                   placeholderTextColor="#B0B0B0"
                   value={searchQuery}
                   onChangeText={setSearchQuery}
@@ -536,103 +362,122 @@ const CategoryPage = () => {
               )}
             </View>
 
-            <View style={styles.productsGrid}>
-              {filteredProducts.length > 0 ? (
-                filteredProducts.map((p: any) => (
+            {productsLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#0088FF" />
+                <AppText weight="medium" style={styles.loadingText}>
+                  Loading products...
+                </AppText>
+              </View>
+            ) : filteredProducts.length > 0 ? (
+              <View style={styles.productGrid}>
+                {filteredProducts.map((prod) => (
                   <TouchableOpacity
-                    key={p.id}
+                    key={prod.id}
                     style={styles.productCard}
                     onPress={() =>
                       router.push({
                         pathname: "/screens/product-detail",
-                        params: {
-                          productId: p.id,
-                          productName: p.name,
-                          productImage: JSON.stringify(p.image),
-                          time: p.time,
-                          isHot: p.isHot ? "true" : "false",
-                          isEnding: p.isEnding ? "true" : "false",
-                        },
+                        params: { productId: prod.id.toString() },
                       })
                     }
                   >
-                    <View style={styles.productImageContainer}>
-                      {p.isHot && (
-                        <View style={styles.hotBadge}>
-                          <Image
-                            source={image.hot_badge}
-                            style={{ width: 13, height: 14 }}
-                          />
-                        </View>
-                      )}
-                      {p.isEnding && (
-                        <View style={styles.endingBadge}>
-                          <Image
-                            source={image.ending_badge}
-                            style={{ width: 18, height: 18 }}
-                          />
-                        </View>
-                      )}
-                      <View style={styles.timeBadge}>
+                    {prod.tag === "hot" && (
+                      <View style={styles.hotBadge}>
                         <Image
-                          source={image.incoming_time}
-                          style={{ width: 12, height: 12, marginRight: 4 }}
+                          source={image.hot_badge}
+                          style={{ width: 13, height: 14 }}
                         />
-                        <AppText
-                          weight="medium"
-                          style={styles.timeText}
-                          numberOfLines={1}
-                        >
-                          {p.time}
-                        </AppText>
                       </View>
-                      <Image source={p.image} style={styles.productImage} />
+                    )}
+                    {prod.tag === "ending" && (
+                      <View style={styles.endingBadge}>
+                        <Image
+                          source={image.ending_badge}
+                          style={{ width: 18, height: 18 }}
+                        />
+                      </View>
+                    )}
+
+                    <View
+                      style={[
+                        styles.timeBadge,
+                        {
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                          backgroundColor:
+                            prod.tag === "incoming"
+                              ? "#9b27b0b4"
+                              : "rgba(0,0,0,0.7)",
+                        },
+                      ]}
+                    >
+                      <Image
+                        source={image.incoming_time}
+                        style={{ width: 12, height: 12 }}
+                      />
+                      <AppText
+                        weight="medium"
+                        numberOfLines={1}
+                        style={styles.productTimeText}
+                      >
+                        {prod.tag === "incoming"
+                          ? formatTimeRemaining(prod.auction_start_time)
+                          : formatTimeRemaining(prod.auction_end_time)}
+                      </AppText>
                     </View>
+                    <Image
+                      source={getProductImage(prod)}
+                      style={[styles.productImage, { marginBottom: 8 }]}
+                    />
                     <AppText
                       weight="medium"
                       numberOfLines={1}
                       style={styles.productName}
                     >
-                      {p.name}
+                      {prod.name}
                     </AppText>
                   </TouchableOpacity>
-                ))
-              ) : (
-                <View style={styles.emptyStateContainer}>
-                  <Animated.View
-                    style={[
-                      styles.emptyStateContent,
-                      {
-                        transform: [{ scale: scaleAnim }],
-                        opacity: opacityAnim,
-                      },
-                    ]}
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyStateContainer}>
+                <Animated.View
+                  style={[
+                    styles.emptyStateContent,
+                    {
+                      transform: [{ scale: scaleAnim }],
+                      opacity: opacityAnim,
+                    },
+                  ]}
+                >
+                  <LottieView
+                    ref={lottieRef}
+                    source={require("../../assets/animations/search.json")}
+                    autoPlay
+                    loop
+                    style={{ width: 180, height: 180, opacity: 0.8 }}
+                  />
+                  <AppText
+                    weight="semibold"
+                    style={styles.emptyStateTitle}
+                    numberOfLines={1}
                   >
-                    <LottieView
-                      ref={lottieRef}
-                      source={require("../../assets/animations/search.json")}
-                      autoPlay
-                      loop
-                      style={{ width: 180, height: 180, opacity: 0.8 }}
-                    />
-                    <AppText
-                      weight="semibold"
-                      style={styles.emptyStateTitle}
-                      numberOfLines={1}
-                    >
-                      No Products Found
-                    </AppText>
-                    <AppText
-                      weight="regular"
-                      style={styles.emptyStateSubtitle}
-                      numberOfLines={2}
-                    >
-                      Try adjusting your search
-                    </AppText>
-                  </Animated.View>
-                </View>
-              )}
-            </View>
+                    No Products Found
+                  </AppText>
+                  <AppText
+                    weight="regular"
+                    style={styles.emptyStateSubtitle}
+                    numberOfLines={2}
+                  >
+                    {searchQuery.trim()
+                      ? "Try adjusting your search"
+                      : `No products in "${selectedSub.name}" yet`}
+                  </AppText>
+                </Animated.View>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -642,6 +487,16 @@ const CategoryPage = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: "#6B7280",
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -666,6 +521,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cardImageContainer: {
     position: "relative",
@@ -673,16 +533,6 @@ const styles = StyleSheet.create({
     height: 140,
   },
   cardImage: { width: "100%", height: "100%", resizeMode: "cover" },
-  itemCountBadge: {
-    position: "absolute",
-    bottom: 8,
-    left: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  itemCountText: { fontSize: 12, color: "#fff" },
   cardText: {
     textAlign: "center",
     fontSize: 12,
@@ -704,10 +554,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 12,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 8,
@@ -751,37 +598,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#4285F4",
   },
-  productsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    justifyContent: "space-between",
-  },
-  productCard: {
-    width: "48%",
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    marginBottom: 12,
-    overflow: "hidden",
-  },
-  productImageContainer: {
-    position: "relative",
-    width: "100%",
-    height: 160,
-    backgroundColor: "#f0f0f0",
-  },
-  productImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
-  },
-  productName: {
-    fontSize: 12,
-    color: "#111827",
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    textAlign: "center",
-  },
   emptyStateContainer: {
     flex: 1,
     justifyContent: "center",
@@ -791,12 +607,6 @@ const styles = StyleSheet.create({
   emptyStateContent: {
     alignItems: "center",
   },
-  emptyStateImage: {
-    width: 120,
-    height: 120,
-    marginBottom: 16,
-    opacity: 0.6,
-  },
   emptyStateTitle: {
     fontSize: 18,
     color: "#111827",
@@ -805,19 +615,31 @@ const styles = StyleSheet.create({
   emptyStateSubtitle: {
     fontSize: 14,
     color: "#6B7280",
+    textAlign: "center",
   },
-  horizontalScroll: {
-    marginBottom: 20,
+  productGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 12,
   },
-  auctionCard: {
-    width: AUCTION_CARD_WIDTH,
-    marginRight: 15,
+  productCard: {
+    width: "48%",
     backgroundColor: "#fff",
     borderRadius: 15,
+    marginBottom: 16,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    paddingBottom: 8,
+  },
+  productImage: {
+    width: "100%",
+    height: 140,
+    borderRadius: 10,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   hotBadge: {
     position: "absolute",
@@ -825,7 +647,7 @@ const styles = StyleSheet.create({
     left: 8,
     width: 24,
     height: 24,
-    borderRadius: 12,
+    borderRadius: 18,
     backgroundColor: "#FF0000",
     justifyContent: "center",
     alignItems: "center",
@@ -835,10 +657,34 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 8,
     left: 8,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 24,
+    height: 24,
+    borderRadius: 18,
     backgroundColor: "#FF8C00",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 2,
+  },
+  incomingBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 18,
+    backgroundColor: "#9b27b0b4",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 2,
+  },
+  defaultBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 18,
+    backgroundColor: "#4285F4",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 2,
@@ -847,30 +693,24 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 8,
     right: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.6)",
-    paddingHorizontal: 6,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 4,
-    zIndex: 1,
-  },
-  timeText: {
-    fontSize: 10,
-    color: "#fff",
-  },
-  auctionImage: {
-    width: "100%",
-    height: 130,
     borderRadius: 12,
-    marginTop: 8,
+    zIndex: 2,
   },
-  auctionName: {
-    fontSize: 12,
-    color: "#111827",
-    paddingHorizontal: 8,
+  productTimeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  productName: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#000",
+    marginTop: 8,
     textAlign: "center",
-    marginTop: 6,
+    paddingHorizontal: 4,
   },
 });
 

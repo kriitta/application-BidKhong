@@ -29,6 +29,8 @@ import {
     LoginRequest,
     LoginResponse,
     PlaceBidRequest,
+    Product,
+    ProductPaginatedResponse,
     RegisterRequest,
     ReportStatus,
     ResetPasswordRequest,
@@ -435,15 +437,145 @@ const apiService = {
   },
 
   // ════════════════════════════════════════════════════════
-  // 📂 Category
+  // � Product
+  // ════════════════════════════════════════════════════════
+  product: {
+    /** GET /products — ดึงสินค้าทั้งหมด (รองรับ filter ด้วย tag, category_id, subcategory_id) */
+    getProducts: async (params?: {
+      tag?: string;
+      category_id?: number;
+      subcategory_id?: number;
+      page?: number;
+      per_page?: number;
+      status?: string;
+    }): Promise<ProductPaginatedResponse> => {
+      try {
+        const response = await apiClient.get<ProductPaginatedResponse>(
+          ENDPOINTS.PRODUCT.LIST,
+          { params },
+        );
+        return response.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    /** GET /products/:id — ดึงสินค้าชิ้นเดียว */
+    getProduct: async (id: number): Promise<Product> => {
+      try {
+        const response = await apiClient.get<Product>(
+          ENDPOINTS.PRODUCT.DETAIL(id),
+        );
+        return response.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    /** POST /products — สร้างสินค้าประมูลใหม่ (ส่งเป็น form-data เพราะมีไฟล์รูป) */
+    createProduct: async (data: {
+      name: string;
+      description: string;
+      starting_price: string;
+      bid_increment: string;
+      buyout_price: string;
+      auction_start_time: string;
+      auction_end_time: string;
+      category_id: number;
+      subcategory_id: number;
+      location: string;
+      picture?: string;
+      images?: string[];
+    }): Promise<Product> => {
+      try {
+        const formData = new FormData();
+        formData.append("name", data.name);
+        formData.append("description", data.description);
+        formData.append("starting_price", data.starting_price);
+        formData.append("bid_increment", data.bid_increment);
+        formData.append("buyout_price", data.buyout_price);
+        formData.append("auction_start_time", data.auction_start_time);
+        formData.append("auction_end_time", data.auction_end_time);
+        formData.append("category_id", data.category_id.toString());
+        formData.append("subcategory_id", data.subcategory_id.toString());
+        formData.append("location", data.location);
+
+        // แนบรูปหลัก (picture)
+        if (data.picture) {
+          const picUri = data.picture;
+          const picName = picUri.split("/").pop() || "picture.jpg";
+          const picType = picName.endsWith(".png") ? "image/png" : "image/jpeg";
+          formData.append("picture", {
+            uri: picUri,
+            name: picName,
+            type: picType,
+          } as any);
+        }
+
+        // แนบรูปเพิ่มเติม (images[])
+        if (data.images && data.images.length > 0) {
+          data.images.forEach((uri) => {
+            const imgName = uri.split("/").pop() || "image.jpg";
+            const imgType = imgName.endsWith(".png")
+              ? "image/png"
+              : "image/jpeg";
+            formData.append("images[]", {
+              uri,
+              name: imgName,
+              type: imgType,
+            } as any);
+          });
+        }
+
+        const response = await apiClient.post<Product>(
+          ENDPOINTS.PRODUCT.CREATE,
+          formData,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+          },
+        );
+        return response.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+  },
+
+  // ════════════════════════════════════════════════════════
+  // �📂 Category
   // ════════════════════════════════════════════════════════
   category: {
+    /** GET /categories — ดึง category ทั้งหมดพร้อม subcategories */
     getCategories: async (): Promise<Category[]> => {
       try {
-        const response = await apiClient.get<ApiResponse<Category[]>>(
+        const response = await apiClient.get<Category[]>(
           ENDPOINTS.CATEGORY.LIST,
         );
-        return response.data.data;
+        return response.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    /** GET /categories/:id — ดึง category เดียวพร้อม subcategories */
+    getCategory: async (id: number): Promise<Category> => {
+      try {
+        const response = await apiClient.get<Category>(
+          ENDPOINTS.CATEGORY.DETAIL(id),
+        );
+        return response.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    /** GET /subcategories — ดึง subcategory ทั้งหมดพร้อม parent category */
+    getAllSubcategories: async (): Promise<Subcategory[]> => {
+      try {
+        const response = await apiClient.get<Subcategory[]>(
+          ENDPOINTS.CATEGORY.ALL_SUBCATEGORIES,
+        );
+        return response.data;
       } catch (error) {
         throw new Error(handleApiError(error));
       }

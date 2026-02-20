@@ -21,7 +21,9 @@ export { default as apiService } from "./apiService";
 
 // Config & Helpers
 export {
-    ENDPOINTS, default as apiClient, getFullImageUrl,
+    ENDPOINTS,
+    default as apiClient,
+    getFullImageUrl,
     handleApiError,
     tokenManager
 } from "./config";
@@ -47,16 +49,18 @@ export type {
     BuyNowRequest,
     Category,
     CategoryProduct,
-    ChangePasswordRequest,
-    CreateAuctionRequest,
+    ChangePasswordRequest, CreateAuctionRequest,
     FAQ,
     ForgotPasswordRequest,
     HistoryBid,
     HistoryStats,
     LoginRequest,
     LoginResponse,
-    PlaceBidRequest,
-    RegisterRequest,
+    PlaceBidRequest, Product,
+    ProductImage,
+    ProductPaginatedResponse,
+    ProductStatus,
+    ProductTag, RegisterRequest,
     ReportStatus,
     ReportType,
     ResetPasswordRequest,
