@@ -59,6 +59,7 @@ export const ENDPOINTS = {
     LIST: "/products",
     CREATE: "/products",
     DETAIL: (id: number) => `/products/${id}`,
+    MY_PRODUCTS: "/my-products",
   },
 
   // 🏷️ Auction

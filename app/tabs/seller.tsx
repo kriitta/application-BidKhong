@@ -5,6 +5,7 @@ import DateTimePicker, {
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -628,7 +629,10 @@ const SellerPage = () => {
         {/* ════════ Location (Thai Province) ════════ */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Image source={image.location_seller} style={{ width: 14, height: 17 }} />
+            <Image
+              source={image.location_seller}
+              style={{ width: 14, height: 17 }}
+            />
             <AppText
               weight="medium"
               numberOfLines={1}
@@ -1286,6 +1290,23 @@ const SellerPage = () => {
           onChange={handleTimeChange}
         />
       )}
+
+      {/* Loading Overlay */}
+      {submitting && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingBox}>
+            <LottieView
+              source={require("../../assets/animations/loading.json")}
+              autoPlay
+              loop
+              style={{ width: 100, height: 100 }}
+            />
+            <AppText weight="medium" style={styles.loadingOverlayText}>
+              Creating auction...
+            </AppText>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -1621,6 +1642,31 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 999,
+  },
+  loadingBox: {
+    backgroundColor: "#FFF",
+    borderRadius: 20,
+    paddingHorizontal: 30,
+    paddingTop: 20,
+    paddingBottom: 16,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  loadingOverlayText: {
+    fontSize: 14,
+    color: "#374151",
+    marginTop: 4,
   },
 });
 

@@ -1,5 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
 import React, { useState } from "react";
 import {
   Alert,
@@ -24,7 +25,12 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-type AuthMode = "login" | "signup" | "forgot-password" | "reset-password";
+type AuthMode =
+  | "login"
+  | "pdpa"
+  | "signup"
+  | "forgot-password"
+  | "reset-password";
 
 const { height, width } = Dimensions.get("window");
 
@@ -40,6 +46,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pdpaAccepted, setPdpaAccepted] = useState(false);
 
   // Forgot/Reset Password states
   const [resetToken, setResetToken] = useState("");
@@ -55,6 +62,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
     setConfirmPassword("");
     setShowPassword(false);
     setShowConfirmPassword(false);
+    setPdpaAccepted(false);
     setResetToken("");
     setNewPassword("");
     setShowNewPassword(false);
@@ -179,6 +187,8 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
     switch (mode) {
       case "login":
         return "Log In";
+      case "pdpa":
+        return "Privacy Policy";
       case "signup":
         return "Sign Up";
       case "forgot-password":
@@ -192,6 +202,8 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
     switch (mode) {
       case "login":
         return "Sign in to place your bid and join the auction";
+      case "pdpa":
+        return "นโยบายคุ้มครองข้อมูลส่วนบุคคล (PDPA)";
       case "signup":
         return "Create your account to start bidding";
       case "forgot-password":
@@ -355,8 +367,8 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                   {/* Signup Link */}
                   <TouchableOpacity
                     onPress={() => {
-                      setMode("signup");
                       resetForm();
+                      setMode("pdpa");
                     }}
                     style={styles.signupLinkButton}
                   >
@@ -366,6 +378,166 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       style={styles.signupLinkText}
                     >
                       Sign Up
+                    </AppText>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* ═══════════════════════════════════════════ */}
+              {/* PDPA Consent */}
+              {/* ═══════════════════════════════════════════ */}
+              {mode === "pdpa" && (
+                <View>
+                  {/* PDPA Content Box */}
+                  <View style={styles.pdpaBox}>
+                    <ScrollView
+                      style={styles.pdpaScroll}
+                      nestedScrollEnabled
+                      showsVerticalScrollIndicator={true}
+                    >
+                      <AppText weight="bold" style={styles.pdpaSectionTitle}>
+                        1. ข้อมูลส่วนบุคคลที่เราจัดเก็บ
+                      </AppText>
+                      <AppText weight="regular" style={styles.pdpaText}>
+                        เมื่อท่านสมัครสมาชิกและใช้งานแอปพลิเคชัน BidKhong
+                        ระบบจะจัดเก็บข้อมูลส่วนบุคคลดังต่อไปนี้:{"\n"}•
+                        ชื่อ-นามสกุล (Full Name){"\n"}• อีเมล (Email Address)
+                        {"\n"}• หมายเลขโทรศัพท์ (Phone Number){"\n"}• รหัสผ่าน
+                        (Password) ในรูปแบบเข้ารหัส{"\n"}• รูปโปรไฟล์ (Profile
+                        Picture)
+                      </AppText>
+
+                      <AppText weight="bold" style={styles.pdpaSectionTitle}>
+                        2. วัตถุประสงค์ในการจัดเก็บข้อมูล
+                      </AppText>
+                      <AppText weight="regular" style={styles.pdpaText}>
+                        • เพื่อยืนยันตัวตนและจัดการบัญชีผู้ใช้{"\n"}•
+                        เพื่อดำเนินธุรกรรมการประมูลและซื้อขายสินค้า{"\n"}•
+                        เพื่อการติดต่อสื่อสารระหว่างผู้ซื้อและผู้ขาย{"\n"}•
+                        เพื่อจัดการกระเป๋าเงิน การเติมเงิน และการถอนเงิน{"\n"}•
+                        เพื่อปรับปรุงและพัฒนาการให้บริการ
+                      </AppText>
+
+                      <AppText weight="bold" style={styles.pdpaSectionTitle}>
+                        3. การเปิดเผยข้อมูล
+                      </AppText>
+                      <AppText weight="regular" style={styles.pdpaText}>
+                        ข้อมูลส่วนบุคคลของท่านจะถูกเปิดเผยเฉพาะในกรณีดังต่อไปนี้:
+                        {"\n"}• แสดงข้อมูลผู้ขายแก่ผู้ชนะการประมูล (ชื่อ,
+                        เบอร์โทร, อีเมล){"\n"}• เปิดเผยต่อผู้ดูแลระบบ (Admin)
+                        เพื่อตรวจสอบและแก้ไขปัญหา{"\n"}•
+                        เปิดเผยตามที่กฎหมายกำหนด
+                      </AppText>
+
+                      <AppText weight="bold" style={styles.pdpaSectionTitle}>
+                        4. สิทธิ์ของเจ้าของข้อมูล
+                      </AppText>
+                      <AppText weight="regular" style={styles.pdpaText}>
+                        ท่านมีสิทธิ์ตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562
+                        ดังนี้:{"\n"}• สิทธิ์ในการเข้าถึงและขอสำเนาข้อมูล{"\n"}•
+                        สิทธิ์ในการแก้ไขข้อมูลให้ถูกต้อง{"\n"}•
+                        สิทธิ์ในการขอลบข้อมูล{"\n"}•
+                        สิทธิ์ในการเพิกถอนความยินยอม{"\n"}• สิทธิ์ในการร้องเรียน
+                      </AppText>
+
+                      <AppText weight="bold" style={styles.pdpaSectionTitle}>
+                        5. การรักษาความปลอดภัย
+                      </AppText>
+                      <AppText weight="regular" style={styles.pdpaText}>
+                        BidKhong ใช้มาตรการรักษาความปลอดภัยที่เหมาะสม
+                        รวมถึงการเข้ารหัสรหัสผ่าน (Hashing) และการใช้ Token
+                        สำหรับยืนยันตัวตน
+                        เพื่อป้องกันการเข้าถึงข้อมูลโดยไม่ได้รับอนุญาต
+                      </AppText>
+                    </ScrollView>
+                  </View>
+
+                  {/* Checkbox */}
+                  <TouchableOpacity
+                    onPress={() => setPdpaAccepted(!pdpaAccepted)}
+                    style={styles.pdpaCheckboxRow}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.pdpaCheckbox,
+                        pdpaAccepted && styles.pdpaCheckboxChecked,
+                      ]}
+                    >
+                      {pdpaAccepted && (
+                        <AppText weight="bold" style={styles.pdpaCheckmark}>
+                          ✓
+                        </AppText>
+                      )}
+                    </View>
+                    <AppText weight="regular" style={styles.pdpaCheckboxLabel}>
+                      ข้าพเจ้ายอมรับนโยบายคุ้มครองข้อมูลส่วนบุคคล
+                      และยินยอมให้จัดเก็บ ใช้ และเปิดเผยข้อมูลตามที่ระบุข้างต้น
+                    </AppText>
+                  </TouchableOpacity>
+
+                  {/* Accept Button */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (!pdpaAccepted) {
+                        Alert.alert(
+                          "กรุณายอมรับ PDPA",
+                          "ท่านต้องยอมรับนโยบายคุ้มครองข้อมูลส่วนบุคคลก่อนสมัครสมาชิก",
+                        );
+                        return;
+                      }
+                      setMode("signup");
+                    }}
+                    style={[
+                      styles.primaryButtonWrapper,
+                      { opacity: pdpaAccepted ? 1 : 0.5 },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={
+                        pdpaAccepted ? ["#00112E", "#003994"] : ["#999", "#BBB"]
+                      }
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.primaryButton}
+                    >
+                      <AppText
+                        weight="semibold"
+                        numberOfLines={1}
+                        style={styles.primaryButtonText}
+                      >
+                        ยอมรับและดำเนินการต่อ
+                      </AppText>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  {/* Divider */}
+                  <View style={styles.dividerContainer}>
+                    <View style={styles.dividerLine} />
+                    <AppText
+                      weight="regular"
+                      numberOfLines={1}
+                      style={styles.dividerText}
+                    >
+                      Already have an account?
+                    </AppText>
+                    <View style={styles.dividerLine} />
+                  </View>
+
+                  {/* Back to Login */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setMode("login");
+                      resetForm();
+                    }}
+                    style={styles.loginLinkButton}
+                  >
+                    <AppText
+                      weight="semibold"
+                      numberOfLines={1}
+                      style={styles.loginLinkText}
+                    >
+                      Back to Log In
                     </AppText>
                   </TouchableOpacity>
                 </View>
@@ -802,6 +974,31 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
           </View>
         </KeyboardAvoidingView>
       </View>
+
+      {/* Loading Overlay */}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingBox}>
+            <LottieView
+              source={require("../../assets/animations/loading.json")}
+              autoPlay
+              loop
+              style={{ width: 100, height: 100 }}
+            />
+            <AppText weight="medium" style={styles.loadingOverlayText}>
+              {mode === "login"
+                ? "Logging in..."
+                : mode === "signup"
+                  ? "Creating account..."
+                  : mode === "forgot-password"
+                    ? "Sending..."
+                    : mode === "reset-password"
+                      ? "Resetting..."
+                      : "Please wait..."}
+            </AppText>
+          </View>
+        </View>
+      )}
     </Modal>
   );
 }
@@ -988,5 +1185,86 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#003994",
     fontWeight: "600",
+  },
+  // PDPA Styles
+  pdpaBox: {
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 12,
+    backgroundColor: "#FAFAFA",
+    padding: 16,
+    marginBottom: 16,
+    height: height * 0.35,
+  },
+  pdpaScroll: {
+    flexGrow: 1,
+  },
+  pdpaSectionTitle: {
+    fontSize: 13,
+    color: "#001A3D",
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  pdpaText: {
+    fontSize: 12,
+    color: "#555",
+    lineHeight: 20,
+  },
+  pdpaCheckboxRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 4,
+    gap: 10,
+  },
+  pdpaCheckbox: {
+    width: 22,
+    height: 22,
+    borderWidth: 2,
+    borderColor: "#CCC",
+    borderRadius: 4,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 2,
+    flexShrink: 0,
+  },
+  pdpaCheckboxChecked: {
+    backgroundColor: "#003994",
+    borderColor: "#003994",
+  },
+  pdpaCheckmark: {
+    fontSize: 14,
+    color: "#FFF",
+    marginTop: -1,
+  },
+  pdpaCheckboxLabel: {
+    fontSize: 12,
+    color: "#555",
+    flex: 1,
+    lineHeight: 18,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 999,
+  },
+  loadingBox: {
+    backgroundColor: "#FFF",
+    borderRadius: 20,
+    paddingHorizontal: 30,
+    paddingTop: 20,
+    paddingBottom: 16,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  loadingOverlayText: {
+    fontSize: 14,
+    color: "#374151",
+    marginTop: 4,
   },
 });

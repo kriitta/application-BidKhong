@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -135,7 +136,10 @@ const EditProfilePage = () => {
       setHasChanges(false);
       showSuccess();
     } catch (error: any) {
-      Alert.alert("Error", error.message || "An error occurred while saving profile");
+      Alert.alert(
+        "Error",
+        error.message || "An error occurred while saving profile",
+      );
     } finally {
       setSaving(false);
     }
@@ -268,7 +272,12 @@ const EditProfilePage = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0088FF" />
+        <LottieView
+          source={require("../../assets/animations/loading.json")}
+          autoPlay
+          loop
+          style={{ width: 120, height: 120 }}
+        />
       </View>
     );
   }
@@ -381,7 +390,13 @@ const EditProfilePage = () => {
 
           {/* Personal Info Section */}
           <View style={styles.section}>
-            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}> 
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
               <AppText
                 weight="semibold"
                 numberOfLines={1}
@@ -556,7 +571,10 @@ const EditProfilePage = () => {
                         Token
                       </AppText>
                       <View style={styles.inputWrapper}>
-                        <Image source={image.key} style={{ marginRight: 8, width: 18, height: 10 }} />
+                        <Image
+                          source={image.key}
+                          style={{ marginRight: 8, width: 18, height: 10 }}
+                        />
                         <TextInput
                           style={styles.textInput}
                           value={resetToken}
@@ -689,6 +707,27 @@ const EditProfilePage = () => {
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Loading Overlay */}
+      {(saving || sendingToken || resettingPassword) && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingBox}>
+            <LottieView
+              source={require("../../assets/animations/loading.json")}
+              autoPlay
+              loop
+              style={{ width: 100, height: 100 }}
+            />
+            <AppText weight="medium" style={styles.loadingOverlayText}>
+              {saving
+                ? "Saving..."
+                : sendingToken
+                  ? "Sending token..."
+                  : "Resetting password..."}
+            </AppText>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -964,6 +1003,31 @@ const styles = StyleSheet.create({
   saveBottomText: {
     fontSize: 16,
     color: "#FFF",
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 999,
+  },
+  loadingBox: {
+    backgroundColor: "#FFF",
+    borderRadius: 20,
+    paddingHorizontal: 30,
+    paddingTop: 20,
+    paddingBottom: 16,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  loadingOverlayText: {
+    fontSize: 14,
+    color: "#374151",
+    marginTop: 4,
   },
 });
 

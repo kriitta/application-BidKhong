@@ -247,8 +247,8 @@ const HelpSupportPage = () => {
 
   const tabs = [
     { key: "faq" as const, label: "❓ FAQ" },
-    { key: "report" as const, label: "🚨 แจ้งปัญหา" },
-    { key: "status" as const, label: "📋 สถานะ" },
+    { key: "report" as const, label: "🚨 Report" },
+    { key: "status" as const, label: "📋 Status" },
   ];
 
   const renderFAQTab = () => (

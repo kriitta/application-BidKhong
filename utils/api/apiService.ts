@@ -472,6 +472,22 @@ const apiService = {
       }
     },
 
+    /** GET /my-products — ดึงสินค้าที่ผู้ใช้วางขาย */
+    getMyProducts: async (): Promise<Product[]> => {
+      try {
+        const response = await apiClient.get<
+          ProductPaginatedResponse | Product[]
+        >(ENDPOINTS.PRODUCT.MY_PRODUCTS);
+        // Handle both paginated and array responses
+        if (Array.isArray(response.data)) {
+          return response.data;
+        }
+        return (response.data as ProductPaginatedResponse).data || [];
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
     /** POST /products — สร้างสินค้าประมูลใหม่ (ส่งเป็น form-data เพราะมีไฟล์รูป) */
     createProduct: async (data: {
       name: string;

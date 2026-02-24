@@ -1,7 +1,8 @@
-import { Redirect } from "expo-router";
-import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ActivityIndicator, View } from "react-native";
+import { Redirect } from "expo-router";
+import LottieView from "lottie-react-native";
+import { useEffect, useState } from "react";
+import { View } from "react-native";
 
 export default function Index() {
   const [ready, setReady] = useState(false);
@@ -25,7 +26,12 @@ export default function Index() {
           backgroundColor: "#001A3D",
         }}
       >
-        <ActivityIndicator size="large" color="#0088FF" />
+        <LottieView
+          source={require("../assets/animations/loading.json")}
+          autoPlay
+          loop
+          style={{ width: 120, height: 120 }}
+        />
       </View>
     );
   }

@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
   Dimensions,
   Image,
   Modal,
@@ -14,6 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppText } from "../components/appText";
+import { AppTextInput } from "../components/appTextInput";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -306,26 +308,65 @@ const VerifyProductPage = () => {
     );
   };
 
+  // Review Modal States
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewProductId, setReviewProductId] = useState<number | null>(null);
+  const [starAnimations] = useState(() =>
+    Array.from({ length: 5 }, () => new Animated.Value(1)),
+  );
+
+  const animateStar = (index: number) => {
+    Animated.sequence([
+      Animated.timing(starAnimations[index], {
+        toValue: 1.4,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+      Animated.timing(starAnimations[index], {
+        toValue: 1,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handleStarPress = (star: number) => {
+    setReviewRating(star);
+    animateStar(star - 1);
+  };
+
   const handleReceived = (productId: number) => {
+    setReviewProductId(productId);
+    setReviewRating(0);
+    setReviewComment("");
+    // Close detail modal first, then show review modal after delay
+    setModalVisible(false);
+    setTimeout(() => {
+      setShowReviewModal(true);
+    }, 400);
+  };
+
+  const handleSubmitReview = () => {
+    if (reviewRating === 0) {
+      Alert.alert("กรุณาให้คะแนน", "กรุณากดดาวเพื่อให้คะแนนผู้ขาย");
+      return;
+    }
+    if (reviewProductId !== null) {
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === reviewProductId ? { ...p, status: "received" } : p,
+        ),
+      );
+      setSelectedProduct((prev) =>
+        prev ? { ...prev, status: "received" } : null,
+      );
+    }
+    setShowReviewModal(false);
     Alert.alert(
-      "ได้รับสินค้าแล้ว",
-      "คุณได้รับสินค้าเรียบร้อยแล้วใช่ไหม? การดำเนินการนี้ไม่สามารถย้อนกลับได้",
-      [
-        { text: "ยกเลิก" },
-        {
-          text: "ได้รับแล้ว",
-          onPress: () => {
-            setProducts((prev) =>
-              prev.map((p) =>
-                p.id === productId ? { ...p, status: "received" } : p,
-              ),
-            );
-            setSelectedProduct((prev) =>
-              prev ? { ...prev, status: "received" } : null,
-            );
-          },
-        },
-      ],
+      "ขอบคุณสำหรับรีวิว! 🎉",
+      `คุณให้คะแนนผู้ขาย ${reviewRating} ดาว`,
     );
   };
 
@@ -371,22 +412,27 @@ const VerifyProductPage = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Image source={image.back} style={{ width: 32, height: 32 }} />
-        </TouchableOpacity>
-        <AppText
-          weight="bold"
-          style={styles.headerTitle}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-        >
-          Verify Product
-        </AppText>
-        <View style={{ width: 28 }} />
-      </View>
+      <LinearGradient colors={["#00112E", "#003994"]} style={styles.header}>
+        <SafeAreaView edges={["top"]} style={styles.headerInner}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+          >
+            <Image source={image.back} style={{ width: 32, height: 32 }} />
+          </TouchableOpacity>
+          <AppText
+            weight="bold"
+            style={styles.headerTitle}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            Verify Product
+          </AppText>
+          <View style={{ width: 40 }} />
+        </SafeAreaView>
+      </LinearGradient>
 
       {/* Tabs */}
       <View style={styles.tabsContainer}>
@@ -980,7 +1026,121 @@ const VerifyProductPage = () => {
           </SafeAreaView>
         )}
       </Modal>
-    </SafeAreaView>
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* Star Rating Review Modal */}
+      {/* ═══════════════════════════════════════════ */}
+      <Modal
+        visible={showReviewModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowReviewModal(false)}
+      >
+        <View style={styles.reviewOverlay}>
+          <View style={styles.reviewModal}>
+            <AppText style={styles.reviewEmoji}>
+              {reviewRating >= 5
+                ? "🤩"
+                : reviewRating >= 4
+                  ? "😊"
+                  : reviewRating >= 3
+                    ? "🙂"
+                    : reviewRating >= 2
+                      ? "😐"
+                      : reviewRating >= 1
+                        ? "😕"
+                        : "📦"}
+            </AppText>
+            <AppText weight="bold" style={styles.reviewTitle} numberOfLines={1}>
+              ยืนยันรับสินค้า
+            </AppText>
+            <AppText weight="regular" style={styles.reviewSubtitle}>
+              กรุณาให้คะแนนผู้ขายเพื่อช่วยให้ผู้ใช้คนอื่น{"\n"}
+              ตัดสินใจได้ดีขึ้น
+            </AppText>
+
+            {/* Star Rating */}
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => handleStarPress(star)}
+                  style={styles.starButton}
+                  activeOpacity={0.7}
+                >
+                  <Animated.Text
+                    style={[
+                      styles.starText,
+                      { transform: [{ scale: starAnimations[star - 1] }] },
+                    ]}
+                  >
+                    {star <= reviewRating ? "⭐" : "☆"}
+                  </Animated.Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Rating Label */}
+            <AppText weight="medium" style={styles.ratingLabel}>
+              {reviewRating === 0
+                ? "กดดาวเพื่อให้คะแนน"
+                : reviewRating === 1
+                  ? "แย่มาก"
+                  : reviewRating === 2
+                    ? "ไม่ค่อยดี"
+                    : reviewRating === 3
+                      ? "พอใช้"
+                      : reviewRating === 4
+                        ? "ดี"
+                        : "ยอดเยี่ยม!"}
+            </AppText>
+
+            {/* Comment Input */}
+            <View style={styles.reviewInputWrapper}>
+              <AppTextInput
+                placeholder="เขียนรีวิวเพิ่มเติม (ไม่บังคับ)..."
+                value={reviewComment}
+                onChangeText={setReviewComment}
+                multiline
+                numberOfLines={3}
+                style={styles.reviewInput}
+              />
+            </View>
+
+            {/* Buttons */}
+            <View style={styles.reviewButtonsRow}>
+              <TouchableOpacity
+                onPress={() => setShowReviewModal(false)}
+                style={styles.reviewCancelBtn}
+                activeOpacity={0.7}
+              >
+                <AppText weight="semibold" style={styles.reviewCancelText}>
+                  ยกเลิก
+                </AppText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSubmitReview}
+                style={styles.reviewSubmitBtn}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={
+                    reviewRating > 0 ? ["#00112E", "#003994"] : ["#999", "#BBB"]
+                  }
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.reviewSubmitGradient}
+                >
+                  <AppText weight="bold" style={styles.reviewSubmitText}>
+                    ส่งรีวิว
+                  </AppText>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 };
 
@@ -990,18 +1150,26 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F5F5",
   },
   header: {
+    paddingBottom: 15,
+  },
+  headerInner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    paddingTop: 10,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 16,
-    color: "#111827",
+    color: "#FFF",
   },
   tabsContainer: {
     backgroundColor: "#fff",
@@ -1405,6 +1573,109 @@ const styles = StyleSheet.create({
     color: "#D32F2F",
     textAlign: "center",
     lineHeight: 20,
+  },
+
+  // Review Modal Styles
+  reviewOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  reviewModal: {
+    backgroundColor: "#FFF",
+    borderRadius: 24,
+    padding: 28,
+    width: "100%",
+    maxWidth: 380,
+    alignItems: "center",
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+  },
+  reviewEmoji: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  reviewTitle: {
+    fontSize: 20,
+    color: "#001A3D",
+    marginBottom: 6,
+  },
+  reviewSubtitle: {
+    fontSize: 13,
+    color: "#888",
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 19,
+  },
+  starsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  starButton: {
+    padding: 4,
+  },
+  starText: {
+    fontSize: 36,
+  },
+  ratingLabel: {
+    fontSize: 13,
+    color: "#888",
+    marginBottom: 18,
+  },
+  reviewInputWrapper: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 12,
+    backgroundColor: "#FAFAFA",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 22,
+    minHeight: 80,
+  },
+  reviewInput: {
+    fontSize: 13,
+    color: "#333",
+    textAlignVertical: "top",
+    padding: 0,
+  },
+  reviewButtonsRow: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+  },
+  reviewCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
+  },
+  reviewCancelText: {
+    fontSize: 14,
+    color: "#666",
+  },
+  reviewSubmitBtn: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  reviewSubmitGradient: {
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  reviewSubmitText: {
+    fontSize: 14,
+    color: "#FFF",
   },
 });
 

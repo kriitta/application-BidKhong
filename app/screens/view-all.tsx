@@ -2,7 +2,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Animated,
   Image,
   Keyboard,
@@ -214,13 +213,12 @@ const ViewAllPage = () => {
         <View style={styles.gridContainer}>
           {loading ? (
             <View style={styles.emptyContainer}>
-              <ActivityIndicator size="large" color="#0088FF" />
-              <AppText
-                weight="medium"
-                style={{ color: "#6B7280", fontSize: 14, marginTop: 12 }}
-              >
-                Loading...
-              </AppText>
+              <LottieView
+                source={require("../../assets/animations/loading.json")}
+                autoPlay
+                loop
+                style={{ width: 120, height: 120 }}
+              />
             </View>
           ) : filteredAuctions.length > 0 ? (
             <View style={styles.grid}>

@@ -3,7 +3,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Animated,
   Dimensions,
   Image,
@@ -174,10 +173,20 @@ const CategoryPage = () => {
     ]).start();
   }, [scaleAnim, opacityAnim]);
 
-  // ─── Filter products by search ───
+  // ─── Filter products by search & exclude ended ───
   const filteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) return products;
-    return products.filter((item) =>
+    // ซ่อนสินค้าที่ ended แล้ว (ทั้ง status และเวลาจริง)
+    const activeProducts = products.filter((item) => {
+      if (item.status === "ended") return false;
+      if (
+        item.auction_end_time &&
+        new Date(item.auction_end_time).getTime() < Date.now()
+      )
+        return false;
+      return true;
+    });
+    if (!searchQuery.trim()) return activeProducts;
+    return activeProducts.filter((item) =>
       item.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
   }, [searchQuery, products]);
@@ -190,10 +199,12 @@ const CategoryPage = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0088FF" />
-          <AppText weight="medium" style={styles.loadingText}>
-            Loading...
-          </AppText>
+          <LottieView
+            source={require("../../assets/animations/loading.json")}
+            autoPlay
+            loop
+            style={{ width: 120, height: 120 }}
+          />
         </View>
       </SafeAreaView>
     );
@@ -364,10 +375,12 @@ const CategoryPage = () => {
 
             {productsLoading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#0088FF" />
-                <AppText weight="medium" style={styles.loadingText}>
-                  Loading products...
-                </AppText>
+                <LottieView
+                  source={require("../../assets/animations/loading.json")}
+                  autoPlay
+                  loop
+                  style={{ width: 120, height: 120 }}
+                />
               </View>
             ) : filteredProducts.length > 0 ? (
               <View style={styles.productGrid}>

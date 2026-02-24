@@ -1,11 +1,12 @@
 import { image } from "@/assets/images";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
 import React, { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Image,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
@@ -56,8 +57,18 @@ const ProfilePage = () => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0088FF" />
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <LottieView
+          source={require("../../assets/animations/loading.json")}
+          autoPlay
+          loop
+          style={{ width: 120, height: 120 }}
+        />
       </View>
     );
   }
@@ -70,246 +81,288 @@ const ProfilePage = () => {
         style={styles.headerBackground}
       />
 
-      {/* Profile Card */}
-      <View style={styles.profileCard}>
-        {/* Profile Picture */}
-        <View style={styles.profilePictureContainer}>
-          <View style={styles.profilePicture}>
-            {user?.profile_image ? (
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Card */}
+        <View style={styles.profileCard}>
+          {/* Profile Picture */}
+          <View style={styles.profilePictureContainer}>
+            <View style={styles.profilePicture}>
+              {user?.profile_image ? (
+                <Image
+                  source={{ uri: getFullImageUrl(user.profile_image)! }}
+                  style={{ width: 90, height: 90, borderRadius: 50 }}
+                />
+              ) : (
+                <View style={styles.defaultAvatar}>
+                  <AppText weight="bold" style={styles.defaultAvatarText}>
+                    {user?.name?.charAt(0).toUpperCase() || "U"}
+                  </AppText>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* User Info */}
+          <AppText weight="bold" numberOfLines={1} style={styles.userName}>
+            {user?.name || "Unknown User"}
+          </AppText>
+
+          <View style={styles.infoRow}>
+            <Image
+              source={image.calendar}
+              style={{ width: 13, height: 16, marginRight: 4 }}
+            />
+            <AppText
+              weight="regular"
+              numberOfLines={1}
+              style={styles.infoLabel}
+            >
+              Joined {formatJoinDate(user?.join_date || user?.created_at)}
+            </AppText>
+          </View>
+
+          <View style={styles.contactRow}>
+            <View style={styles.contactItem}>
               <Image
-                source={{ uri: getFullImageUrl(user.profile_image)! }}
-                style={{ width: 90, height: 90, borderRadius: 50 }}
+                source={image.mail}
+                style={{ width: 18, height: 14, marginRight: 4 }}
               />
-            ) : (
-              <View style={styles.defaultAvatar}>
-                <AppText weight="bold" style={styles.defaultAvatarText}>
-                  {user?.name?.charAt(0).toUpperCase() || "U"}
+              <AppText
+                weight="regular"
+                numberOfLines={1}
+                style={styles.contactValue}
+              >
+                {user?.email || "-"}
+              </AppText>
+            </View>
+            <View style={styles.contactSpacer} />
+            <View style={styles.contactItem}>
+              <Image
+                source={image.phone}
+                style={{ width: 15, height: 14, marginRight: 4 }}
+              />
+              <AppText
+                weight="regular"
+                numberOfLines={1}
+                style={styles.contactValue}
+              >
+                {user?.phone_number || "-"}
+              </AppText>
+            </View>
+          </View>
+
+          {/* Wallet Balance Summary */}
+          {user?.wallet && (
+            <View style={styles.walletSummary}>
+              <View style={styles.walletItem}>
+                <AppText
+                  weight="regular"
+                  numberOfLines={1}
+                  style={styles.walletLabel}
+                >
+                  Balance
+                </AppText>
+                <AppText
+                  weight="bold"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={styles.walletValue}
+                >
+                  {formatBalance(user.wallet.balance_available)}
                 </AppText>
               </View>
-            )}
-          </View>
-        </View>
-
-        {/* User Info */}
-        <AppText weight="bold" numberOfLines={1} style={styles.userName}>
-          {user?.name || "Unknown User"}
-        </AppText>
-
-        <View style={styles.infoRow}>
-          <Image
-            source={image.calendar}
-            style={{ width: 13, height: 16, marginRight: 4 }}
-          />
-          <AppText weight="regular" numberOfLines={1} style={styles.infoLabel}>
-            Joined {formatJoinDate(user?.join_date || user?.created_at)}
-          </AppText>
-        </View>
-
-        <View style={styles.contactRow}>
-          <View style={styles.contactItem}>
-            <Image
-              source={image.mail}
-              style={{ width: 18, height: 14, marginRight: 4 }}
-            />
-            <AppText
-              weight="regular"
-              numberOfLines={1}
-              style={styles.contactValue}
-            >
-              {user?.email || "-"}
-            </AppText>
-          </View>
-          <View style={styles.contactSpacer} />
-          <View style={styles.contactItem}>
-            <Image
-              source={image.phone}
-              style={{ width: 15, height: 14, marginRight: 4 }}
-            />
-            <AppText
-              weight="regular"
-              numberOfLines={1}
-              style={styles.contactValue}
-            >
-              {user?.phone_number || "-"}
-            </AppText>
-          </View>
-        </View>
-
-        {/* Wallet Balance Summary */}
-        {user?.wallet && (
-          <View style={styles.walletSummary}>
-            <View style={styles.walletItem}>
-              <AppText
-                weight="regular"
-                numberOfLines={1}
-                style={styles.walletLabel}
-              >
-                Balance
-              </AppText>
-              <AppText
-                weight="bold"
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                style={styles.walletValue}
-              >
-                {formatBalance(user.wallet.balance_available)}
-              </AppText>
+              <View style={styles.walletDivider} />
+              <View style={styles.walletItem}>
+                <AppText
+                  weight="regular"
+                  numberOfLines={1}
+                  style={styles.walletLabel}
+                >
+                  Pending
+                </AppText>
+                <AppText
+                  weight="bold"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={[styles.walletValue, { color: "#FF9800" }]}
+                >
+                  {formatBalance(user.wallet.balance_pending)}
+                </AppText>
+              </View>
+              <View style={styles.walletDivider} />
+              <View style={styles.walletItem}>
+                <AppText
+                  weight="regular"
+                  numberOfLines={1}
+                  style={styles.walletLabel}
+                >
+                  Total
+                </AppText>
+                <AppText
+                  weight="bold"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={[styles.walletValue, { color: "#003994" }]}
+                >
+                  {formatBalance(user.wallet.balance_total)}
+                </AppText>
+              </View>
             </View>
-            <View style={styles.walletDivider} />
-            <View style={styles.walletItem}>
-              <AppText
-                weight="regular"
-                numberOfLines={1}
-                style={styles.walletLabel}
-              >
-                Pending
-              </AppText>
-              <AppText
-                weight="bold"
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                style={[styles.walletValue, { color: "#FF9800" }]}
-              >
-                {formatBalance(user.wallet.balance_pending)}
-              </AppText>
+          )}
+
+          {/* Menu Items */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push("/screens/edit-profile")}
+          >
+            <View style={styles.menuIconContainer}>
+              <Image
+                source={image.editprofile}
+                style={{ width: 20, height: 20 }}
+              />
             </View>
-            <View style={styles.walletDivider} />
-            <View style={styles.walletItem}>
-              <AppText
-                weight="regular"
-                numberOfLines={1}
-                style={styles.walletLabel}
-              >
-                Total
-              </AppText>
-              <AppText
-                weight="bold"
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                style={[styles.walletValue, { color: "#003994" }]}
-              >
-                {formatBalance(user.wallet.balance_total)}
-              </AppText>
-            </View>
-          </View>
-        )}
-
-        {/* Menu Items */}
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => router.push("/screens/edit-profile")}
-        >
-          <View style={styles.menuIconContainer}>
-            <Image source={image.editprofile} style={{ width: 20, height: 20 }} />
-          </View>
-          <View style={styles.menuContent}>
-            <AppText
-              weight="semibold"
-              numberOfLines={1}
-              style={styles.menuTitle}
-            >
-              Edit Profile
-            </AppText>
-          </View>
-          <AppText weight="regular" style={styles.menuArrow}>
-            ›
-          </AppText>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => router.push("/screens/verify-product")}
-        >
-          <View
-            style={[styles.menuIconContainer, { backgroundColor: "#E8F5E9" }]}
-          >
-            <Image source={image.verify} style={{ width: 20, height: 20 }} />
-            
-          </View>
-          <View style={styles.menuContent}>
-            <AppText
-              weight="semibold"
-              numberOfLines={1}
-              style={styles.menuTitle}
-            >
-              Verify Product
-            </AppText>
-          </View>
-          <AppText weight="regular" style={styles.menuArrow}>
-            ›
-          </AppText>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => router.push("/screens/help-support")}
-        >
-          <View
-            style={[styles.menuIconContainer, { backgroundColor: "#FFF3E0" }]}
-          >
-            <Image source={image.support} style={{ width: 20, height: 20 }} />
-          </View>
-          <View style={styles.menuContent}>
-            <AppText
-              weight="semibold"
-              numberOfLines={1}
-              style={styles.menuTitle}
-            >
-              Help & Support
-            </AppText>
-          </View>
-          <AppText weight="regular" style={styles.menuArrow}>
-            ›
-          </AppText>
-        </TouchableOpacity>
-
-        {/* About App */}
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => router.push("/screens/about-app")}
-        >
-          <View style={[styles.menuIconContainer, { backgroundColor: "#f2def9" }]}>
-            <Image source={image.about} style={{ width: 20, height: 20 }} />
-          </View>
-          <View style={styles.menuContent}>
-            <AppText
-              weight="semibold"
-              numberOfLines={1}
-              style={styles.menuTitle}
-            >
-              About app
-            </AppText>
-          </View>
-          <AppText weight="regular" style={styles.menuArrow}>
-            ›
-          </AppText>
-        </TouchableOpacity>
-
-        {/* Logout Button */}
-        <TouchableOpacity
-          style={styles.logoutButtonWrapper}
-          onPress={handleLogout}
-        >
-          <LinearGradient
-            colors={["#FFE8E8", "#FFD6D6"]}
-            style={styles.logoutButton}
-          >
-            <View style={styles.logoutContent}>
-              <Image source={image.logout} style={{ width: 16, height: 16, marginRight: 16, }} />
+            <View style={styles.menuContent}>
               <AppText
                 weight="semibold"
                 numberOfLines={1}
-                style={styles.logoutText}
+                style={styles.menuTitle}
               >
-                Log out
+                Edit Profile
               </AppText>
             </View>
-            <AppText weight="regular" style={styles.logoutArrow}>
+            <AppText weight="regular" style={styles.menuArrow}>
               ›
             </AppText>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push("/screens/verify-product")}
+          >
+            <View
+              style={[styles.menuIconContainer, { backgroundColor: "#E8F5E9" }]}
+            >
+              <Image source={image.verify} style={{ width: 20, height: 20 }} />
+            </View>
+            <View style={styles.menuContent}>
+              <AppText
+                weight="semibold"
+                numberOfLines={1}
+                style={styles.menuTitle}
+              >
+                Verify Product
+              </AppText>
+            </View>
+            <AppText weight="regular" style={styles.menuArrow}>
+              ›
+            </AppText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push("/screens/my-products")}
+          >
+            <View
+              style={[styles.menuIconContainer, { backgroundColor: "#E3F2FD" }]}
+            >
+              <Image
+                source={image.all_product}
+                style={{ width: 20, height: 20 }}
+              />
+            </View>
+            <View style={styles.menuContent}>
+              <AppText
+                weight="semibold"
+                numberOfLines={1}
+                style={styles.menuTitle}
+              >
+                My Products
+              </AppText>
+            </View>
+            <AppText weight="regular" style={styles.menuArrow}>
+              ›
+            </AppText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push("/screens/help-support")}
+          >
+            <View
+              style={[styles.menuIconContainer, { backgroundColor: "#FFF3E0" }]}
+            >
+              <Image source={image.support} style={{ width: 20, height: 20 }} />
+            </View>
+            <View style={styles.menuContent}>
+              <AppText
+                weight="semibold"
+                numberOfLines={1}
+                style={styles.menuTitle}
+              >
+                Help & Support
+              </AppText>
+            </View>
+            <AppText weight="regular" style={styles.menuArrow}>
+              ›
+            </AppText>
+          </TouchableOpacity>
+
+          {/* About App */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push("/screens/about-app")}
+          >
+            <View
+              style={[styles.menuIconContainer, { backgroundColor: "#f2def9" }]}
+            >
+              <Image source={image.about} style={{ width: 20, height: 20 }} />
+            </View>
+            <View style={styles.menuContent}>
+              <AppText
+                weight="semibold"
+                numberOfLines={1}
+                style={styles.menuTitle}
+              >
+                About app
+              </AppText>
+            </View>
+            <AppText weight="regular" style={styles.menuArrow}>
+              ›
+            </AppText>
+          </TouchableOpacity>
+
+          {/* Logout Button */}
+          <TouchableOpacity
+            style={styles.logoutButtonWrapper}
+            onPress={handleLogout}
+          >
+            <LinearGradient
+              colors={["#FFE8E8", "#FFD6D6"]}
+              style={styles.logoutButton}
+            >
+              <View style={styles.logoutContent}>
+                <Image
+                  source={image.logout}
+                  style={{ width: 16, height: 16, marginRight: 16 }}
+                />
+                <AppText
+                  weight="semibold"
+                  numberOfLines={1}
+                  style={styles.logoutText}
+                >
+                  Log out
+                </AppText>
+              </View>
+              <AppText weight="regular" style={styles.logoutArrow}>
+                ›
+              </AppText>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -329,8 +382,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
+  },
   profileCard: {
-    flex: 1,
     marginTop: 140,
     marginHorizontal: 20,
     marginBottom: 40,
@@ -450,7 +506,7 @@ const styles = StyleSheet.create({
   },
   logoutButtonWrapper: {
     width: "100%",
-    marginTop: 60,
+    marginTop: 20,
     borderRadius: 12,
     overflow: "hidden",
   },
@@ -465,7 +521,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    paddingLeft: 12
+    paddingLeft: 12,
   },
   logoutIcon: {
     fontSize: 18,

@@ -8,8 +8,9 @@ import {
 } from "@expo-google-fonts/poppins";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useRouter, useSegments } from "expo-router";
+import LottieView from "lottie-react-native";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { View } from "react-native";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { tokenManager } from "../utils/api/config";
 import SplashScreen from "./components/SplashScreen";
@@ -95,7 +96,12 @@ function RootLayoutInner() {
           backgroundColor: "#001A3D",
         }}
       >
-        <ActivityIndicator size="large" color="#0088FF" />
+        <LottieView
+          source={require("../assets/animations/loading.json")}
+          autoPlay
+          loop
+          style={{ width: 120, height: 120 }}
+        />
       </View>
     );
   }
@@ -126,10 +132,16 @@ export default function RootLayout() {
         style={{
           flex: 1,
           justifyContent: "center",
+          alignItems: "center",
           backgroundColor: "#001A3D",
         }}
       >
-        <ActivityIndicator size="large" color="#0088FF" />
+        <LottieView
+          source={require("../assets/animations/loading.json")}
+          autoPlay
+          loop
+          style={{ width: 120, height: 120 }}
+        />
       </View>
     );
   }

@@ -1008,62 +1008,80 @@ const HomePage = () => {
                   </AppText>
                 </TouchableOpacity>
               </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.horizontalScroll}
-              >
-                {hotAuctions.slice(0, 5).map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.auctionCard}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/screens/product-detail",
-                        params: {
-                          productId: item.id.toString(),
-                        },
-                      })
-                    }
-                  >
-                    <View style={styles.hotBadge}>
-                      <Image
-                        source={image.hot_badge}
-                        style={{ width: 13, height: 14 }}
-                      />
-                    </View>
-                    <View
-                      style={[
-                        styles.timeBadge,
-                        { flexDirection: "row", alignItems: "center", gap: 6 },
-                      ]}
+              {hotAuctions.length === 0 ? (
+                <View style={styles.sectionEmpty}>
+                  <LottieView
+                    source={require("../../assets/animations/empty.json")}
+                    autoPlay
+                    loop
+                    style={styles.sectionEmptyLottie}
+                  />
+                  <AppText weight="medium" style={styles.sectionEmptyText}>
+                    No auctions available right now
+                  </AppText>
+                </View>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.horizontalScroll}
+                >
+                  {hotAuctions.slice(0, 5).map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.auctionCard}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/screens/product-detail",
+                          params: {
+                            productId: item.id.toString(),
+                          },
+                        })
+                      }
                     >
+                      <View style={styles.hotBadge}>
+                        <Image
+                          source={image.hot_badge}
+                          style={{ width: 13, height: 14 }}
+                        />
+                      </View>
+                      <View
+                        style={[
+                          styles.timeBadge,
+                          {
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                          },
+                        ]}
+                      >
+                        <Image
+                          source={image.incoming_time}
+                          style={{ width: 12, height: 12 }}
+                        />
+                        <AppText
+                          weight="medium"
+                          numberOfLines={1}
+                          style={styles.timeText}
+                        >
+                          {formatTimeRemaining(item.auction_end_time)}
+                        </AppText>
+                      </View>
                       <Image
-                        source={image.incoming_time}
-                        style={{ width: 12, height: 12 }}
+                        source={getProductImage(item)}
+                        style={[styles.auctionImage, { marginBottom: 8 }]}
                       />
                       <AppText
                         weight="medium"
+                        style={styles.auctionName}
                         numberOfLines={1}
-                        style={styles.timeText}
                       >
-                        {formatTimeRemaining(item.auction_end_time)}
+                        {item.name}
                       </AppText>
-                    </View>
-                    <Image
-                      source={getProductImage(item)}
-                      style={[styles.auctionImage, { marginBottom: 8 }]}
-                    />
-                    <AppText
-                      weight="medium"
-                      style={styles.auctionName}
-                      numberOfLines={1}
-                    >
-                      {item.name}
-                    </AppText>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
             </View>
 
             {/* Ending Soon */}
@@ -1094,62 +1112,80 @@ const HomePage = () => {
                   </AppText>
                 </TouchableOpacity>
               </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.horizontalScroll}
-              >
-                {endingSoon.slice(0, 5).map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.auctionCard}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/screens/product-detail",
-                        params: {
-                          productId: item.id.toString(),
-                        },
-                      })
-                    }
-                  >
-                    <View style={styles.soonBadge}>
-                      <Image
-                        source={image.ending_badge}
-                        style={{ width: 18, height: 18 }}
-                      />
-                    </View>
-                    <View
-                      style={[
-                        styles.timeBadge,
-                        { flexDirection: "row", alignItems: "center", gap: 6 },
-                      ]}
+              {endingSoon.length === 0 ? (
+                <View style={styles.sectionEmpty}>
+                  <LottieView
+                    source={require("../../assets/animations/empty.json")}
+                    autoPlay
+                    loop
+                    style={styles.sectionEmptyLottie}
+                  />
+                  <AppText weight="medium" style={styles.sectionEmptyText}>
+                    No ending soon auctions
+                  </AppText>
+                </View>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.horizontalScroll}
+                >
+                  {endingSoon.slice(0, 5).map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.auctionCard}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/screens/product-detail",
+                          params: {
+                            productId: item.id.toString(),
+                          },
+                        })
+                      }
                     >
+                      <View style={styles.soonBadge}>
+                        <Image
+                          source={image.ending_badge}
+                          style={{ width: 18, height: 18 }}
+                        />
+                      </View>
+                      <View
+                        style={[
+                          styles.timeBadge,
+                          {
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                          },
+                        ]}
+                      >
+                        <Image
+                          source={image.incoming_time}
+                          style={{ width: 12, height: 12 }}
+                        />
+                        <AppText
+                          weight="medium"
+                          numberOfLines={1}
+                          style={styles.timeText}
+                        >
+                          {formatTimeRemaining(item.auction_end_time)}
+                        </AppText>
+                      </View>
                       <Image
-                        source={image.incoming_time}
-                        style={{ width: 12, height: 12 }}
+                        source={getProductImage(item)}
+                        style={[styles.auctionImage, { marginBottom: 8 }]}
                       />
                       <AppText
                         weight="medium"
+                        style={styles.auctionName}
                         numberOfLines={1}
-                        style={styles.timeText}
                       >
-                        {formatTimeRemaining(item.auction_end_time)}
+                        {item.name}
                       </AppText>
-                    </View>
-                    <Image
-                      source={getProductImage(item)}
-                      style={[styles.auctionImage, { marginBottom: 8 }]}
-                    />
-                    <AppText
-                      weight="medium"
-                      style={styles.auctionName}
-                      numberOfLines={1}
-                    >
-                      {item.name}
-                    </AppText>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
             </View>
 
             {/* All Product */}
@@ -1180,56 +1216,74 @@ const HomePage = () => {
                   </AppText>
                 </TouchableOpacity>
               </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.horizontalScroll}
-              >
-                {allProductDefault.slice(0, 5).map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.auctionCard}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/screens/product-detail",
-                        params: {
-                          productId: item.id.toString(),
-                        },
-                      })
-                    }
-                  >
-                    <View
-                      style={[
-                        styles.timeBadge,
-                        { flexDirection: "row", alignItems: "center", gap: 6 },
-                      ]}
+              {allProductDefault.length === 0 ? (
+                <View style={styles.sectionEmpty}>
+                  <LottieView
+                    source={require("../../assets/animations/empty.json")}
+                    autoPlay
+                    loop
+                    style={styles.sectionEmptyLottie}
+                  />
+                  <AppText weight="medium" style={styles.sectionEmptyText}>
+                    No products listed yet
+                  </AppText>
+                </View>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.horizontalScroll}
+                >
+                  {allProductDefault.slice(0, 5).map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.auctionCard}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/screens/product-detail",
+                          params: {
+                            productId: item.id.toString(),
+                          },
+                        })
+                      }
                     >
+                      <View
+                        style={[
+                          styles.timeBadge,
+                          {
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                          },
+                        ]}
+                      >
+                        <Image
+                          source={image.incoming_time}
+                          style={{ width: 12, height: 12 }}
+                        />
+                        <AppText
+                          weight="medium"
+                          numberOfLines={1}
+                          style={styles.timeText}
+                        >
+                          {formatTimeRemaining(item.auction_end_time)}
+                        </AppText>
+                      </View>
                       <Image
-                        source={image.incoming_time}
-                        style={{ width: 12, height: 12 }}
+                        source={getProductImage(item)}
+                        style={[styles.auctionImage, { marginBottom: 8 }]}
                       />
                       <AppText
                         weight="medium"
+                        style={styles.auctionName}
                         numberOfLines={1}
-                        style={styles.timeText}
                       >
-                        {formatTimeRemaining(item.auction_end_time)}
+                        {item.name}
                       </AppText>
-                    </View>
-                    <Image
-                      source={getProductImage(item)}
-                      style={[styles.auctionImage, { marginBottom: 8 }]}
-                    />
-                    <AppText
-                      weight="medium"
-                      style={styles.auctionName}
-                      numberOfLines={1}
-                    >
-                      {item.name}
-                    </AppText>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
             </View>
 
             {/* Incoming */}
@@ -1260,60 +1314,74 @@ const HomePage = () => {
                   </AppText>
                 </TouchableOpacity>
               </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.horizontalScroll}
-              >
-                {incoming.slice(0, 5).map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.auctionCard}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/screens/product-detail",
-                        params: {
-                          productId: item.id.toString(),
-                        },
-                      })
-                    }
-                  >
-                    <View
-                      style={[
-                        styles.incomingBadge,
-                        {
-                          flexDirection: "row",
-                          alignItems: "center",
-                          paddingHorizontal: 6,
-                        },
-                      ]}
+              {incoming.length === 0 ? (
+                <View style={styles.sectionEmpty}>
+                  <LottieView
+                    source={require("../../assets/animations/empty.json")}
+                    autoPlay
+                    loop
+                    style={styles.sectionEmptyLottie}
+                  />
+                  <AppText weight="medium" style={styles.sectionEmptyText}>
+                    No incoming auctions
+                  </AppText>
+                </View>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.horizontalScroll}
+                >
+                  {incoming.slice(0, 5).map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.auctionCard}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/screens/product-detail",
+                          params: {
+                            productId: item.id.toString(),
+                          },
+                        })
+                      }
                     >
+                      <View
+                        style={[
+                          styles.incomingBadge,
+                          {
+                            flexDirection: "row",
+                            alignItems: "center",
+                            paddingHorizontal: 6,
+                          },
+                        ]}
+                      >
+                        <Image
+                          source={image.incoming_time}
+                          style={{ width: 14, height: 14, marginRight: 4 }}
+                        />
+                        <AppText
+                          weight="medium"
+                          numberOfLines={1}
+                          style={styles.incomingText}
+                        >
+                          {formatTimeRemaining(item.auction_start_time)}
+                        </AppText>
+                      </View>
                       <Image
-                        source={image.incoming_time}
-                        style={{ width: 14, height: 14, marginRight: 4 }}
+                        source={getProductImage(item)}
+                        style={[styles.auctionImage, { marginBottom: 8 }]}
                       />
                       <AppText
                         weight="medium"
+                        style={styles.auctionName}
                         numberOfLines={1}
-                        style={styles.incomingText}
                       >
-                        {formatTimeRemaining(item.auction_start_time)}
+                        {item.name}
                       </AppText>
-                    </View>
-                    <Image
-                      source={getProductImage(item)}
-                      style={[styles.auctionImage, { marginBottom: 8 }]}
-                    />
-                    <AppText
-                      weight="medium"
-                      style={styles.auctionName}
-                      numberOfLines={1}
-                    >
-                      {item.name}
-                    </AppText>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
             </View>
           </>
         )}
@@ -1814,6 +1882,20 @@ const styles = StyleSheet.create({
   srTimeText: {
     fontSize: 10,
     color: "#fff",
+  },
+  sectionEmpty: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+  },
+  sectionEmptyLottie: {
+    width: 120,
+    height: 120,
+  },
+  sectionEmptyText: {
+    fontSize: 13,
+    color: "#9CA3AF",
+    marginTop: 2,
   },
   emptyStateContainer: {
     width: "100%",

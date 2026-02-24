@@ -1,10 +1,11 @@
 import { image } from "@/assets/images";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Dimensions,
   Image,
@@ -36,6 +37,7 @@ type IncomingProduct = {
   description: string;
   submittedAt: string;
   scheduledStart: string;
+  scheduledEnd: string;
   status: "pending" | "approved" | "rejected";
 };
 
@@ -68,6 +70,7 @@ const MOCK_INCOMING: IncomingProduct[] = [
       "MacBook Pro M4 Max 16 นิ้ว RAM 48GB SSD 1TB สภาพใหม่ 99% ประกันศูนย์เหลือ 10 เดือน พร้อมกล่องและอุปกรณ์ครบ",
     submittedAt: "2026-02-15 14:30",
     scheduledStart: "2026-02-20 10:00",
+    scheduledEnd: "2026-02-27 10:00",
     status: "pending",
   },
   {
@@ -84,6 +87,7 @@ const MOCK_INCOMING: IncomingProduct[] = [
       "Nike Air Jordan 1 Retro High OG 'Chicago' Size US 10 ของแท้ 100% DS ยังไม่แกะกล่อง พร้อมใบเสร็จ",
     submittedAt: "2026-02-15 16:45",
     scheduledStart: "2026-02-19 18:00",
+    scheduledEnd: "2026-02-26 18:00",
     status: "pending",
   },
   {
@@ -100,6 +104,7 @@ const MOCK_INCOMING: IncomingProduct[] = [
       "Labubu The Monsters Series ครบชุด 12 ตัว รวม Secret ของแท้จาก Pop Mart สภาพกล่องสวย ไม่มีตำหนิ",
     submittedAt: "2026-02-14 09:15",
     scheduledStart: "2026-02-18 12:00",
+    scheduledEnd: "2026-02-25 12:00",
     status: "pending",
   },
   {
@@ -116,6 +121,7 @@ const MOCK_INCOMING: IncomingProduct[] = [
       "BMW i8 ปี 2020 Plug-in Hybrid ไมล์ 25,000 กม. สีขาว ภายในดำ Full Option ประวัติศูนย์ครบ เจ้าของขายเอง",
     submittedAt: "2026-02-16 08:00",
     scheduledStart: "2026-02-22 10:00",
+    scheduledEnd: "2026-03-01 10:00",
     status: "pending",
   },
   {
@@ -132,6 +138,7 @@ const MOCK_INCOMING: IncomingProduct[] = [
       "PS5 Pro 2TB พร้อมจอย DualSense 2 ตัว และเกม 5 แผ่น สภาพดีมาก ใช้งาน 3 เดือน ประกันเหลือ 9 เดือน",
     submittedAt: "2026-02-16 10:20",
     scheduledStart: "2026-02-21 14:00",
+    scheduledEnd: "2026-02-28 14:00",
     status: "pending",
   },
 ];
@@ -258,18 +265,20 @@ const getStatusLabel = (s: Report["status"]) => {
   }
 };
 
-const getTypeIcon = (t: Report["type"]) => {
+const getTypeIcon = (
+  t: Report["type"],
+): { name: React.ComponentProps<typeof Ionicons>["name"]; color: string } => {
   switch (t) {
     case "scam":
-      return "🚨";
+      return { name: "warning", color: "#DC2626" };
     case "fake_product":
-      return "🏷️";
+      return { name: "pricetag", color: "#F59E0B" };
     case "payment":
-      return "💳";
+      return { name: "card", color: "#3B82F6" };
     case "delivery":
-      return "📦";
+      return { name: "cube", color: "#8B5CF6" };
     case "other":
-      return "❓";
+      return { name: "help-circle", color: "#6B7280" };
   }
 };
 
@@ -407,7 +416,12 @@ const AdminScreen = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0088FF" />
+        <LottieView
+          source={require("../assets/animations/loading.json")}
+          autoPlay
+          loop
+          style={{ width: 120, height: 120 }}
+        />
       </View>
     );
   }
@@ -431,7 +445,7 @@ const AdminScreen = () => {
               </AppText>
             </View>
             <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-              <AppText style={{ fontSize: 18 }}>🚪</AppText>
+              <Ionicons name="log-out-outline" size={20} color="#FFF" />
             </TouchableOpacity>
           </View>
 
@@ -484,7 +498,7 @@ const AdminScreen = () => {
                   activeTab === "incoming" && styles.tabTextActive,
                 ]}
               >
-                📦 Incoming ({incomingProducts.length})
+                Incoming ({incomingProducts.length})
               </AppText>
             </TouchableOpacity>
             <TouchableOpacity
@@ -498,7 +512,7 @@ const AdminScreen = () => {
                   activeTab === "reports" && styles.tabTextActive,
                 ]}
               >
-                🚨 Reports ({openReportsCount})
+                Reports ({openReportsCount})
               </AppText>
             </TouchableOpacity>
           </View>
@@ -516,12 +530,17 @@ const AdminScreen = () => {
           <>
             {incomingProducts.length === 0 ? (
               <View style={styles.emptyState}>
-                <AppText style={{ fontSize: 48, marginBottom: 12 }}>📭</AppText>
+                <Ionicons
+                  name="mail-open-outline"
+                  size={52}
+                  color="#9CA3AF"
+                  style={{ marginBottom: 12 }}
+                />
                 <AppText weight="semibold" style={styles.emptyTitle}>
-                  ไม่มีสินค้ารอตรวจสอบ
+                  No Incoming Products
                 </AppText>
                 <AppText weight="regular" style={styles.emptySub}>
-                  สินค้า Incoming ทั้งหมดได้รับการจัดการแล้ว
+                  All incoming products have been managed
                 </AppText>
               </View>
             ) : (
@@ -551,13 +570,22 @@ const AdminScreen = () => {
                         </AppText>
                       </View>
                     </View>
-                    <AppText
-                      weight="regular"
-                      style={styles.productCardSeller}
-                      numberOfLines={1}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
                     >
-                      👤 {product.seller}
-                    </AppText>
+                      <Ionicons name="person" size={13} color="#6B7280" />
+                      <AppText
+                        weight="regular"
+                        style={styles.productCardSeller}
+                        numberOfLines={1}
+                      >
+                        {product.seller}
+                      </AppText>
+                    </View>
                     <View style={styles.productCardPrices}>
                       <View style={styles.priceTag}>
                         <AppText weight="regular" style={styles.priceLabel}>
@@ -580,12 +608,36 @@ const AdminScreen = () => {
                       </View>
                     </View>
                     <View style={styles.productCardBottom}>
-                      <AppText weight="regular" style={styles.productCardMeta}>
-                        🏷️ {product.category}
-                      </AppText>
-                      <AppText weight="regular" style={styles.productCardMeta}>
-                        📅 {product.scheduledStart}
-                      </AppText>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <Ionicons name="pricetag" size={11} color="#9CA3AF" />
+                        <AppText
+                          weight="regular"
+                          style={styles.productCardMeta}
+                        >
+                          {product.category}
+                        </AppText>
+                      </View>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <Ionicons name="calendar" size={11} color="#9CA3AF" />
+                        <AppText
+                          weight="regular"
+                          style={styles.productCardMeta}
+                        >
+                          {product.scheduledStart}
+                        </AppText>
+                      </View>
                     </View>
                   </View>
 
@@ -598,7 +650,11 @@ const AdminScreen = () => {
                         handleApproveProduct(product);
                       }}
                     >
-                      <AppText style={{ fontSize: 16 }}>✅</AppText>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color="#22C55E"
+                      />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.quickDelete}
@@ -607,7 +663,7 @@ const AdminScreen = () => {
                         handleDeleteProduct(product);
                       }}
                     >
-                      <AppText style={{ fontSize: 16 }}>🗑️</AppText>
+                      <Ionicons name="trash" size={20} color="#EF4444" />
                     </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
@@ -619,7 +675,12 @@ const AdminScreen = () => {
           <>
             {reports.length === 0 ? (
               <View style={styles.emptyState}>
-                <AppText style={{ fontSize: 48, marginBottom: 12 }}>🎉</AppText>
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={52}
+                  color="#9CA3AF"
+                  style={{ marginBottom: 12 }}
+                />
                 <AppText weight="semibold" style={styles.emptyTitle}>
                   ไม่มีรายงานปัญหา
                 </AppText>
@@ -637,9 +698,11 @@ const AdminScreen = () => {
                 >
                   <View style={styles.reportCardHeader}>
                     <View style={styles.reportTypeRow}>
-                      <AppText style={{ fontSize: 20 }}>
-                        {getTypeIcon(report.type)}
-                      </AppText>
+                      <Ionicons
+                        name={getTypeIcon(report.type).name}
+                        size={20}
+                        color={getTypeIcon(report.type).color}
+                      />
                       <View style={styles.reportTypeInfo}>
                         <AppText
                           weight="semibold"
@@ -694,9 +757,18 @@ const AdminScreen = () => {
                   </AppText>
 
                   <View style={styles.reportCardFooter}>
-                    <AppText weight="regular" style={styles.reportMeta}>
-                      👤 {report.reportedBy}
-                    </AppText>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <Ionicons name="person" size={12} color="#9CA3AF" />
+                      <AppText weight="regular" style={styles.reportMeta}>
+                        {report.reportedBy}
+                      </AppText>
+                    </View>
                     <View
                       style={[
                         styles.statusBadge,
@@ -742,7 +814,7 @@ const AdminScreen = () => {
                   </AppText>
                 </TouchableOpacity>
                 <AppText weight="bold" style={styles.modalTitle}>
-                  รายละเอียดสินค้า
+                  Product Detail
                 </AppText>
                 <View style={{ width: 36 }} />
               </View>
@@ -769,16 +841,29 @@ const AdminScreen = () => {
                     {selectedProduct.name}
                   </AppText>
                   <View style={styles.pendingBadgeLg}>
-                    <AppText weight="semibold" style={styles.pendingTextLg}>
-                      ⏳ Pending
-                    </AppText>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <Ionicons
+                        name="hourglass-outline"
+                        size={13}
+                        color="#D97706"
+                      />
+                      <AppText weight="semibold" style={styles.pendingTextLg}>
+                        Pending
+                      </AppText>
+                    </View>
                   </View>
                 </View>
 
                 {/* Seller Info */}
                 <View style={styles.sellerCard}>
                   <View style={styles.sellerAvatar}>
-                    <AppText style={{ fontSize: 20 }}>👤</AppText>
+                    <Ionicons name="person" size={20} color="#3B82F6" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <AppText weight="semibold" style={styles.sellerName}>
@@ -844,9 +929,12 @@ const AdminScreen = () => {
 
                 {/* Details */}
                 <View style={styles.detailSection}>
-                  <AppText weight="semibold" style={styles.detailLabel}>
-                    📝 รายละเอียดสินค้า
-                  </AppText>
+                  <View style={styles.labelRow}>
+                    <Ionicons name="document-text" size={16} color="#111827" />
+                    <AppText weight="semibold" style={styles.detailLabel}>
+                      Product Detail
+                    </AppText>
+                  </View>
                   <AppText weight="regular" style={styles.detailText}>
                     {selectedProduct.description}
                   </AppText>
@@ -854,35 +942,47 @@ const AdminScreen = () => {
 
                 <View style={styles.detailGrid}>
                   <View style={styles.detailItem}>
-                    <AppText weight="regular" style={styles.detailItemLabel}>
-                      🏷️ หมวดหมู่
-                    </AppText>
+                    <View style={styles.labelRow}>
+                      <Ionicons name="pricetag" size={12} color="#9CA3AF" />
+                      <AppText weight="regular" style={styles.detailItemLabel}>
+                        Category
+                      </AppText>
+                    </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
                       {selectedProduct.category}
                     </AppText>
                   </View>
                   <View style={styles.detailItem}>
-                    <AppText weight="regular" style={styles.detailItemLabel}>
-                      📅 วันที่ส่ง
-                    </AppText>
+                    <View style={styles.labelRow}>
+                      <Ionicons name="calendar" size={12} color="#9CA3AF" />
+                      <AppText weight="regular" style={styles.detailItemLabel}>
+                        Submitted At
+                      </AppText>
+                    </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
                       {selectedProduct.submittedAt}
                     </AppText>
                   </View>
                   <View style={styles.detailItem}>
-                    <AppText weight="regular" style={styles.detailItemLabel}>
-                      ⏰ เริ่มประมูล
-                    </AppText>
+                    <View style={styles.labelRow}>
+                      <Ionicons name="time" size={12} color="#9CA3AF" />
+                      <AppText weight="regular" style={styles.detailItemLabel}>
+                        Auction Start
+                      </AppText>
+                    </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
                       {selectedProduct.scheduledStart}
                     </AppText>
                   </View>
                   <View style={styles.detailItem}>
-                    <AppText weight="regular" style={styles.detailItemLabel}>
-                      🆔 รหัสสินค้า
-                    </AppText>
+                    <View style={styles.labelRow}>
+                      <Ionicons name="time" size={12} color="#9CA3AF" />
+                      <AppText weight="regular" style={styles.detailItemLabel}>
+                        Auction End
+                      </AppText>
+                    </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
-                      {selectedProduct.id}
+                      {selectedProduct.scheduledEnd}
                     </AppText>
                   </View>
                 </View>
@@ -897,9 +997,22 @@ const AdminScreen = () => {
                       colors={["#22C55E", "#16A34A"]}
                       style={styles.actionGradient}
                     >
-                      <AppText weight="semibold" style={styles.actionBtnText}>
-                        ✅ อนุมัติสินค้า
-                      </AppText>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={18}
+                          color="#FFF"
+                        />
+                        <AppText weight="semibold" style={styles.actionBtnText}>
+                          Approve Product
+                        </AppText>
+                      </View>
                     </LinearGradient>
                   </TouchableOpacity>
 
@@ -911,9 +1024,18 @@ const AdminScreen = () => {
                       colors={["#EF4444", "#DC2626"]}
                       style={styles.actionGradient}
                     >
-                      <AppText weight="semibold" style={styles.actionBtnText}>
-                        🗑️ ลบสินค้า
-                      </AppText>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <Ionicons name="trash" size={18} color="#FFF" />
+                        <AppText weight="semibold" style={styles.actionBtnText}>
+                          Delete Product
+                        </AppText>
+                      </View>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
@@ -956,9 +1078,11 @@ const AdminScreen = () => {
                 {/* Report Header */}
                 <View style={styles.reportModalHeader}>
                   <View style={styles.reportModalIcon}>
-                    <AppText style={{ fontSize: 32 }}>
-                      {getTypeIcon(selectedReport.type)}
-                    </AppText>
+                    <Ionicons
+                      name={getTypeIcon(selectedReport.type).name}
+                      size={32}
+                      color={getTypeIcon(selectedReport.type).color}
+                    />
                   </View>
                   <AppText weight="bold" style={styles.reportModalTitle}>
                     {selectedReport.title}
@@ -1020,7 +1144,7 @@ const AdminScreen = () => {
                 {/* Reporter Info */}
                 <View style={styles.sellerCard}>
                   <View style={styles.sellerAvatar}>
-                    <AppText style={{ fontSize: 20 }}>👤</AppText>
+                    <Ionicons name="person" size={20} color="#3B82F6" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <AppText weight="semibold" style={styles.sellerName}>
@@ -1034,9 +1158,12 @@ const AdminScreen = () => {
 
                 {/* Report Details */}
                 <View style={styles.detailSection}>
-                  <AppText weight="semibold" style={styles.detailLabel}>
-                    📋 รายละเอียดปัญหา
-                  </AppText>
+                  <View style={styles.labelRow}>
+                    <Ionicons name="clipboard" size={16} color="#111827" />
+                    <AppText weight="semibold" style={styles.detailLabel}>
+                      รายละเอียดปัญหา
+                    </AppText>
+                  </View>
                   <AppText weight="regular" style={styles.detailText}>
                     {selectedReport.description}
                   </AppText>
@@ -1044,35 +1171,50 @@ const AdminScreen = () => {
 
                 <View style={styles.detailGrid}>
                   <View style={styles.detailItem}>
-                    <AppText weight="regular" style={styles.detailItemLabel}>
-                      📁 ประเภท
-                    </AppText>
+                    <View style={styles.labelRow}>
+                      <Ionicons name="folder" size={12} color="#9CA3AF" />
+                      <AppText weight="regular" style={styles.detailItemLabel}>
+                        ประเภท
+                      </AppText>
+                    </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
                       {getTypeLabel(selectedReport.type)}
                     </AppText>
                   </View>
                   <View style={styles.detailItem}>
-                    <AppText weight="regular" style={styles.detailItemLabel}>
-                      📅 วันที่แจ้ง
-                    </AppText>
+                    <View style={styles.labelRow}>
+                      <Ionicons name="calendar" size={12} color="#9CA3AF" />
+                      <AppText weight="regular" style={styles.detailItemLabel}>
+                        วันที่แจ้ง
+                      </AppText>
+                    </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
                       {selectedReport.createdAt}
                     </AppText>
                   </View>
                   {selectedReport.relatedProduct && (
                     <View style={styles.detailItem}>
-                      <AppText weight="regular" style={styles.detailItemLabel}>
-                        📦 สินค้าที่เกี่ยวข้อง
-                      </AppText>
+                      <View style={styles.labelRow}>
+                        <Ionicons name="cube" size={12} color="#9CA3AF" />
+                        <AppText
+                          weight="regular"
+                          style={styles.detailItemLabel}
+                        >
+                          สินค้าที่เกี่ยวข้อง
+                        </AppText>
+                      </View>
                       <AppText weight="semibold" style={styles.detailItemValue}>
                         {selectedReport.relatedProduct}
                       </AppText>
                     </View>
                   )}
                   <View style={styles.detailItem}>
-                    <AppText weight="regular" style={styles.detailItemLabel}>
-                      🆔 รหัสรายงาน
-                    </AppText>
+                    <View style={styles.labelRow}>
+                      <Ionicons name="finger-print" size={12} color="#9CA3AF" />
+                      <AppText weight="regular" style={styles.detailItemLabel}>
+                        รหัสรายงาน
+                      </AppText>
+                    </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
                       {selectedReport.id}
                     </AppText>
@@ -1081,9 +1223,12 @@ const AdminScreen = () => {
 
                 {/* Reply Section */}
                 <View style={styles.replySection}>
-                  <AppText weight="semibold" style={styles.detailLabel}>
-                    💬 ตอบกลับผู้แจ้ง
-                  </AppText>
+                  <View style={styles.labelRow}>
+                    <Ionicons name="chatbubble" size={16} color="#111827" />
+                    <AppText weight="semibold" style={styles.detailLabel}>
+                      ตอบกลับผู้แจ้ง
+                    </AppText>
+                  </View>
                   <TextInput
                     style={styles.replyInput}
                     placeholder="พิมพ์ข้อความตอบกลับ..."
@@ -1116,9 +1261,12 @@ const AdminScreen = () => {
 
                 {/* Status Actions */}
                 <View style={styles.detailSection}>
-                  <AppText weight="semibold" style={styles.detailLabel}>
-                    🔄 เปลี่ยนสถานะ
-                  </AppText>
+                  <View style={styles.labelRow}>
+                    <Ionicons name="sync" size={16} color="#111827" />
+                    <AppText weight="semibold" style={styles.detailLabel}>
+                      เปลี่ยนสถานะ
+                    </AppText>
+                  </View>
                   <View style={styles.statusActions}>
                     {(
                       [
@@ -1621,6 +1769,13 @@ const styles = StyleSheet.create({
   detailItemValue: {
     fontSize: 13,
     color: "#111827",
+  },
+
+  // Label Row (icon + text)
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
 
   // Actions
