@@ -1,8 +1,14 @@
 import { image } from "@/assets/images";
+import { apiService } from "@/utils/api";
+import { getFullImageUrl } from "@/utils/api/config";
+import type { EvidenceImage, ReportType, UserReport } from "@/utils/api/types";
+import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import LottieView from "lottie-react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Image,
@@ -10,6 +16,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -65,73 +72,28 @@ const FAQ_DATA = [
   },
 ];
 
-// Report types
-const REPORT_TYPES = [
-  { id: "bug", label: "🐛 พบข้อผิดพลาด (Bug)", color: "#EF4444" },
-  { id: "account", label: "👤 ปัญหาเกี่ยวกับบัญชี", color: "#F59E0B" },
-  { id: "payment", label: "💳 ปัญหาการชำระเงิน", color: "#8B5CF6" },
-  { id: "product", label: "📦 ปัญหาเกี่ยวกับสินค้า", color: "#3B82F6" },
-  { id: "seller", label: "🏪 ปัญหาเกี่ยวกับผู้ขาย", color: "#EC4899" },
-  { id: "suggestion", label: "💡 ข้อเสนอแนะ", color: "#22C55E" },
+// Report types (matching API ReportType)
+const REPORT_TYPES: { id: ReportType; label: string; color: string }[] = [
+  { id: "scam", label: "🚨 หลอกลวง (Scam)", color: "#EF4444" },
+  { id: "fake_product", label: "📦 สินค้าปลอม", color: "#F59E0B" },
+  { id: "harassment", label: "😡 คุกคาม", color: "#EC4899" },
+  { id: "fraud", label: "💰 ฉ้อโกง", color: "#8B5CF6" },
+  {
+    id: "inappropriate_content",
+    label: "⚠️ เนื้อหาไม่เหมาะสม",
+    color: "#3B82F6",
+  },
   { id: "other", label: "📝 อื่นๆ", color: "#6B7280" },
 ];
 
-// Report status type
-interface SubmittedReport {
-  id: string;
-  type: string;
-  typeLabel: string;
-  typeColor: string;
-  title: string;
-  description: string;
-  submittedAt: string;
-  status: "pending" | "in-progress" | "resolved";
-  adminReply?: string;
-  repliedAt?: string;
-}
-
-// Mock submitted reports
-const MOCK_REPORTS: SubmittedReport[] = [
-  {
-    id: "RPT-001",
-    type: "bug",
-    typeLabel: "🐛 พบข้อผิดพลาด",
-    typeColor: "#EF4444",
-    title: "กดปุ่มประมูลแล้วไม่ตอบสนอง",
-    description:
-      "เมื่อกดปุ่มประมูลในหน้า Product Detail ปุ่มไม่ตอบสนอง ต้องกดซ้ำหลายครั้ง เกิดขึ้นบน iPhone 15 Pro",
-    submittedAt: "14 ก.พ. 2026, 10:30",
-    status: "resolved",
-    adminReply:
-      "ขอบคุณที่แจ้งปัญหาครับ ทีมงานได้แก้ไขปัญหานี้แล้วในเวอร์ชัน 1.2.3 กรุณาอัปเดตแอปเพื่อใช้งานเวอร์ชันล่าสุดครับ",
-    repliedAt: "14 ก.พ. 2026, 15:45",
-  },
-  {
-    id: "RPT-002",
-    type: "payment",
-    typeLabel: "💳 ปัญหาการชำระเงิน",
-    typeColor: "#8B5CF6",
-    title: "เติมเงินแล้วยอดไม่เข้า Wallet",
-    description:
-      "เติมเงิน 500 บาทผ่าน PromptPay แล้วแต่ยอดเงินยังไม่เข้า Wallet ผ่านไป 30 นาทีแล้วครับ",
-    submittedAt: "15 ก.พ. 2026, 09:15",
-    status: "in-progress",
-    adminReply:
-      "ทีมงานกำลังตรวจสอบรายการโอนของคุณอยู่ครับ คาดว่าจะดำเนินการเสร็จภายใน 2-3 ชั่วโมง",
-    repliedAt: "15 ก.พ. 2026, 10:00",
-  },
-  {
-    id: "RPT-003",
-    type: "product",
-    typeLabel: "📦 ปัญหาเกี่ยวกับสินค้า",
-    typeColor: "#3B82F6",
-    title: "สินค้าที่ได้รับไม่ตรงตามรูป",
-    description:
-      "ประมูล MacBook Pro ได้ แต่สินค้าที่ได้รับมีรอยขีดข่วนที่ไม่ได้ระบุในรายละเอียด",
-    submittedAt: "16 ก.พ. 2026, 08:00",
-    status: "pending",
-  },
-];
+// Helper: get display info from report type
+const getReportTypeInfo = (type: ReportType) => {
+  const found = REPORT_TYPES.find((t) => t.id === type);
+  return {
+    label: found?.label || "📝 อื่นๆ",
+    color: found?.color || "#6B7280",
+  };
+};
 
 const HelpSupportPage = () => {
   const router = useRouter();
@@ -141,20 +103,79 @@ const HelpSupportPage = () => {
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
 
   // Report form
-  const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [reportTitle, setReportTitle] = useState("");
+  const [selectedType, setSelectedType] = useState<ReportType | null>(null);
+  const [reportedUserId, setReportedUserId] = useState("");
+  const [reportedProductId, setReportedProductId] = useState("");
   const [reportDescription, setReportDescription] = useState("");
+  const [evidenceImages, setEvidenceImages] = useState<EvidenceImage[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // Report status
-  const [reports, setReports] = useState<SubmittedReport[]>(MOCK_REPORTS);
-  const [selectedReport, setSelectedReport] = useState<SubmittedReport | null>(
-    null,
-  );
+  // Report status (from API)
+  const [reports, setReports] = useState<UserReport[]>([]);
+  const [selectedReport, setSelectedReport] = useState<UserReport | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [loadingReports, setLoadingReports] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Animation
   const successAnim = useRef(new Animated.Value(0)).current;
+
+  // ── Fetch reports from API ──
+  const fetchReports = useCallback(async () => {
+    try {
+      setLoadingReports(true);
+      const data = await apiService.report.getMyReports();
+      setReports(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      console.log("Failed to fetch reports:", error.message);
+    } finally {
+      setLoadingReports(false);
+    }
+  }, []);
+
+  const onRefreshReports = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const data = await apiService.report.getMyReports();
+      setReports(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      console.log("Failed to refresh reports:", error.message);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "status") {
+      fetchReports();
+    }
+  }, [activeTab, fetchReports]);
+
+  // ── Image picker for evidence ──
+  const pickEvidenceImage = async () => {
+    if (evidenceImages.length >= 5) {
+      Alert.alert("จำกัดจำนวน", "สามารถแนบรูปหลักฐานได้สูงสุด 5 รูป");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      selectionLimit: 5 - evidenceImages.length,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets) {
+      const newImages: EvidenceImage[] = result.assets.map((asset) => ({
+        uri: asset.uri,
+        name: asset.fileName || `evidence_${Date.now()}.jpg`,
+        type: asset.mimeType || "image/jpeg",
+      }));
+      setEvidenceImages((prev) => [...prev, ...newImages].slice(0, 5));
+    }
+  };
+
+  const removeEvidenceImage = (index: number) => {
+    setEvidenceImages((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const showSuccess = () => {
     successAnim.setValue(0);
@@ -173,15 +194,15 @@ const HelpSupportPage = () => {
     ]).start();
   };
 
-  const handleSubmitReport = () => {
+  const handleSubmitReport = async () => {
     Keyboard.dismiss();
 
     if (!selectedType) {
       Alert.alert("ข้อผิดพลาด", "กรุณาเลือกประเภทปัญหา");
       return;
     }
-    if (!reportTitle.trim()) {
-      Alert.alert("ข้อผิดพลาด", "กรุณากรอกหัวข้อ");
+    if (!reportedUserId.trim()) {
+      Alert.alert("ข้อผิดพลาด", "กรุณากรอก ID ผู้ใช้ที่ต้องการรายงาน");
       return;
     }
     if (!reportDescription.trim()) {
@@ -190,36 +211,36 @@ const HelpSupportPage = () => {
     }
 
     setSubmitting(true);
-    setTimeout(() => {
-      const typeInfo = REPORT_TYPES.find((t) => t.id === selectedType);
-      const newReport: SubmittedReport = {
-        id: `RPT-${String(reports.length + 1).padStart(3, "0")}`,
-        type: selectedType!,
-        typeLabel: typeInfo?.label || "📝 อื่นๆ",
-        typeColor: typeInfo?.color || "#6B7280",
-        title: reportTitle.trim(),
-        description: reportDescription.trim(),
-        submittedAt: new Date().toLocaleString("th-TH", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        status: "pending",
-      };
-      setReports((prev) => [newReport, ...prev]);
-      setSubmitting(false);
+    try {
+      await apiService.report.submitReport(
+        {
+          reported_user_id: reportedUserId.trim(),
+          reported_product_id: reportedProductId.trim() || undefined,
+          type: selectedType,
+          description: reportDescription.trim(),
+        },
+        evidenceImages.length > 0 ? evidenceImages : undefined,
+      );
+      // Reset form
       setSelectedType(null);
-      setReportTitle("");
+      setReportedUserId("");
+      setReportedProductId("");
       setReportDescription("");
+      setEvidenceImages([]);
       showSuccess();
       // Switch to status tab after a short delay
-      setTimeout(() => setActiveTab("status"), 2500);
-    }, 1500);
+      setTimeout(() => {
+        setActiveTab("status");
+        fetchReports();
+      }, 2500);
+    } catch (error: any) {
+      Alert.alert("เกิดข้อผิดพลาด", error.message || "ไม่สามารถส่งรายงานได้");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const getStatusConfig = (status: SubmittedReport["status"]) => {
+  const getStatusConfig = (status: UserReport["status"]) => {
     switch (status) {
       case "pending":
         return {
@@ -228,9 +249,9 @@ const HelpSupportPage = () => {
           bg: "#FEF3C7",
           icon: "⏳",
         };
-      case "in-progress":
+      case "reviewing":
         return {
-          label: "กำลังดำเนินการ",
+          label: "กำลังตรวจสอบ",
           color: "#3B82F6",
           bg: "#EFF6FF",
           icon: "🔄",
@@ -242,6 +263,28 @@ const HelpSupportPage = () => {
           bg: "#F0FDF4",
           icon: "✅",
         };
+      default:
+        return {
+          label: "ไม่ทราบสถานะ",
+          color: "#9CA3AF",
+          bg: "#F3F4F6",
+          icon: "❓",
+        };
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleString("th-TH", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return dateStr;
     }
   };
 
@@ -370,28 +413,44 @@ const HelpSupportPage = () => {
       {/* Report Form */}
       <View style={styles.reportCard}>
         <AppText weight="medium" style={styles.reportLabel} numberOfLines={1}>
-          หัวข้อ
+          ID ผู้ใช้ที่ต้องการรายงาน *
         </AppText>
         <TextInput
           style={styles.reportInput}
-          value={reportTitle}
-          onChangeText={setReportTitle}
-          placeholder="กรอกหัวข้อปัญหา"
+          value={reportedUserId}
+          onChangeText={setReportedUserId}
+          placeholder="กรอก ID ผู้ใช้ที่ต้องการรายงาน"
           placeholderTextColor="#C0C0C0"
-          maxLength={100}
+          keyboardType="number-pad"
+        />
+
+        <AppText
+          weight="medium"
+          style={[styles.reportLabel, { marginTop: 16 }]}
+          numberOfLines={1}
+        >
+          ID สินค้า (ถ้ามี)
+        </AppText>
+        <TextInput
+          style={styles.reportInput}
+          value={reportedProductId}
+          onChangeText={setReportedProductId}
+          placeholder="กรอก ID สินค้าที่เกี่ยวข้อง (ไม่บังคับ)"
+          placeholderTextColor="#C0C0C0"
+          keyboardType="number-pad"
         />
 
         <AppText
           weight="medium"
           style={[styles.reportLabel, { marginTop: 16 }]}
         >
-          รายละเอียด
+          รายละเอียด *
         </AppText>
         <TextInput
           style={[styles.reportInput, styles.reportTextArea]}
           value={reportDescription}
           onChangeText={setReportDescription}
-          placeholder="อธิบายปัญหาหรือข้อเสนอแนะของคุณ..."
+          placeholder="อธิบายปัญหาหรือเหตุผลในการรายงาน..."
           placeholderTextColor="#C0C0C0"
           multiline
           numberOfLines={5}
@@ -401,6 +460,43 @@ const HelpSupportPage = () => {
         <AppText weight="regular" style={styles.charCount} numberOfLines={1}>
           {reportDescription.length}/1000
         </AppText>
+
+        {/* Evidence Images */}
+        <AppText
+          weight="medium"
+          style={[styles.reportLabel, { marginTop: 16 }]}
+        >
+          รูปหลักฐาน ({evidenceImages.length}/5)
+        </AppText>
+        <View style={styles.evidenceRow}>
+          {evidenceImages.map((img, idx) => (
+            <View key={idx} style={styles.evidenceThumb}>
+              <Image source={{ uri: img.uri }} style={styles.evidenceImg} />
+              <TouchableOpacity
+                style={styles.evidenceRemove}
+                onPress={() => removeEvidenceImage(idx)}
+              >
+                <AppText weight="bold" style={styles.evidenceRemoveText}>
+                  ✕
+                </AppText>
+              </TouchableOpacity>
+            </View>
+          ))}
+          {evidenceImages.length < 5 && (
+            <TouchableOpacity
+              style={styles.evidenceAddBtn}
+              onPress={pickEvidenceImage}
+            >
+              <AppText style={{ fontSize: 24, color: "#9CA3AF" }}>📷</AppText>
+              <AppText
+                weight="regular"
+                style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}
+              >
+                เพิ่มรูป
+              </AppText>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Submit Button */}
         <TouchableOpacity
@@ -412,13 +508,17 @@ const HelpSupportPage = () => {
             colors={["#3B82F6", "#2563EB"]}
             style={styles.submitGradient}
           >
-            <AppText
-              weight="semibold"
-              style={styles.submitText}
-              numberOfLines={1}
-            >
-              {submitting ? "⏳ กำลังส่ง..." : "📤 ส่งรายงาน"}
-            </AppText>
+            {submitting ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <AppText
+                weight="semibold"
+                style={styles.submitText}
+                numberOfLines={1}
+              >
+                📤 ส่งรายงาน
+              </AppText>
+            )}
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -446,9 +546,9 @@ const HelpSupportPage = () => {
 
       {/* Status Summary */}
       <View style={styles.statusSummaryRow}>
-        {(["pending", "in-progress", "resolved"] as const).map((s) => {
+        {(["pending", "reviewing", "resolved"] as const).map((s) => {
           const config = getStatusConfig(s);
-          const count = reports.filter((r) => r.status === s).length;
+          const count = (reports ?? []).filter((r) => r.status === s).length;
           return (
             <View
               key={s}
@@ -474,10 +574,27 @@ const HelpSupportPage = () => {
         })}
       </View>
 
-      {/* Report List */}
-      {reports.length === 0 ? (
+      {/* Loading State */}
+      {loadingReports ? (
         <View style={styles.emptyStatus}>
-          <AppText style={{ fontSize: 48, marginBottom: 12 }}>📭</AppText>
+          <LottieView
+            source={require("@/assets/animations/loading.json")}
+            autoPlay
+            loop
+            style={{ width: 120, height: 120 }}
+          />
+          <AppText weight="regular" style={styles.emptyStatusSub}>
+            กำลังโหลดรายงาน...
+          </AppText>
+        </View>
+      ) : reports.length === 0 ? (
+        <View style={styles.emptyStatus}>
+          <LottieView
+            source={require("@/assets/animations/empty.json")}
+            autoPlay
+            loop
+            style={{ width: 140, height: 140 }}
+          />
           <AppText
             weight="semibold"
             style={styles.emptyStatusTitle}
@@ -496,6 +613,7 @@ const HelpSupportPage = () => {
       ) : (
         reports.map((report) => {
           const statusConfig = getStatusConfig(report.status);
+          const typeInfo = getReportTypeInfo(report.type);
           return (
             <TouchableOpacity
               key={report.id}
@@ -511,14 +629,14 @@ const HelpSupportPage = () => {
                 <View
                   style={[
                     styles.statusTypeBadge,
-                    { backgroundColor: report.typeColor + "18" },
+                    { backgroundColor: typeInfo.color + "18" },
                   ]}
                 >
                   <AppText
                     weight="semibold"
-                    style={[styles.statusTypeText, { color: report.typeColor }]}
+                    style={[styles.statusTypeText, { color: typeInfo.color }]}
                   >
-                    {report.typeLabel}
+                    {typeInfo.label}
                   </AppText>
                 </View>
                 <View
@@ -542,13 +660,13 @@ const HelpSupportPage = () => {
                 </View>
               </View>
 
-              {/* Title */}
+              {/* Description preview */}
               <AppText
                 weight="semibold"
                 style={styles.statusCardTitle}
-                numberOfLines={1}
+                numberOfLines={2}
               >
-                {report.title}
+                {report.description}
               </AppText>
 
               {/* ID & Date */}
@@ -558,19 +676,19 @@ const HelpSupportPage = () => {
                   style={styles.statusCardId}
                   numberOfLines={1}
                 >
-                  {report.id}
+                  RPT-{report.report_code || report.id}
                 </AppText>
                 <AppText
                   weight="regular"
                   style={styles.statusCardDate}
                   numberOfLines={1}
                 >
-                  📅 {report.submittedAt}
+                  📅 {formatDate(report.created_at)}
                 </AppText>
               </View>
 
               {/* Admin Reply Preview */}
-              {report.adminReply && (
+              {report.admin_reply && (
                 <View style={styles.replyPreview}>
                   <AppText style={{ fontSize: 13, marginRight: 6 }}>💬</AppText>
                   <AppText
@@ -578,7 +696,7 @@ const HelpSupportPage = () => {
                     style={styles.replyPreviewText}
                     numberOfLines={1}
                   >
-                    {report.adminReply}
+                    {report.admin_reply}
                   </AppText>
                 </View>
               )}
@@ -603,6 +721,7 @@ const HelpSupportPage = () => {
   const renderDetailModal = () => {
     if (!selectedReport) return null;
     const statusConfig = getStatusConfig(selectedReport.status);
+    const typeInfo = getReportTypeInfo(selectedReport.type);
 
     return (
       <Modal
@@ -620,7 +739,7 @@ const HelpSupportPage = () => {
                   รายละเอียดรายงาน
                 </AppText>
                 <AppText weight="regular" style={styles.modalHeaderId}>
-                  {selectedReport.id}
+                  {selectedReport.report_code || `RPT-${selectedReport.id}`}
                 </AppText>
               </View>
               <TouchableOpacity
@@ -663,17 +782,17 @@ const HelpSupportPage = () => {
                 <View
                   style={[
                     styles.statusTypeBadge,
-                    { backgroundColor: selectedReport.typeColor + "18" },
+                    { backgroundColor: typeInfo.color + "18" },
                   ]}
                 >
                   <AppText
                     weight="semibold"
                     style={[
                       styles.statusTypeText,
-                      { color: selectedReport.typeColor, fontSize: 11 },
+                      { color: typeInfo.color, fontSize: 11 },
                     ]}
                   >
-                    {selectedReport.typeLabel}
+                    {typeInfo.label}
                   </AppText>
                 </View>
               </View>
@@ -683,16 +802,64 @@ const HelpSupportPage = () => {
                 <AppText weight="semibold" style={styles.modalSectionTitle}>
                   📋 ปัญหาที่แจ้ง
                 </AppText>
-                <AppText weight="semibold" style={styles.modalReportTitle}>
-                  {selectedReport.title}
-                </AppText>
                 <AppText weight="regular" style={styles.modalReportDesc}>
                   {selectedReport.description}
                 </AppText>
-                <AppText weight="regular" style={styles.modalReportDate}>
-                  ส่งเมื่อ: {selectedReport.submittedAt}
+                {selectedReport.reported_user && (
+                  <AppText
+                    weight="regular"
+                    style={[styles.modalReportDate, { marginTop: 6 }]}
+                  >
+                    ผู้ถูกรายงาน: {selectedReport.reported_user.name}
+                  </AppText>
+                )}
+                {selectedReport.reported_product && (
+                  <AppText
+                    weight="regular"
+                    style={[styles.modalReportDate, { marginTop: 4 }]}
+                  >
+                    สินค้าที่เกี่ยวข้อง: {selectedReport.reported_product.name}
+                  </AppText>
+                )}
+                <AppText
+                  weight="regular"
+                  style={[styles.modalReportDate, { marginTop: 6 }]}
+                >
+                  ส่งเมื่อ: {formatDate(selectedReport.created_at)}
                 </AppText>
               </View>
+
+              {/* Evidence Images */}
+              {selectedReport.evidence_images &&
+                selectedReport.evidence_images.length > 0 && (
+                  <View style={styles.modalSection}>
+                    <AppText weight="semibold" style={styles.modalSectionTitle}>
+                      📸 รูปหลักฐาน
+                    </AppText>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                    >
+                      {selectedReport.evidence_images.map((img, idx) => {
+                        const imgUrl = getFullImageUrl(img);
+                        return imgUrl ? (
+                          <Image
+                            key={idx}
+                            source={{ uri: imgUrl }}
+                            style={{
+                              width: 120,
+                              height: 120,
+                              borderRadius: 12,
+                              marginRight: 10,
+                              backgroundColor: "#F3F4F6",
+                            }}
+                            resizeMode="cover"
+                          />
+                        ) : null;
+                      })}
+                    </ScrollView>
+                  </View>
+                )}
 
               {/* Timeline */}
               <View style={styles.modalSection}>
@@ -700,94 +867,129 @@ const HelpSupportPage = () => {
                   📊 ไทม์ไลน์
                 </AppText>
 
-                {/* Step 1: Submitted */}
-                <View style={styles.timelineItem}>
-                  <View
-                    style={[styles.timelineDot, { backgroundColor: "#22C55E" }]}
-                  />
-                  <View style={styles.timelineLine} />
-                  <View style={styles.timelineContent}>
-                    <AppText weight="semibold" style={styles.timelineTitle}>
-                      ส่งรายงานแล้ว
-                    </AppText>
-                    <AppText weight="regular" style={styles.timelineDate}>
-                      {selectedReport.submittedAt}
-                    </AppText>
-                  </View>
-                </View>
-
-                {/* Step 2: In Progress */}
-                <View style={styles.timelineItem}>
-                  <View
-                    style={[
-                      styles.timelineDot,
-                      {
-                        backgroundColor:
-                          selectedReport.status !== "pending"
-                            ? "#22C55E"
-                            : "#D1D5DB",
-                      },
-                    ]}
-                  />
-                  <View style={styles.timelineLine} />
-                  <View style={styles.timelineContent}>
-                    <AppText
-                      weight="semibold"
-                      style={[
-                        styles.timelineTitle,
-                        {
-                          color:
-                            selectedReport.status !== "pending"
-                              ? "#111827"
-                              : "#9CA3AF",
-                        },
-                      ]}
-                    >
-                      กำลังดำเนินการ
-                    </AppText>
-                    <AppText weight="regular" style={styles.timelineDate}>
-                      {selectedReport.status !== "pending"
-                        ? "แอดมินรับเรื่องแล้ว"
-                        : "รอดำเนินการ"}
-                    </AppText>
-                  </View>
-                </View>
-
-                {/* Step 3: Resolved */}
-                <View style={styles.timelineItem}>
-                  <View
-                    style={[
-                      styles.timelineDot,
-                      {
-                        backgroundColor:
-                          selectedReport.status === "resolved"
-                            ? "#22C55E"
-                            : "#D1D5DB",
-                      },
-                    ]}
-                  />
-                  <View style={styles.timelineContent}>
-                    <AppText
-                      weight="semibold"
-                      style={[
-                        styles.timelineTitle,
-                        {
-                          color:
-                            selectedReport.status === "resolved"
-                              ? "#111827"
-                              : "#9CA3AF",
-                        },
-                      ]}
-                    >
-                      แก้ไขเสร็จสิ้น
-                    </AppText>
-                    <AppText weight="regular" style={styles.timelineDate}>
-                      {selectedReport.status === "resolved"
-                        ? "ดำเนินการเสร็จแล้ว"
-                        : "รอดำเนินการ"}
-                    </AppText>
-                  </View>
-                </View>
+                {selectedReport.timeline &&
+                selectedReport.timeline.length > 0 ? (
+                  selectedReport.timeline.map((item, idx) => {
+                    const isLast =
+                      idx === (selectedReport.timeline?.length ?? 0) - 1;
+                    return (
+                      <View key={idx} style={styles.timelineItem}>
+                        <View
+                          style={[
+                            styles.timelineDot,
+                            { backgroundColor: "#22C55E" },
+                          ]}
+                        />
+                        {!isLast && <View style={styles.timelineLine} />}
+                        <View style={styles.timelineContent}>
+                          <AppText
+                            weight="semibold"
+                            style={styles.timelineTitle}
+                          >
+                            {item.label}
+                          </AppText>
+                          <AppText weight="regular" style={styles.timelineDate}>
+                            {formatDate(item.date)}
+                          </AppText>
+                        </View>
+                      </View>
+                    );
+                  })
+                ) : (
+                  /* Fallback: static timeline based on status */
+                  <>
+                    <View style={styles.timelineItem}>
+                      <View
+                        style={[
+                          styles.timelineDot,
+                          { backgroundColor: "#22C55E" },
+                        ]}
+                      />
+                      <View style={styles.timelineLine} />
+                      <View style={styles.timelineContent}>
+                        <AppText weight="semibold" style={styles.timelineTitle}>
+                          ส่งรายงานแล้ว
+                        </AppText>
+                        <AppText weight="regular" style={styles.timelineDate}>
+                          {formatDate(selectedReport.created_at)}
+                        </AppText>
+                      </View>
+                    </View>
+                    <View style={styles.timelineItem}>
+                      <View
+                        style={[
+                          styles.timelineDot,
+                          {
+                            backgroundColor:
+                              selectedReport.status !== "pending"
+                                ? "#22C55E"
+                                : "#D1D5DB",
+                          },
+                        ]}
+                      />
+                      <View style={styles.timelineLine} />
+                      <View style={styles.timelineContent}>
+                        <AppText
+                          weight="semibold"
+                          style={[
+                            styles.timelineTitle,
+                            {
+                              color:
+                                selectedReport.status !== "pending"
+                                  ? "#111827"
+                                  : "#9CA3AF",
+                            },
+                          ]}
+                        >
+                          กำลังตรวจสอบ
+                        </AppText>
+                        <AppText weight="regular" style={styles.timelineDate}>
+                          {selectedReport.status !== "pending"
+                            ? selectedReport.reviewing_at
+                              ? formatDate(selectedReport.reviewing_at)
+                              : "แอดมินรับเรื่องแล้ว"
+                            : "รอดำเนินการ"}
+                        </AppText>
+                      </View>
+                    </View>
+                    <View style={styles.timelineItem}>
+                      <View
+                        style={[
+                          styles.timelineDot,
+                          {
+                            backgroundColor:
+                              selectedReport.status === "resolved"
+                                ? "#22C55E"
+                                : "#D1D5DB",
+                          },
+                        ]}
+                      />
+                      <View style={styles.timelineContent}>
+                        <AppText
+                          weight="semibold"
+                          style={[
+                            styles.timelineTitle,
+                            {
+                              color:
+                                selectedReport.status === "resolved"
+                                  ? "#111827"
+                                  : "#9CA3AF",
+                            },
+                          ]}
+                        >
+                          แก้ไขเสร็จสิ้น
+                        </AppText>
+                        <AppText weight="regular" style={styles.timelineDate}>
+                          {selectedReport.status === "resolved"
+                            ? selectedReport.resolved_at
+                              ? formatDate(selectedReport.resolved_at)
+                              : "ดำเนินการเสร็จแล้ว"
+                            : "รอดำเนินการ"}
+                        </AppText>
+                      </View>
+                    </View>
+                  </>
+                )}
               </View>
 
               {/* Admin Reply */}
@@ -795,7 +997,7 @@ const HelpSupportPage = () => {
                 <AppText weight="semibold" style={styles.modalSectionTitle}>
                   💬 การตอบกลับจากแอดมิน
                 </AppText>
-                {selectedReport.adminReply ? (
+                {selectedReport.admin_reply ? (
                   <View style={styles.adminReplyCard}>
                     <View style={styles.adminReplyHeader}>
                       <View style={styles.adminAvatar}>
@@ -807,13 +1009,18 @@ const HelpSupportPage = () => {
                         <AppText weight="semibold" style={styles.adminName}>
                           Admin BidKhong
                         </AppText>
-                        <AppText weight="regular" style={styles.adminReplyDate}>
-                          {selectedReport.repliedAt}
-                        </AppText>
+                        {selectedReport.admin_reply_at && (
+                          <AppText
+                            weight="regular"
+                            style={styles.adminReplyDate}
+                          >
+                            {formatDate(selectedReport.admin_reply_at)}
+                          </AppText>
+                        )}
                       </View>
                     </View>
                     <AppText weight="regular" style={styles.adminReplyText}>
-                      {selectedReport.adminReply}
+                      {selectedReport.admin_reply}
                     </AppText>
                   </View>
                 ) : (
@@ -914,6 +1121,15 @@ const HelpSupportPage = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          refreshControl={
+            activeTab === "status" ? (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefreshReports}
+                tintColor="#3B82F6"
+              />
+            ) : undefined
+          }
         >
           {activeTab === "faq" && renderFAQTab()}
           {activeTab === "report" && renderReportTab()}
@@ -1168,6 +1384,51 @@ const styles = StyleSheet.create({
   submitText: {
     fontSize: 15,
     color: "#FFF",
+  },
+
+  // Evidence Images
+  evidenceRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  evidenceThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    position: "relative",
+  },
+  evidenceImg: {
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
+  },
+  evidenceRemove: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#EF4444",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  evidenceRemoveText: {
+    fontSize: 10,
+    color: "#FFF",
+  },
+  evidenceAddBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    borderStyle: "dashed",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FAFBFC",
   },
 
   // Status Tab

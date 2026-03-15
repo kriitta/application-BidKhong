@@ -12,47 +12,44 @@ interface SplashScreenProps {
 
 const SplashScreenComponent: React.FC<SplashScreenProps> = ({
   onVideoEnd,
-  duration = 5000,
+  duration = 15000,
   isReady = false,
 }) => {
   const videoRef = useRef<Video>(null);
-  const [videoEnded, setVideoEnded] = useState(false);
+  const [hasTransitioned, setHasTransitioned] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  // เมื่อข้อมูลโหลดเสร็จ (isReady) ให้ transition ออกทันที
+  // เมื่อข้อมูล + API โหลดเสร็จ (isReady) → transition ออก
   useEffect(() => {
-    if (isReady && !videoEnded) {
+    if (isReady && !hasTransitioned) {
       handleTransition();
     }
   }, [isReady]);
 
   useEffect(() => {
-    // Timeout fallback - ให้แน่ใจว่ามันจะทำงาน
+    // Timeout fallback — กันกรณี API ช้ามาก
     const fallbackTimer = setTimeout(() => {
-      if (!videoEnded) {
+      if (!hasTransitioned) {
         handleTransition();
       }
-    }, duration + 500);
+    }, duration);
 
     return () => clearTimeout(fallbackTimer);
-  }, [duration, videoEnded]);
+  }, [duration, hasTransitioned]);
 
   useEffect(() => {
-    // ถ้า video loaded และพอ 2 seconds ให้เริ่ม play ด้วย
     if (videoLoaded && videoRef.current) {
       videoRef.current.playAsync().catch(() => {
-        // Fallback ถ้า play fail
         console.warn("Video play failed, using timeout");
       });
     }
   }, [videoLoaded]);
 
   const handleTransition = () => {
-    if (videoEnded) return;
-    setVideoEnded(true);
+    if (hasTransitioned) return;
+    setHasTransitioned(true);
 
-    // Fade out animation ก่อน
     Animated.timing(fadeAnim, {
       toValue: 0,
       duration: 600,
@@ -62,17 +59,11 @@ const SplashScreenComponent: React.FC<SplashScreenProps> = ({
     });
   };
 
-  const handleVideoEnd = () => {
-    handleTransition();
-  };
-
   const handlePlaybackStatusUpdate = (status: any) => {
     if (status.isLoaded && !videoLoaded) {
       setVideoLoaded(true);
     }
-    if (status.isLoaded && status.didJustFinish) {
-      handleVideoEnd();
-    }
+    // ไม่ transition เมื่อวิดีโอจบ — รอ isReady (API โหลดเสร็จ) แทน
   };
 
   return (

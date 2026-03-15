@@ -358,15 +358,14 @@ export interface TrendingTag {
 // ─── Report / Support ────────────────────────────────────────
 
 export type ReportType =
-  | "bug"
-  | "account"
-  | "payment"
-  | "product"
-  | "seller"
-  | "suggestion"
+  | "scam"
+  | "fake_product"
+  | "harassment"
+  | "fraud"
+  | "inappropriate_content"
   | "other";
 
-export type ReportStatus = "pending" | "in-progress" | "resolved";
+export type ReportStatus = "pending" | "reviewing" | "resolved";
 
 export interface FAQ {
   id: string;
@@ -376,22 +375,131 @@ export interface FAQ {
 }
 
 export interface SubmitReportRequest {
+  reported_user_id: string;
+  reported_product_id?: string;
   type: ReportType;
-  title: string;
   description: string;
 }
 
+export interface EvidenceImage {
+  uri: string;
+  name: string;
+  type: string;
+}
+
+export interface ReportTimeline {
+  status: string;
+  label: string;
+  date: string;
+}
+
 export interface UserReport {
-  id: string;
+  id: number;
+  reporter_id: number;
+  reported_user_id: number;
+  reported_product_id?: number | null;
+  order_id?: number | null;
   type: ReportType;
-  typeLabel: string;
-  typeColor: string;
-  title: string;
   description: string;
-  submittedAt: string;
   status: ReportStatus;
-  adminReply?: string;
-  repliedAt?: string;
+  report_code: string;
+  admin_note?: string | null;
+  admin_reply?: string | null;
+  admin_reply_at?: string | null;
+  admin_reply_by?: number | null;
+  resolved_at?: string | null;
+  reviewing_at?: string | null;
+  evidence_images?: string[] | null;
+  timeline?: ReportTimeline[];
+  reported_user?: { id: number; name: string };
+  reported_product?: {
+    id: number;
+    name: string;
+    tag?: string;
+    is_certified?: boolean;
+    certificate?: string | null;
+  };
+  replied_by?: any;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MyReportsResponse {
+  summary: { pending: number; reviewing: number; resolved: number };
+  reports: UserReport[];
+}
+
+// ─── Order (Post-Auction / Escrow) ───────────────────────────
+
+export type OrderStatus =
+  | "pending_confirmation"
+  | "confirmed"
+  | "shipped"
+  | "completed"
+  | "disputed"
+  | "cancelled"
+  | "expired";
+
+export interface OrderSeller {
+  id: number;
+  name: string;
+  email: string;
+  phone_number: string | null;
+  profile_image: string | null;
+}
+
+export interface OrderBuyer {
+  id: number;
+  name: string;
+  email: string;
+  phone_number: string | null;
+  profile_image: string | null;
+}
+
+export interface OrderProduct {
+  id: number;
+  name: string;
+  description?: string;
+  picture: string | null;
+  image_url?: string | null;
+  images?: ProductImage[];
+}
+
+export interface Order {
+  id: number;
+  product_id: number;
+  auction_id: number;
+  buyer_id: number;
+  seller_id: number;
+  final_price: string;
+  status: OrderStatus;
+  confirmed_at: string | null;
+  shipped_at: string | null;
+  completed_at: string | null;
+  disputed_at: string | null;
+  cancelled_at: string | null;
+  expired_at: string | null;
+  deadline_at: string | null;
+  dispute_reason: string | null;
+  dispute_evidence_images: string[] | null;
+  created_at: string;
+  updated_at: string;
+  product?: OrderProduct;
+  seller?: OrderSeller;
+  buyer?: OrderBuyer;
+}
+
+export interface OrderDetailResponse {
+  order: Order;
+}
+
+export interface MyOrdersResponse {
+  orders: Order[];
+}
+
+export interface DisputeOrderRequest {
+  reason: string;
+  evidence_images?: EvidenceImage[];
 }
 
 // ─── Admin ───────────────────────────────────────────────────

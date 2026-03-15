@@ -23,6 +23,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
+import { useAppReady } from "../../contexts/AppReadyContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiService, getFullImageUrl } from "../../utils/api";
 import { Category, Product } from "../../utils/api/types";
@@ -78,18 +79,6 @@ const HomePage = () => {
     Others: image.other,
   };
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const data = await apiService.category.getCategories();
-        setCategories(data);
-      } catch (error: any) {
-        console.error("Failed to fetch categories:", error.message);
-      }
-    };
-    fetchCategories();
-  }, []);
-
   // ─── Products from API ───
   const [hotAuctions, setHotAuctions] = useState<Product[]>([]);
   const [endingSoon, setEndingSoon] = useState<Product[]>([]);
@@ -103,22 +92,43 @@ const HomePage = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // ─── Fetch all initial data & signal splash ready ───
+  const { markHomeReady } = useAppReady();
+
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchInitialData = async () => {
       try {
-        // ดึงสินค้าทั้งหมดแล้ว filter ด้วย tag ฝั่ง frontend
-        // เพราะ backend อาจยังไม่รองรับ query param ?tag=xxx
-        const res = await apiService.product.getProducts({ per_page: 100 });
-        const all = res.data ?? [];
-        setHotAuctions(all.filter((p) => p.tag === "hot"));
-        setEndingSoon(all.filter((p) => p.tag === "ending"));
-        setAllProductDefault(all.filter((p) => p.tag === "default"));
-        setIncoming(all.filter((p) => p.tag === "incoming"));
-      } catch (error: any) {
-        console.error("Failed to fetch products:", error.message);
+        const [categoriesData, productsRes] = await Promise.allSettled([
+          apiService.category.getCategories(),
+          apiService.product.getProducts({ per_page: 100 }),
+        ]);
+
+        if (categoriesData.status === "fulfilled") {
+          setCategories(categoriesData.value);
+        } else {
+          console.error(
+            "Failed to fetch categories:",
+            categoriesData.reason?.message,
+          );
+        }
+
+        if (productsRes.status === "fulfilled") {
+          const all = productsRes.value.data ?? [];
+          setHotAuctions(all.filter((p) => p.tag === "hot"));
+          setEndingSoon(all.filter((p) => p.tag === "ending"));
+          setAllProductDefault(all.filter((p) => p.tag === "default"));
+          setIncoming(all.filter((p) => p.tag === "incoming"));
+        } else {
+          console.error(
+            "Failed to fetch products:",
+            productsRes.reason?.message,
+          );
+        }
+      } finally {
+        markHomeReady();
       }
     };
-    fetchProducts();
+    fetchInitialData();
   }, []);
 
   /** ดึงรูปแรกของสินค้า หรือใช้ image_url / picture เป็น fallback */

@@ -1,9 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios, {
-  AxiosError,
-  AxiosInstance,
-  AxiosResponse,
-  InternalAxiosRequestConfig,
+    AxiosError,
+    AxiosInstance,
+    AxiosResponse,
+    InternalAxiosRequestConfig,
 } from "axios";
 
 // ============================================================
@@ -110,11 +110,21 @@ export const ENDPOINTS = {
   REPORT: {
     FAQ: "/faq",
     SUBMIT: "/reports",
-    MINE: "/reports/mine",
+    MINE: "/reports",
     DETAIL: (id: string) => `/reports/${id}`,
   },
 
-  // 🛡️ Admin
+  // � Order (Post-Auction / Escrow)
+  ORDER: {
+    MY_ORDERS: "/orders",
+    DETAIL: (id: number) => `/orders/${id}/detail`,
+    CONFIRM: (id: number) => `/orders/${id}/confirm`,
+    SHIP: (id: number) => `/orders/${id}/ship`,
+    RECEIVE: (id: number) => `/orders/${id}/receive`,
+    DISPUTE: (id: number) => `/orders/${id}/dispute`,
+  },
+
+  // �🛡️ Admin
   ADMIN: {
     STATS: "/admin/stats",
     INCOMING: "/admin/incoming",

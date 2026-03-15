@@ -1,4 +1,5 @@
 import { image } from "@/assets/images";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
@@ -130,6 +131,7 @@ const SellerPage = () => {
   const [buyoutPrice, setBuyoutPrice] = useState("");
   const [location, setLocation] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
+  const [certificateUri, setCertificateUri] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // ─── Province Modal ───
@@ -252,6 +254,28 @@ const SellerPage = () => {
 
   const handleRemovePhoto = (index: number) => {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // ─── Certificate Picker ───
+  const handlePickCertificate = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission Required",
+        "Please allow access to your photo library.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: false,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets?.length) {
+      setCertificateUri(result.assets[0].uri);
+    }
   };
 
   // ─── Province Filter ───
@@ -397,6 +421,7 @@ const SellerPage = () => {
         location: location,
         picture: photos.length > 0 ? photos[0] : undefined,
         images: photos.length > 1 ? photos.slice(1) : undefined,
+        certificate: certificateUri || undefined,
       });
 
       Alert.alert("Success", "Auction created successfully!", [
@@ -410,6 +435,7 @@ const SellerPage = () => {
             setBuyoutPrice("");
             setLocation("");
             setPhotos([]);
+            setCertificateUri(null);
             setSelectedCategoryId(null);
             setSelectedSubcategoryId(null);
             setAuctionStartDate(null);
@@ -938,6 +964,89 @@ const SellerPage = () => {
                 {formatDate(auctionDate)} at {formatTime(auctionTime)}
               </AppText>
             </View>
+          )}
+        </View>
+
+        {/* ════════ Certificate (Optional) ════════ */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="ribbon-outline" size={17} color="#111827" />
+            <AppText
+              weight="medium"
+              numberOfLines={1}
+              style={styles.sectionTitle}
+            >
+              Certificate of Authenticity
+            </AppText>
+            <View style={styles.optionalBadge}>
+              <AppText weight="regular" style={styles.optionalBadgeText}>
+                Optional
+              </AppText>
+            </View>
+          </View>
+
+          <View style={styles.certInfoRow}>
+            <Ionicons
+              name="information-circle-outline"
+              size={16}
+              color="#6B7280"
+            />
+            <AppText weight="regular" style={styles.certInfoText}>
+              Upload a certificate to prove this product is authentic
+            </AppText>
+          </View>
+
+          {certificateUri ? (
+            <View style={styles.certPreviewContainer}>
+              <Image
+                source={{ uri: certificateUri }}
+                style={styles.certPreviewImage}
+                resizeMode="cover"
+              />
+              <View style={styles.certPreviewActions}>
+                <TouchableOpacity
+                  style={styles.certChangeBtn}
+                  onPress={handlePickCertificate}
+                >
+                  <Ionicons
+                    name="swap-horizontal-outline"
+                    size={16}
+                    color="#2563EB"
+                  />
+                  <AppText
+                    weight="medium"
+                    style={{ fontSize: 13, color: "#2563EB" }}
+                  >
+                    Change
+                  </AppText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.certRemoveBtn}
+                  onPress={() => setCertificateUri(null)}
+                >
+                  <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                  <AppText
+                    weight="medium"
+                    style={{ fontSize: 13, color: "#EF4444" }}
+                  >
+                    Remove
+                  </AppText>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.certUploadBox}
+              onPress={handlePickCertificate}
+            >
+              <Ionicons name="cloud-upload-outline" size={32} color="#9CA3AF" />
+              <AppText weight="medium" style={styles.certUploadText}>
+                Upload Certificate
+              </AppText>
+              <AppText weight="regular" style={styles.certUploadHint}>
+                JPG, PNG supported
+              </AppText>
+            </TouchableOpacity>
           )}
         </View>
 
@@ -1667,6 +1776,77 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#374151",
     marginTop: 4,
+  },
+  // Certificate
+  optionalBadge: {
+    backgroundColor: "#F3F4F6",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 6,
+  },
+  optionalBadgeText: {
+    fontSize: 10,
+    color: "#6B7280",
+  },
+  certInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 12,
+  },
+  certInfoText: {
+    fontSize: 12,
+    color: "#6B7280",
+    flex: 1,
+  },
+  certUploadBox: {
+    borderWidth: 2,
+    borderColor: "#D1D5DB",
+    borderStyle: "dashed",
+    borderRadius: 12,
+    paddingVertical: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FAFAFA",
+  },
+  certUploadText: {
+    fontSize: 13,
+    color: "#6B7280",
+    marginTop: 8,
+  },
+  certUploadHint: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    marginTop: 4,
+  },
+  certPreviewContainer: {
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  certPreviewImage: {
+    width: "100%",
+    height: 200,
+    backgroundColor: "#F3F4F6",
+  },
+  certPreviewActions: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 24,
+    paddingVertical: 12,
+    backgroundColor: "#fff",
+  },
+  certChangeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  certRemoveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
 });
 

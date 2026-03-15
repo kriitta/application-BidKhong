@@ -1,53 +1,55 @@
 import apiClient, {
-    ApiResponse,
-    ENDPOINTS,
-    PaginatedResponse,
-    handleApiError,
-    tokenManager,
+  ApiResponse,
+  ENDPOINTS,
+  PaginatedResponse,
+  handleApiError,
+  tokenManager,
 } from "./config";
 import {
-    ActiveBid,
-    AdminIncomingProduct,
-    AdminReplyRequest,
-    AdminReport,
-    AdminStats,
-    AdminUpdateReportStatusRequest,
-    Auction,
-    AuctionDetail,
-    AuctionListType,
-    BidHistoryEntry,
-    BidStats,
-    BuyNowRequest,
-    Category,
-    CategoryProduct,
-    ChangePasswordRequest,
-    CreateAuctionRequest,
-    FAQ,
-    ForgotPasswordRequest,
-    HistoryBid,
-    HistoryStats,
-    LoginRequest,
-    LoginResponse,
-    PlaceBidRequest,
-    Product,
-    ProductPaginatedResponse,
-    RegisterRequest,
-    ReportStatus,
-    ResetPasswordRequest,
-    SearchResult,
-    Subcategory,
-    SubmitReportRequest,
-    TopUpRequest,
-    Transaction,
-    TransactionFilter,
-    TrendingTag,
-    UpdateProfileRequest,
-    UploadResponse,
-    User,
-    UserReport,
-    WalletBalance,
-    WithdrawRequest,
-    WonProduct,
+  ActiveBid,
+  AdminIncomingProduct,
+  AdminReplyRequest,
+  AdminReport,
+  AdminStats,
+  AdminUpdateReportStatusRequest,
+  Auction,
+  AuctionDetail,
+  AuctionListType,
+  BidHistoryEntry,
+  BidStats,
+  BuyNowRequest,
+  Category,
+  CategoryProduct,
+  ChangePasswordRequest,
+  CreateAuctionRequest,
+  EvidenceImage,
+  FAQ,
+  ForgotPasswordRequest,
+  HistoryBid,
+  HistoryStats,
+  LoginRequest,
+  LoginResponse,
+  Order,
+  PlaceBidRequest,
+  Product,
+  ProductPaginatedResponse,
+  RegisterRequest,
+  ReportStatus,
+  ResetPasswordRequest,
+  SearchResult,
+  Subcategory,
+  SubmitReportRequest,
+  TopUpRequest,
+  Transaction,
+  TransactionFilter,
+  TrendingTag,
+  UpdateProfileRequest,
+  UploadResponse,
+  User,
+  UserReport,
+  WalletBalance,
+  WithdrawRequest,
+  WonProduct
 } from "./types";
 
 // ============================================================
@@ -502,6 +504,7 @@ const apiService = {
       location: string;
       picture?: string;
       images?: string[];
+      certificate?: string;
     }): Promise<Product> => {
       try {
         const formData = new FormData();
@@ -541,6 +544,20 @@ const apiService = {
               type: imgType,
             } as any);
           });
+        }
+
+        // แนบใบ certificate (ถ้ามี)
+        if (data.certificate) {
+          const certUri = data.certificate;
+          const certName = certUri.split("/").pop() || "certificate.jpg";
+          const certType = certName.endsWith(".png")
+            ? "image/png"
+            : "image/jpeg";
+          formData.append("certificate", {
+            uri: certUri,
+            name: certName,
+            type: certType,
+          } as any);
         }
 
         const response = await apiClient.post<Product>(
@@ -710,11 +727,37 @@ const apiService = {
       }
     },
 
-    submitReport: async (data: SubmitReportRequest): Promise<UserReport> => {
+    submitReport: async (
+      data: SubmitReportRequest,
+      evidenceImages?: EvidenceImage[],
+    ): Promise<UserReport> => {
       try {
+        const formData = new FormData();
+        formData.append("reported_user_id", data.reported_user_id);
+        if (data.reported_product_id) {
+          formData.append("reported_product_id", data.reported_product_id);
+        }
+        formData.append("type", data.type);
+        formData.append("description", data.description);
+
+        if (evidenceImages && evidenceImages.length > 0) {
+          evidenceImages.forEach((img) => {
+            formData.append("evidence_images[]", {
+              uri: img.uri,
+              name: img.name,
+              type: img.type,
+            } as any);
+          });
+        }
+
         const response = await apiClient.post<ApiResponse<UserReport>>(
           ENDPOINTS.REPORT.SUBMIT,
-          data,
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          },
         );
         return response.data.data;
       } catch (error) {
@@ -724,10 +767,19 @@ const apiService = {
 
     getMyReports: async (): Promise<UserReport[]> => {
       try {
-        const response = await apiClient.get<ApiResponse<UserReport[]>>(
-          ENDPOINTS.REPORT.MINE,
-        );
-        return response.data.data;
+        const response = await apiClient.get(ENDPOINTS.REPORT.MINE);
+        // API returns { summary: {...}, reports: [...] }
+        const data = response.data as any;
+        if (data?.reports && Array.isArray(data.reports)) {
+          return data.reports;
+        }
+        if (data?.data?.reports && Array.isArray(data.data.reports)) {
+          return data.data.reports;
+        }
+        if (Array.isArray(data?.data)) {
+          return data.data;
+        }
+        return [];
       } catch (error) {
         throw new Error(handleApiError(error));
       }
@@ -897,6 +949,93 @@ const apiService = {
           headers: { "Content-Type": "multipart/form-data" },
         });
         return response.data.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+  },
+
+  // ════════════════════════════════════════════════════════
+  // 📋 Order (Post-Auction / Escrow)
+  // ════════════════════════════════════════════════════════
+  order: {
+    getMyOrders: async (): Promise<Order[]> => {
+      try {
+        const response = await apiClient.get(ENDPOINTS.ORDER.MY_ORDERS);
+        const data = response.data;
+        return data.orders ?? data.data ?? [];
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    getOrderDetail: async (orderId: number): Promise<Order> => {
+      try {
+        const response = await apiClient.get(ENDPOINTS.ORDER.DETAIL(orderId));
+        const data = response.data;
+        return data.order ?? data.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    confirmOrder: async (orderId: number): Promise<Order> => {
+      try {
+        const response = await apiClient.post(ENDPOINTS.ORDER.CONFIRM(orderId));
+        const data = response.data;
+        return data.order ?? data.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    shipOrder: async (orderId: number): Promise<Order> => {
+      try {
+        const response = await apiClient.post(ENDPOINTS.ORDER.SHIP(orderId));
+        const data = response.data;
+        return data.order ?? data.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    receiveOrder: async (orderId: number): Promise<Order> => {
+      try {
+        const response = await apiClient.post(ENDPOINTS.ORDER.RECEIVE(orderId));
+        const data = response.data;
+        return data.order ?? data.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    disputeOrder: async (
+      orderId: number,
+      reason: string,
+      evidenceImages?: EvidenceImage[],
+    ): Promise<Order> => {
+      try {
+        const formData = new FormData();
+        formData.append("reason", reason);
+
+        if (evidenceImages && evidenceImages.length > 0) {
+          evidenceImages.forEach((img) => {
+            const file = {
+              uri: img.uri,
+              name: img.name,
+              type: img.type,
+            } as unknown as Blob;
+            formData.append("evidence_images[]", file);
+          });
+        }
+
+        const response = await apiClient.post(
+          ENDPOINTS.ORDER.DISPUTE(orderId),
+          formData,
+          { headers: { "Content-Type": "multipart/form-data" } },
+        );
+        const data = response.data;
+        return data.order ?? data.data;
       } catch (error) {
         throw new Error(handleApiError(error));
       }

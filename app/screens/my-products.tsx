@@ -1,10 +1,16 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import LottieView from "lottie-react-native";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Dimensions,
   Image,
-  ImageSourcePropType,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -16,198 +22,50 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
+import { apiService, getFullImageUrl } from "../../utils/api";
+import { Product } from "../../utils/api/types";
 import { AppText } from "../components/appText";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 type FilterTab = "all" | "incoming" | "active" | "ended";
-type ProductTag = "hot" | "ending" | "incoming" | "default";
-type ProductStatus = "active" | "ended" | "pending";
-
-interface MockProduct {
-  id: number;
-  name: string;
-  description: string;
-  localImage: ImageSourcePropType;
-  gallery: ImageSourcePropType[];
-  starting_price: string;
-  current_price: string;
-  buyout_price: string;
-  bid_increment: string;
-  auction_start_time: string;
-  auction_end_time: string;
-  bids_count: number;
-  tag: ProductTag;
-  status: ProductStatus;
-  location: string;
-  category: string;
-  seller: string;
-}
-
-// ─── Mock Data ───
-const MOCK_PRODUCTS: MockProduct[] = [
-  {
-    id: 1,
-    name: "iPhone 15 Pro Max 256GB",
-    description:
-      "สภาพดีมาก ใช้งานเพียง 3 เดือน มีกล่องและอุปกรณ์ครบทุกชิ้น ประกันศูนย์เหลือถึง พ.ย. 2026 ไม่มีรอยขีดข่วน ติดฟิล์มและเคสตลอด",
-    localImage: image.smartphone,
-    gallery: [image.smartphone, image.electronic],
-    starting_price: "25000",
-    current_price: "32500",
-    buyout_price: "45000",
-    bid_increment: "500",
-    auction_start_time: "2026-02-20T10:00:00",
-    auction_end_time: "2026-02-25T18:00:00",
-    bids_count: 12,
-    tag: "hot",
-    status: "active",
-    location: "กรุงเทพมหานคร",
-    category: "อิเล็กทรอนิกส์",
-    seller: "Quilen Senfiur",
-  },
-  {
-    id: 2,
-    name: "MacBook Air M3 15 นิ้ว",
-    description:
-      "MacBook Air M3 ปี 2025 จอ 15 นิ้ว RAM 16GB SSD 512GB สี Midnight สภาพ 99% ไม่มีตำหนิ ใช้งานน้อยมาก Cycle count 28 มีกล่องและสายชาร์จครบ",
-    localImage: image.macbook,
-    gallery: [image.macbook, image.computer],
-    starting_price: "35000",
-    current_price: "38000",
-    buyout_price: "55000",
-    bid_increment: "1000",
-    auction_start_time: "2026-02-21T09:00:00",
-    auction_end_time: "2026-02-24T00:30:00",
-    bids_count: 8,
-    tag: "ending",
-    status: "active",
-    location: "เชียงใหม่",
-    category: "คอมพิวเตอร์",
-    seller: "Quilen Senfiur",
-  },
-  {
-    id: 3,
-    name: "Nike Dunk Low Panda",
-    description:
-      "Nike Dunk Low Retro White/Black (Panda) Size US 10 / EU 44 ของแท้ 100% มี receipt จาก Nike Thailand สภาพ DS ยังไม่แกะซีล พร้อมกล่องครบ",
-    localImage: image.shoes,
-    gallery: [image.shoes],
-    starting_price: "3500",
-    current_price: "3500",
-    buyout_price: "6500",
-    bid_increment: "100",
-    auction_start_time: "2026-02-28T12:00:00",
-    auction_end_time: "2026-03-05T12:00:00",
-    bids_count: 0,
-    tag: "incoming",
-    status: "pending",
-    location: "นนทบุรี",
-    category: "แฟชั่น",
-    seller: "Quilen Senfiur",
-  },
-  {
-    id: 4,
-    name: "PlayStation 5 Slim",
-    description:
-      "PS5 Slim Digital Edition ศูนย์ไทย ประกันเหลือ 8 เดือน มีจอย DualSense 2 ตัว พร้อมเกม 5 แผ่น สภาพดีมาก ไม่มีปัญหาใดๆ",
-    localImage: image.game,
-    gallery: [image.game, image.electronic],
-    starting_price: "12000",
-    current_price: "15800",
-    buyout_price: "20000",
-    bid_increment: "200",
-    auction_start_time: "2026-02-18T08:00:00",
-    auction_end_time: "2026-02-23T20:00:00",
-    bids_count: 15,
-    tag: "default",
-    status: "active",
-    location: "ปทุมธานี",
-    category: "เกมมิ่ง",
-    seller: "Quilen Senfiur",
-  },
-  {
-    id: 5,
-    name: "Labubu The Monsters",
-    description:
-      "Labubu The Monsters Series ตัว Secret หายาก ของแท้จาก Pop Mart สภาพสมบูรณ์ มี bag tag และ card ครบ เหมาะสำหรับนักสะสม",
-    localImage: image.toy,
-    gallery: [image.toy, image.collectible],
-    starting_price: "2000",
-    current_price: "5200",
-    buyout_price: "8000",
-    bid_increment: "200",
-    auction_start_time: "2026-02-10T10:00:00",
-    auction_end_time: "2026-02-20T18:00:00",
-    bids_count: 22,
-    tag: "hot",
-    status: "ended",
-    location: "กรุงเทพมหานคร",
-    category: "ของสะสม",
-    seller: "Quilen Senfiur",
-  },
-  {
-    id: 6,
-    name: "Samsung Galaxy S24 Ultra",
-    description:
-      "Samsung Galaxy S24 Ultra 12/512GB สี Titanium Black ศูนย์ไทย มี S-Pen สภาพใหม่มาก ใช้งานเพียง 1 เดือน ประกันเหลือเกือบปี",
-    localImage: image.smartphone,
-    gallery: [image.smartphone],
-    starting_price: "28000",
-    current_price: "28000",
-    buyout_price: "42000",
-    bid_increment: "500",
-    auction_start_time: "2026-03-01T10:00:00",
-    auction_end_time: "2026-03-07T18:00:00",
-    bids_count: 0,
-    tag: "incoming",
-    status: "pending",
-    location: "ชลบุรี",
-    category: "อิเล็กทรอนิกส์",
-    seller: "Quilen Senfiur",
-  },
-  {
-    id: 7,
-    name: "AirPods Pro 2nd Gen",
-    description:
-      "AirPods Pro 2 USB-C ของแท้ Apple ศูนย์ไทย ANC ดีเยี่ยม สภาพ 95% ใช้งานมา 4 เดือน มีกล่องและสาย USB-C ครบ",
-    localImage: image.headphone,
-    gallery: [image.headphone, image.electronic],
-    starting_price: "5000",
-    current_price: "6100",
-    buyout_price: "9000",
-    bid_increment: "100",
-    auction_start_time: "2026-02-12T09:00:00",
-    auction_end_time: "2026-02-19T21:00:00",
-    bids_count: 9,
-    tag: "default",
-    status: "ended",
-    location: "ขอนแก่น",
-    category: "อิเล็กทรอนิกส์",
-    seller: "Quilen Senfiur",
-  },
-];
 
 const MyProductsPage = () => {
   const router = useRouter();
-  const [products] = useState<MockProduct[]>(MOCK_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
-  const [selectedProduct, setSelectedProduct] = useState<MockProduct | null>(
-    null,
-  );
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const [detailImageIndex, setDetailImageIndex] = useState(0);
   const detailScrollRef = useRef<ScrollView>(null);
 
   // Real-time countdown tick
   const [, setTick] = useState(0);
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const openDetail = (product: MockProduct) => {
+  // ─── Fetch products from API ───
+  const fetchProducts = useCallback(async () => {
+    try {
+      const data = await apiService.product.getMyProducts();
+      setProducts(data);
+    } catch (error: any) {
+      console.error("Failed to load my products:", error.message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const openDetail = (product: Product) => {
     setSelectedProduct(product);
     setDetailImageIndex(0);
     setDetailVisible(true);
@@ -215,11 +73,11 @@ const MyProductsPage = () => {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+    fetchProducts();
+  }, [fetchProducts]);
 
   // Check if auction has actually ended (real-time)
-  const isRealEnded = useCallback((product: MockProduct) => {
+  const isRealEnded = useCallback((product: Product) => {
     if (product.status === "ended") return true;
     if (product.tag === "incoming") return false;
     return new Date(product.auction_end_time).getTime() <= Date.now();
@@ -294,6 +152,44 @@ const MyProductsPage = () => {
     return `฿${parseFloat(price).toLocaleString()}`;
   };
 
+  /** Get the primary image source for a product */
+  const getProductImageSource = (product: Product) => {
+    if (product.image_url) {
+      const url = getFullImageUrl(product.image_url);
+      if (url) return { uri: url };
+    }
+    if (product.picture) {
+      const url = getFullImageUrl(product.picture);
+      if (url) return { uri: url };
+    }
+    if (product.images && product.images.length > 0) {
+      const url = getFullImageUrl(product.images[0].image_url);
+      if (url) return { uri: url };
+    }
+    return image.macbook;
+  };
+
+  /** Get gallery images for detail modal */
+  const getProductGallery = (product: Product) => {
+    const gallery: any[] = [];
+    if (product.images && product.images.length > 0) {
+      product.images.forEach((img) => {
+        const url = getFullImageUrl(img.image_url);
+        if (url) gallery.push({ uri: url });
+      });
+    }
+    if (gallery.length === 0 && product.image_url) {
+      const url = getFullImageUrl(product.image_url);
+      if (url) gallery.push({ uri: url });
+    }
+    if (gallery.length === 0 && product.picture) {
+      const url = getFullImageUrl(product.picture);
+      if (url) gallery.push({ uri: url });
+    }
+    if (gallery.length === 0) gallery.push(image.macbook);
+    return gallery;
+  };
+
   const getTagConfig = (tag: string) => {
     switch (tag) {
       case "hot":
@@ -322,7 +218,7 @@ const MyProductsPage = () => {
     }
   };
 
-  const getStatusConfig = (product: MockProduct) => {
+  const getStatusConfig = (product: Product) => {
     if (isRealEnded(product)) {
       return { label: "Ended", color: "#999", bg: "#F5F5F5" };
     }
@@ -385,9 +281,23 @@ const MyProductsPage = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {filteredProducts.length === 0 ? (
+        {loading ? (
+          <View style={{ alignItems: "center", paddingVertical: 60 }}>
+            <LottieView
+              source={require("../../assets/animations/loading.json")}
+              autoPlay
+              loop
+              style={{ width: 100, height: 100 }}
+            />
+          </View>
+        ) : filteredProducts.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <AppText style={{ fontSize: 48, marginBottom: 12 }}>📦</AppText>
+            <LottieView
+              source={require("../../assets/animations/empty.json")}
+              autoPlay
+              loop
+              style={{ width: 160, height: 160 }}
+            />
             <AppText weight="bold" style={styles.emptyTitle}>
               ไม่มีสินค้า
             </AppText>
@@ -415,7 +325,7 @@ const MyProductsPage = () => {
               >
                 {/* Product Image */}
                 <Image
-                  source={product.localImage}
+                  source={getProductImageSource(product)}
                   style={styles.productImage}
                 />
 
@@ -508,6 +418,9 @@ const MyProductsPage = () => {
             const currentBid = parseFloat(sp.current_price);
             const buyNowPrice = parseFloat(sp.buyout_price);
             const bidIncrement = parseFloat(sp.bid_increment);
+            const gallery = getProductGallery(sp);
+            const categoryName = sp.category?.name || "";
+            const sellerName = sp.user?.name || "You";
 
             return (
               <SafeAreaView style={dStyles.container}>
@@ -540,9 +453,9 @@ const MyProductsPage = () => {
                         );
                         setDetailImageIndex(idx);
                       }}
-                      scrollEnabled={sp.gallery.length > 1}
+                      scrollEnabled={gallery.length > 1}
                     >
-                      {sp.gallery.map((img, idx) => (
+                      {gallery.map((img, idx) => (
                         <View
                           key={idx}
                           style={[
@@ -559,9 +472,9 @@ const MyProductsPage = () => {
                       ))}
                     </ScrollView>
 
-                    {sp.gallery.length > 1 && (
+                    {gallery.length > 1 && (
                       <View style={dStyles.dotsContainer}>
-                        {sp.gallery.map((_, idx) => (
+                        {gallery.map((_, idx) => (
                           <View
                             key={idx}
                             style={[
@@ -575,14 +488,14 @@ const MyProductsPage = () => {
                       </View>
                     )}
 
-                    {sp.gallery.length > 1 && (
+                    {gallery.length > 1 && (
                       <View style={dStyles.imageCounterBadge}>
                         <AppText
                           weight="medium"
                           style={dStyles.imageCounterText}
                           numberOfLines={1}
                         >
-                          {detailImageIndex + 1} / {sp.gallery.length}
+                          {detailImageIndex + 1} / {gallery.length}
                         </AppText>
                       </View>
                     )}
@@ -649,7 +562,7 @@ const MyProductsPage = () => {
                         style={dStyles.tagText}
                         numberOfLines={1}
                       >
-                        {sp.category}
+                        {categoryName}
                       </AppText>
                     </View>
                   </View>
@@ -672,7 +585,7 @@ const MyProductsPage = () => {
                         weight="bold"
                         style={{ color: "#FFF", fontSize: 18 }}
                       >
-                        {sp.seller.charAt(0).toUpperCase()}
+                        {sellerName.charAt(0).toUpperCase()}
                       </AppText>
                     </View>
                     <View style={{ flex: 1 }}>
@@ -681,7 +594,7 @@ const MyProductsPage = () => {
                         style={dStyles.sellerName}
                         numberOfLines={1}
                       >
-                        {sp.seller}
+                        {sellerName}
                       </AppText>
                       <View style={dStyles.userIdRow}>
                         <Image
@@ -1116,8 +1029,8 @@ const styles = StyleSheet.create({
   // Tabs
   tabsContainer: {
     paddingHorizontal: 16,
-      marginBottom: 12,
-    marginTop: 12
+    marginBottom: 12,
+    marginTop: 12,
   },
   tab: {
     paddingHorizontal: 16,

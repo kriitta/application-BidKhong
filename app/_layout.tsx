@@ -10,7 +10,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useRouter, useSegments } from "expo-router";
 import LottieView from "lottie-react-native";
 import { useEffect, useState } from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { AppReadyProvider, useAppReady } from "../contexts/AppReadyContext";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { tokenManager } from "../utils/api/config";
 import SplashScreen from "./components/SplashScreen";
@@ -24,6 +25,7 @@ function RootLayoutInner() {
   const [ready, setReady] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const { isLoggedIn, isGuest, userRole, loginSuccess } = useAuth();
+  const { isHomeReady, markHomeReady } = useAppReady();
   const router = useRouter();
   const segments = useSegments();
 
@@ -55,12 +57,14 @@ function RootLayoutInner() {
 
     // ถ้ายังไม่ login และไม่ใช่ guest → ไปหน้า welcome
     if (!isLoggedIn) {
+      markHomeReady(); // ไม่ต้องรอข้อมูล home
       if (segments[0] !== "welcome" && segments[0] !== "login") {
         router.replace("/welcome");
       }
     }
     // If logged in as admin
     else if (userRole === "admin") {
+      markHomeReady(); // admin ไม่ต้องรอข้อมูล home
       if (segments[0] !== "admin") {
         router.replace("/admin");
       }
@@ -75,45 +79,35 @@ function RootLayoutInner() {
     }
   }, [ready, isLoggedIn, isGuest, userRole, segments]);
 
-  // Show video splash screen on first load
-  // จะ transition ออกทันทีเมื่อ ready (ไม่ต้องรอวิดีโอจบ)
-  if (showSplash) {
-    return (
-      <SplashScreen
-        onVideoEnd={() => setShowSplash(false)}
-        duration={5000}
-        isReady={ready}
-      />
-    );
-  }
-
-  if (!ready) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          backgroundColor: "#001A3D",
-        }}
-      >
-        <LottieView
-          source={require("../assets/animations/loading.json")}
-          autoPlay
-          loop
-          style={{ width: 120, height: 120 }}
-        />
-      </View>
-    );
-  }
-
+  // Render app + splash overlay
+  // Stack renders underneath so home.tsx can start fetching API data
+  // Splash จะ fade out เมื่อ auth check + home data โหลดเสร็จ
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="screens" />
-      <Stack.Screen name="tabs" options={{ headerShown: false }} />
-      <Stack.Screen name="components" />
-      <Stack.Screen name="navigation" />
-      <Stack.Screen name="admin" options={{ headerShown: false }} />
-    </Stack>
+    <View style={{ flex: 1 }}>
+      {ready ? (
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="screens" />
+          <Stack.Screen name="tabs" options={{ headerShown: false }} />
+          <Stack.Screen name="components" />
+          <Stack.Screen name="navigation" />
+          <Stack.Screen name="admin" options={{ headerShown: false }} />
+        </Stack>
+      ) : (
+        <View style={{ flex: 1, backgroundColor: "#001A3D" }} />
+      )}
+      {showSplash && (
+        <View
+          style={[StyleSheet.absoluteFill, { zIndex: 999, elevation: 999 }]}
+          pointerEvents="none"
+        >
+          <SplashScreen
+            onVideoEnd={() => setShowSplash(false)}
+            duration={15000}
+            isReady={ready && isHomeReady}
+          />
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -148,7 +142,9 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <RootLayoutInner />
+      <AppReadyProvider>
+        <RootLayoutInner />
+      </AppReadyProvider>
     </AuthProvider>
   );
 }
