@@ -18,7 +18,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../contexts/AuthContext";
-import { User } from "../utils/api/types";
+import { apiService, getFullImageUrl } from "../utils/api";
+import { AdminStats, User } from "../utils/api/types";
 import { AppText } from "./components/appText";
 
 const { width } = Dimensions.get("window");
@@ -41,17 +42,37 @@ type IncomingProduct = {
   status: "pending" | "approved" | "rejected";
 };
 
-type Report = {
-  id: string;
-  type: "scam" | "fake_product" | "payment" | "delivery" | "other";
-  title: string;
+type ApiReport = {
+  id: number;
+  reporter_id: number;
+  reported_user_id: number;
+  reported_product_id: number | null;
+  order_id: number | null;
+  type: string;
   description: string;
-  reportedBy: string;
-  reportedEmail: string;
-  relatedProduct?: string;
-  createdAt: string;
-  status: "open" | "in_progress" | "resolved" | "closed";
-  priority: "low" | "medium" | "high" | "critical";
+  evidence_images: string[];
+  status: "pending" | "reviewing" | "resolved" | "dismissed";
+  admin_note: string | null;
+  admin_reply: string | null;
+  admin_reply_at: string | null;
+  admin_reply_by: number | null;
+  resolved_at: string | null;
+  reviewing_at: string | null;
+  created_at: string;
+  updated_at: string;
+  report_code: string;
+  timeline: { status: string; label: string; date: string }[];
+  reporter: { id: number; name: string; email: string } | null;
+  reported_user: { id: number; name: string; email: string } | null;
+  reported_product: {
+    id: number;
+    name: string;
+    tag?: string;
+    is_certified?: boolean;
+    certificate?: any;
+  } | null;
+  order: any | null;
+  replied_by: any | null;
 };
 
 // ─── Mock Data ───────────────────────────────────────────────
@@ -143,130 +164,42 @@ const MOCK_INCOMING: IncomingProduct[] = [
   },
 ];
 
-const MOCK_REPORTS: Report[] = [
-  {
-    id: "RPT-001",
-    type: "scam",
-    title: "ผู้ขายส่งสินค้าไม่ตรงปก",
-    description:
-      "สั่งซื้อ iPhone 15 Pro Max แต่ได้รับ iPhone 15 ธรรมดา ผู้ขายไม่ยอมรับผิดชอบ ต้องการขอเงินคืน",
-    reportedBy: "Somchai K.",
-    reportedEmail: "somchai@email.com",
-    relatedProduct: "iPhone 15 Pro Max",
-    createdAt: "2026-02-16 09:30",
-    status: "open",
-    priority: "high",
-  },
-  {
-    id: "RPT-002",
-    type: "payment",
-    title: "เติมเงินแล้วยอดไม่เข้า",
-    description:
-      "โอนเงิน 5,000 บาท ผ่าน QR Code เมื่อวันที่ 15 ก.พ. แต่ยอดเงินในกระเป๋ายังไม่อัปเดต มีหลักฐานการโอน",
-    reportedBy: "Nattaporn S.",
-    reportedEmail: "nattaporn@email.com",
-    createdAt: "2026-02-15 18:45",
-    status: "in_progress",
-    priority: "critical",
-  },
-  {
-    id: "RPT-003",
-    type: "fake_product",
-    title: "สงสัยสินค้าปลอม",
-    description:
-      "ซื้อรองเท้า Nike Dunk Low ผ่าน Buy Now แต่สินค้าที่ได้รับดูเหมือนของ fake คุณภาพวัสดุไม่ดี ไม่มีป้าย QC",
-    reportedBy: "Patchara W.",
-    reportedEmail: "patchara@email.com",
-    relatedProduct: "Nike Dunk Low",
-    createdAt: "2026-02-14 11:20",
-    status: "open",
-    priority: "medium",
-  },
-  {
-    id: "RPT-004",
-    type: "delivery",
-    title: "ไม่ได้รับสินค้า",
-    description:
-      "ชนะประมูลและยืนยันรับสินค้าแล้ว 7 วัน แต่ยังไม่ได้รับพัสดุ ติดต่อผู้ขายไม่ได้ เลขพัสดุที่ให้มาตรวจสอบไม่ได้",
-    reportedBy: "Kittipong L.",
-    reportedEmail: "kittipong@email.com",
-    relatedProduct: "Macbook Air M2",
-    createdAt: "2026-02-13 15:00",
-    status: "open",
-    priority: "high",
-  },
-  {
-    id: "RPT-005",
-    type: "other",
-    title: "ไม่สามารถเข้าสู่ระบบได้",
-    description:
-      "กรอกรหัสผ่านถูกต้องแต่ระบบแจ้งว่า Invalid credentials ลอง reset password แล้วก็ยังไม่ได้ ต้องการความช่วยเหลือ",
-    reportedBy: "Arisa T.",
-    reportedEmail: "arisa@email.com",
-    createdAt: "2026-02-16 07:10",
-    status: "resolved",
-    priority: "low",
-  },
-];
-
 // ─── Helpers ─────────────────────────────────────────────────
 const formatPrice = (n: number) =>
   "฿" + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-const getPriorityColor = (p: Report["priority"]) => {
-  switch (p) {
-    case "critical":
-      return "#DC2626";
-    case "high":
-      return "#F59E0B";
-    case "medium":
-      return "#3B82F6";
-    case "low":
-      return "#6B7280";
-  }
-};
-
-const getPriorityLabel = (p: Report["priority"]) => {
-  switch (p) {
-    case "critical":
-      return "วิกฤต";
-    case "high":
-      return "สูง";
-    case "medium":
-      return "ปานกลาง";
-    case "low":
-      return "ต่ำ";
-  }
-};
-
-const getStatusColor = (s: Report["status"]) => {
+const getReportStatusColor = (s: string) => {
   switch (s) {
-    case "open":
-      return "#EF4444";
-    case "in_progress":
+    case "pending":
       return "#F59E0B";
+    case "reviewing":
+      return "#3B82F6";
     case "resolved":
       return "#22C55E";
-    case "closed":
+    case "dismissed":
       return "#6B7280";
+    default:
+      return "#9CA3AF";
   }
 };
 
-const getStatusLabel = (s: Report["status"]) => {
+const getReportStatusLabel = (s: string) => {
   switch (s) {
-    case "open":
+    case "pending":
       return "รอดำเนินการ";
-    case "in_progress":
+    case "reviewing":
       return "กำลังตรวจสอบ";
     case "resolved":
       return "แก้ไขแล้ว";
-    case "closed":
-      return "ปิดแล้ว";
+    case "dismissed":
+      return "ยกเลิก";
+    default:
+      return s;
   }
 };
 
-const getTypeIcon = (
-  t: Report["type"],
+const getReportTypeIcon = (
+  t: string,
 ): { name: React.ComponentProps<typeof Ionicons>["name"]; color: string } => {
   switch (t) {
     case "scam":
@@ -274,27 +207,52 @@ const getTypeIcon = (
     case "fake_product":
       return { name: "pricetag", color: "#F59E0B" };
     case "payment":
+    case "payment_issue":
       return { name: "card", color: "#3B82F6" };
     case "delivery":
+    case "delivery_issue":
       return { name: "cube", color: "#8B5CF6" };
-    case "other":
+    case "inappropriate_content":
+      return { name: "flag", color: "#EF4444" };
+    case "counterfeit":
+      return { name: "alert-circle", color: "#F59E0B" };
+    default:
       return { name: "help-circle", color: "#6B7280" };
   }
 };
 
-const getTypeLabel = (t: Report["type"]) => {
+const getReportTypeLabel = (t: string) => {
   switch (t) {
     case "scam":
       return "หลอกลวง";
     case "fake_product":
       return "สินค้าปลอม";
     case "payment":
+    case "payment_issue":
       return "การชำระเงิน";
     case "delivery":
+    case "delivery_issue":
       return "การจัดส่ง";
+    case "inappropriate_content":
+      return "เนื้อหาไม่เหมาะสม";
+    case "counterfeit":
+      return "สินค้าปลอมแปลง";
     case "other":
       return "อื่นๆ";
+    default:
+      return t.replace(/_/g, " ");
   }
+};
+
+const formatReportDate = (dateStr: string) => {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("th-TH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 // ─── Component ───────────────────────────────────────────────
@@ -315,10 +273,17 @@ const AdminScreen = () => {
   const [productModalVisible, setProductModalVisible] = useState(false);
 
   // Reports state
-  const [reports, setReports] = useState<Report[]>(MOCK_REPORTS);
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [reports, setReports] = useState<ApiReport[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<ApiReport | null>(null);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [replyText, setReplyText] = useState("");
+  const [replyLoading, setReplyLoading] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [adminNote, setAdminNote] = useState("");
+
+  // Dashboard stats from API
+  const [dashboardStats, setDashboardStats] = useState<AdminStats | null>(null);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -330,9 +295,38 @@ const AdminScreen = () => {
       }
       setUser(currentUser);
       setLoading(false);
+      // Fetch dashboard stats
+      try {
+        const stats = await apiService.admin.getStats();
+        setDashboardStats(stats);
+      } catch (e: any) {
+        console.error("Failed to fetch admin stats:", e.message);
+      }
+      // Fetch reports
+      fetchReports();
     };
     loadUser();
   }, []);
+
+  const fetchReports = async () => {
+    try {
+      setReportsLoading(true);
+      const response = await apiService.admin.getReports();
+      // Handle both array and paginated
+      const data = response as any;
+      if (Array.isArray(data)) {
+        setReports(data);
+      } else if (data?.data && Array.isArray(data.data)) {
+        setReports(data.data);
+      } else {
+        setReports([]);
+      }
+    } catch (e: any) {
+      console.error("Failed to fetch reports:", e.message);
+    } finally {
+      setReportsLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     Alert.alert("ออกจากระบบ", "คุณแน่ใจที่ต้องการออกจากระบบหรือไม่?", [
@@ -390,15 +384,57 @@ const AdminScreen = () => {
     );
   };
 
-  const handleUpdateReportStatus = (
-    report: Report,
-    newStatus: Report["status"],
-  ) => {
-    setReports((prev) =>
-      prev.map((r) => (r.id === report.id ? { ...r, status: newStatus } : r)),
-    );
-    setSelectedReport((prev) =>
-      prev?.id === report.id ? { ...prev, status: newStatus } : prev,
+  const handleUpdateReportStatus = (report: ApiReport, newStatus: string) => {
+    Alert.alert(
+      "เปลี่ยนสถานะ",
+      `เปลี่ยนสถานะเป็น "${getReportStatusLabel(newStatus)}"?${adminNote.trim() ? `\n\nหมายเหตุ: ${adminNote.trim()}` : ""}`,
+      [
+        { text: "ยกเลิก" },
+        {
+          text: "ยืนยัน",
+          onPress: async () => {
+            setStatusLoading(true);
+            try {
+              await apiService.admin.updateReportStatus({
+                reportId: String(report.id),
+                status: newStatus as any,
+                ...(adminNote.trim() ? { admin_note: adminNote.trim() } : {}),
+              });
+              // Update local state
+              setReports((prev) =>
+                prev.map((r) =>
+                  r.id === report.id
+                    ? {
+                        ...r,
+                        status: newStatus as any,
+                        admin_note: adminNote.trim() || r.admin_note,
+                      }
+                    : r,
+                ),
+              );
+              setSelectedReport((prev) =>
+                prev?.id === report.id
+                  ? {
+                      ...prev,
+                      status: newStatus as any,
+                      admin_note: adminNote.trim() || prev.admin_note,
+                    }
+                  : prev,
+              );
+              setAdminNote("");
+              Alert.alert("สำเร็จ", "อัปเดตสถานะเรียบร้อยแล้ว");
+              fetchReports(); // refresh list
+            } catch (error: any) {
+              Alert.alert(
+                "ผิดพลาด",
+                error.message || "ไม่สามารถอัปเดตสถานะได้",
+              );
+            } finally {
+              setStatusLoading(false);
+            }
+          },
+        },
+      ],
     );
   };
 
@@ -407,9 +443,10 @@ const AdminScreen = () => {
     setProductModalVisible(true);
   };
 
-  const openReportDetail = (report: Report) => {
+  const openReportDetail = (report: ApiReport) => {
     setSelectedReport(report);
     setReplyText("");
+    setAdminNote("");
     setReportModalVisible(true);
   };
 
@@ -427,7 +464,7 @@ const AdminScreen = () => {
   }
 
   const openReportsCount = reports.filter(
-    (r) => r.status === "open" || r.status === "in_progress",
+    (r) => r.status === "pending" || r.status === "reviewing",
   ).length;
 
   return (
@@ -453,15 +490,16 @@ const AdminScreen = () => {
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
               <AppText weight="bold" style={styles.statNumber}>
-                {incomingProducts.length}
+                {dashboardStats?.pending_certificates ??
+                  incomingProducts.length}
               </AppText>
               <AppText weight="regular" style={styles.statLabel}>
-                Incoming
+                Pending Cert
               </AppText>
             </View>
             <View style={styles.statCard}>
               <AppText weight="bold" style={styles.statNumber}>
-                {openReportsCount}
+                {dashboardStats?.pending_reports ?? openReportsCount}
               </AppText>
               <AppText weight="regular" style={styles.statLabel}>
                 Reports
@@ -469,7 +507,7 @@ const AdminScreen = () => {
             </View>
             <View style={styles.statCard}>
               <AppText weight="bold" style={styles.statNumber}>
-                156
+                {dashboardStats?.total_users ?? 0}
               </AppText>
               <AppText weight="regular" style={styles.statLabel}>
                 Users
@@ -477,10 +515,10 @@ const AdminScreen = () => {
             </View>
             <View style={styles.statCard}>
               <AppText weight="bold" style={styles.statNumber}>
-                51
+                {dashboardStats?.total_products ?? 0}
               </AppText>
               <AppText weight="regular" style={styles.statLabel}>
-                Product
+                Products
               </AppText>
             </View>
           </View>
@@ -673,7 +711,7 @@ const AdminScreen = () => {
         ) : (
           /* ─── REPORTS TAB ─────────────────────────────── */
           <>
-            {reports.length === 0 ? (
+            {reports.length === 0 && !reportsLoading ? (
               <View style={styles.emptyState}>
                 <Ionicons
                   name="shield-checkmark-outline"
@@ -688,6 +726,15 @@ const AdminScreen = () => {
                   ยังไม่มีผู้ใช้แจ้งปัญหาเข้ามา
                 </AppText>
               </View>
+            ) : reportsLoading ? (
+              <View style={{ alignItems: "center", paddingVertical: 40 }}>
+                <LottieView
+                  source={require("../assets/animations/loading.json")}
+                  autoPlay
+                  loop
+                  style={{ width: 80, height: 80 }}
+                />
+              </View>
             ) : (
               reports.map((report) => (
                 <TouchableOpacity
@@ -699,9 +746,9 @@ const AdminScreen = () => {
                   <View style={styles.reportCardHeader}>
                     <View style={styles.reportTypeRow}>
                       <Ionicons
-                        name={getTypeIcon(report.type).name}
+                        name={getReportTypeIcon(report.type).name}
                         size={20}
-                        color={getTypeIcon(report.type).color}
+                        color={getReportTypeIcon(report.type).color}
                       />
                       <View style={styles.reportTypeInfo}>
                         <AppText
@@ -709,41 +756,34 @@ const AdminScreen = () => {
                           style={styles.reportTitle}
                           numberOfLines={1}
                         >
-                          {report.title}
+                          {getReportTypeLabel(report.type)}
                         </AppText>
                         <AppText
                           weight="regular"
                           style={styles.reportTypeBadgeText}
                         >
-                          {getTypeLabel(report.type)} • {report.id}
+                          {report.report_code} •{" "}
+                          {report.reporter?.name || "Unknown"}
                         </AppText>
                       </View>
                     </View>
                     <View
                       style={[
-                        styles.priorityBadge,
+                        styles.statusBadge,
                         {
                           backgroundColor:
-                            getPriorityColor(report.priority) + "18",
+                            getReportStatusColor(report.status) + "18",
                         },
                       ]}
                     >
-                      <View
-                        style={[
-                          styles.priorityDot,
-                          {
-                            backgroundColor: getPriorityColor(report.priority),
-                          },
-                        ]}
-                      />
                       <AppText
                         weight="semibold"
                         style={[
-                          styles.priorityText,
-                          { color: getPriorityColor(report.priority) },
+                          styles.statusText,
+                          { color: getReportStatusColor(report.status) },
                         ]}
                       >
-                        {getPriorityLabel(report.priority)}
+                        {getReportStatusLabel(report.status)}
                       </AppText>
                     </View>
                   </View>
@@ -764,29 +804,29 @@ const AdminScreen = () => {
                         gap: 4,
                       }}
                     >
-                      <Ionicons name="person" size={12} color="#9CA3AF" />
+                      <Ionicons name="calendar" size={12} color="#9CA3AF" />
                       <AppText weight="regular" style={styles.reportMeta}>
-                        {report.reportedBy}
+                        {formatReportDate(report.created_at)}
                       </AppText>
                     </View>
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        {
-                          backgroundColor: getStatusColor(report.status) + "18",
-                        },
-                      ]}
-                    >
-                      <AppText
-                        weight="semibold"
-                        style={[
-                          styles.statusText,
-                          { color: getStatusColor(report.status) },
-                        ]}
+                    {report.reported_product && (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
                       >
-                        {getStatusLabel(report.status)}
-                      </AppText>
-                    </View>
+                        <Ionicons name="cube" size={12} color="#9CA3AF" />
+                        <AppText
+                          weight="regular"
+                          style={styles.reportMeta}
+                          numberOfLines={1}
+                        >
+                          {report.reported_product.name}
+                        </AppText>
+                      </View>
+                    )}
                   </View>
                 </TouchableOpacity>
               ))
@@ -1079,52 +1119,21 @@ const AdminScreen = () => {
                 <View style={styles.reportModalHeader}>
                   <View style={styles.reportModalIcon}>
                     <Ionicons
-                      name={getTypeIcon(selectedReport.type).name}
+                      name={getReportTypeIcon(selectedReport.type).name}
                       size={32}
-                      color={getTypeIcon(selectedReport.type).color}
+                      color={getReportTypeIcon(selectedReport.type).color}
                     />
                   </View>
                   <AppText weight="bold" style={styles.reportModalTitle}>
-                    {selectedReport.title}
+                    {getReportTypeLabel(selectedReport.type)}
                   </AppText>
                   <View style={styles.reportModalBadges}>
-                    <View
-                      style={[
-                        styles.priorityBadge,
-                        {
-                          backgroundColor:
-                            getPriorityColor(selectedReport.priority) + "18",
-                        },
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.priorityDot,
-                          {
-                            backgroundColor: getPriorityColor(
-                              selectedReport.priority,
-                            ),
-                          },
-                        ]}
-                      />
-                      <AppText
-                        weight="semibold"
-                        style={[
-                          styles.priorityText,
-                          {
-                            color: getPriorityColor(selectedReport.priority),
-                          },
-                        ]}
-                      >
-                        {getPriorityLabel(selectedReport.priority)}
-                      </AppText>
-                    </View>
                     <View
                       style={[
                         styles.statusBadge,
                         {
                           backgroundColor:
-                            getStatusColor(selectedReport.status) + "18",
+                            getReportStatusColor(selectedReport.status) + "18",
                         },
                       ]}
                     >
@@ -1132,10 +1141,12 @@ const AdminScreen = () => {
                         weight="semibold"
                         style={[
                           styles.statusText,
-                          { color: getStatusColor(selectedReport.status) },
+                          {
+                            color: getReportStatusColor(selectedReport.status),
+                          },
                         ]}
                       >
-                        {getStatusLabel(selectedReport.status)}
+                        {getReportStatusLabel(selectedReport.status)}
                       </AppText>
                     </View>
                   </View>
@@ -1148,13 +1159,50 @@ const AdminScreen = () => {
                   </View>
                   <View style={{ flex: 1 }}>
                     <AppText weight="semibold" style={styles.sellerName}>
-                      {selectedReport.reportedBy}
+                      {selectedReport.reporter?.name || "Unknown"}
                     </AppText>
                     <AppText weight="regular" style={styles.sellerEmail}>
-                      {selectedReport.reportedEmail}
+                      {selectedReport.reporter?.email || "-"}
                     </AppText>
                   </View>
                 </View>
+
+                {/* Reported User */}
+                {selectedReport.reported_user && (
+                  <View
+                    style={[
+                      styles.sellerCard,
+                      { borderColor: "#FEE2E2", backgroundColor: "#FFF5F5" },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.sellerAvatar,
+                        { backgroundColor: "#FEE2E2" },
+                      ]}
+                    >
+                      <Ionicons name="alert-circle" size={20} color="#EF4444" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <AppText
+                        weight="regular"
+                        style={{
+                          fontSize: 10,
+                          color: "#9CA3AF",
+                          marginBottom: 2,
+                        }}
+                      >
+                        ผู้ถูกรายงาน
+                      </AppText>
+                      <AppText weight="semibold" style={styles.sellerName}>
+                        {selectedReport.reported_user.name}
+                      </AppText>
+                      <AppText weight="regular" style={styles.sellerEmail}>
+                        {selectedReport.reported_user.email}
+                      </AppText>
+                    </View>
+                  </View>
+                )}
 
                 {/* Report Details */}
                 <View style={styles.detailSection}>
@@ -1169,6 +1217,39 @@ const AdminScreen = () => {
                   </AppText>
                 </View>
 
+                {/* Evidence Images */}
+                {selectedReport.evidence_images &&
+                  selectedReport.evidence_images.length > 0 && (
+                    <View style={styles.detailSection}>
+                      <View style={styles.labelRow}>
+                        <Ionicons name="images" size={16} color="#111827" />
+                        <AppText weight="semibold" style={styles.detailLabel}>
+                          หลักฐาน ({selectedReport.evidence_images.length} รูป)
+                        </AppText>
+                      </View>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={{ marginTop: 8 }}
+                      >
+                        {selectedReport.evidence_images.map((img, idx) => (
+                          <Image
+                            key={idx}
+                            source={{ uri: getFullImageUrl(img)! }}
+                            style={{
+                              width: 100,
+                              height: 100,
+                              borderRadius: 8,
+                              marginRight: 8,
+                              backgroundColor: "#F3F4F6",
+                            }}
+                            resizeMode="cover"
+                          />
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+
                 <View style={styles.detailGrid}>
                   <View style={styles.detailItem}>
                     <View style={styles.labelRow}>
@@ -1178,7 +1259,7 @@ const AdminScreen = () => {
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
-                      {getTypeLabel(selectedReport.type)}
+                      {getReportTypeLabel(selectedReport.type)}
                     </AppText>
                   </View>
                   <View style={styles.detailItem}>
@@ -1189,10 +1270,10 @@ const AdminScreen = () => {
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
-                      {selectedReport.createdAt}
+                      {formatReportDate(selectedReport.created_at)}
                     </AppText>
                   </View>
-                  {selectedReport.relatedProduct && (
+                  {selectedReport.reported_product && (
                     <View style={styles.detailItem}>
                       <View style={styles.labelRow}>
                         <Ionicons name="cube" size={12} color="#9CA3AF" />
@@ -1204,7 +1285,7 @@ const AdminScreen = () => {
                         </AppText>
                       </View>
                       <AppText weight="semibold" style={styles.detailItemValue}>
-                        {selectedReport.relatedProduct}
+                        {selectedReport.reported_product.name}
                       </AppText>
                     </View>
                   )}
@@ -1216,48 +1297,105 @@ const AdminScreen = () => {
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
-                      {selectedReport.id}
+                      {selectedReport.report_code}
                     </AppText>
                   </View>
                 </View>
 
-                {/* Reply Section */}
-                <View style={styles.replySection}>
-                  <View style={styles.labelRow}>
-                    <Ionicons name="chatbubble" size={16} color="#111827" />
-                    <AppText weight="semibold" style={styles.detailLabel}>
-                      ตอบกลับผู้แจ้ง
-                    </AppText>
-                  </View>
-                  <TextInput
-                    style={styles.replyInput}
-                    placeholder="พิมพ์ข้อความตอบกลับ..."
-                    placeholderTextColor="#999"
-                    multiline
-                    numberOfLines={4}
-                    textAlignVertical="top"
-                    value={replyText}
-                    onChangeText={setReplyText}
-                  />
-                  <TouchableOpacity
+                {/* Timeline */}
+                {selectedReport.timeline &&
+                  selectedReport.timeline.length > 0 && (
+                    <View style={styles.detailSection}>
+                      <View style={styles.labelRow}>
+                        <Ionicons name="time" size={16} color="#111827" />
+                        <AppText weight="semibold" style={styles.detailLabel}>
+                          ไทม์ไลน์
+                        </AppText>
+                      </View>
+                      {selectedReport.timeline.map((t, idx) => (
+                        <View
+                          key={idx}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            paddingVertical: 8,
+                            gap: 10,
+                          }}
+                        >
+                          <View
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: 4,
+                              backgroundColor: getReportStatusColor(t.status),
+                            }}
+                          />
+                          <View style={{ flex: 1 }}>
+                            <AppText
+                              weight="medium"
+                              style={{ fontSize: 13, color: "#111827" }}
+                            >
+                              {t.label}
+                            </AppText>
+                            <AppText
+                              weight="regular"
+                              style={{ fontSize: 11, color: "#9CA3AF" }}
+                            >
+                              {formatReportDate(t.date)}
+                            </AppText>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                {/* Admin Reply (if already replied) */}
+                {selectedReport.admin_reply && (
+                  <View
                     style={[
-                      styles.replyBtn,
-                      !replyText.trim() && { opacity: 0.5 },
+                      styles.detailSection,
+                      {
+                        backgroundColor: "#F0FDF4",
+                        borderRadius: 12,
+                        padding: 12,
+                      },
                     ]}
-                    disabled={!replyText.trim()}
-                    onPress={() => {
-                      Alert.alert(
-                        "ส่งข้อความ",
-                        `ส่งข้อความตอบกลับถึง ${selectedReport.reportedBy} เรียบร้อยแล้ว`,
-                      );
-                      setReplyText("");
-                    }}
                   >
-                    <AppText weight="semibold" style={styles.replyBtnText}>
-                      ส่งข้อความ
+                    <View style={styles.labelRow}>
+                      <Ionicons
+                        name="chatbubble-ellipses"
+                        size={16}
+                        color="#22C55E"
+                      />
+                      <AppText
+                        weight="semibold"
+                        style={[styles.detailLabel, { color: "#22C55E" }]}
+                      >
+                        ข้อความตอบกลับจากแอดมิน
+                      </AppText>
+                    </View>
+                    <AppText
+                      weight="regular"
+                      style={{
+                        fontSize: 13,
+                        color: "#374151",
+                        marginTop: 4,
+                        lineHeight: 20,
+                      }}
+                    >
+                      {selectedReport.admin_reply}
                     </AppText>
-                  </TouchableOpacity>
-                </View>
+                    {selectedReport.admin_reply_at && (
+                      <AppText
+                        weight="regular"
+                        style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}
+                      >
+                        ตอบเมื่อ:{" "}
+                        {formatReportDate(selectedReport.admin_reply_at)}
+                      </AppText>
+                    )}
+                  </View>
+                )}
 
                 {/* Status Actions */}
                 <View style={styles.detailSection}>
@@ -1267,14 +1405,24 @@ const AdminScreen = () => {
                       เปลี่ยนสถานะ
                     </AppText>
                   </View>
+                  <TextInput
+                    style={[styles.replyInput, { marginBottom: 12 }]}
+                    placeholder="หมายเหตุจากแอดมิน (ไม่บังคับ)..."
+                    placeholderTextColor="#999"
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                    value={adminNote}
+                    onChangeText={setAdminNote}
+                  />
                   <View style={styles.statusActions}>
                     {(
                       [
-                        "open",
-                        "in_progress",
+                        "pending",
+                        "reviewing",
                         "resolved",
-                        "closed",
-                      ] as Report["status"][]
+                        "dismissed",
+                      ] as string[]
                     ).map((st) => (
                       <TouchableOpacity
                         key={st}
@@ -1283,12 +1431,13 @@ const AdminScreen = () => {
                           {
                             backgroundColor:
                               selectedReport.status === st
-                                ? getStatusColor(st)
-                                : getStatusColor(st) + "15",
-                            borderColor: getStatusColor(st) + "40",
+                                ? getReportStatusColor(st)
+                                : getReportStatusColor(st) + "15",
+                            borderColor: getReportStatusColor(st) + "40",
                             borderWidth: 1,
                           },
                         ]}
+                        disabled={statusLoading}
                         onPress={() =>
                           handleUpdateReportStatus(selectedReport, st)
                         }
@@ -1300,10 +1449,10 @@ const AdminScreen = () => {
                             color:
                               selectedReport.status === st
                                 ? "#FFF"
-                                : getStatusColor(st),
+                                : getReportStatusColor(st),
                           }}
                         >
-                          {getStatusLabel(st)}
+                          {getReportStatusLabel(st)}
                         </AppText>
                       </TouchableOpacity>
                     ))}

@@ -1,10 +1,12 @@
 import { useFocusEffect } from "expo-router";
+import LottieView from "lottie-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
   Image,
   ImageBackground,
+  RefreshControl,
   StyleSheet,
   TouchableOpacity,
   View,
@@ -12,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
 import { useAuth } from "../../contexts/AuthContext";
+import { apiService } from "../../utils/api";
 import { UserWallet } from "../../utils/api/types";
 import { AppText } from "../components/appText";
 import { HistoryFilterModal } from "../components/HistoryFilterModal";
@@ -28,7 +31,9 @@ const WalletPage = () => {
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
   const [historyFilterModalVisible, setHistoryFilterModalVisible] =
     useState(false);
-  const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transLoading, setTransLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -43,8 +48,126 @@ const WalletPage = () => {
   useFocusEffect(
     useCallback(() => {
       refreshUser();
+      fetchTransactions();
     }, []),
   );
+
+  /** ดึง transactions จาก API */
+  const fetchTransactions = async (
+    month?: number | null,
+    year?: number | null,
+  ) => {
+    try {
+      setTransLoading(true);
+      const params: any = {};
+      if (month) params.month = month;
+      if (year) params.year = year;
+      const data = await apiService.wallet.getTransactions(
+        Object.keys(params).length > 0 ? params : undefined,
+      );
+      setTransactions(data);
+    } catch (error: any) {
+      console.error("Failed to fetch transactions:", error.message);
+    } finally {
+      setTransLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    refreshUser();
+    fetchTransactions(selectedMonth, selectedYear);
+  };
+
+  /** แปลง API transaction เป็นรูปแบบ UI */
+  const getTransactionDisplay = (tx: any) => {
+    const type = tx.type || "";
+    const amount = parseFloat(tx.amount || "0");
+    const isNegative =
+      amount < 0 || ["withdraw", "bid", "won", "purchase"].includes(type);
+
+    let title = tx.description || type;
+    let icon = image.recent_trans;
+    let bgColor = "#E3F2FD";
+
+    switch (type) {
+      case "deposit":
+      case "topup":
+      case "top_up":
+        title = tx.description || "Top Up";
+        icon = image.topup;
+        bgColor = "#D4F5DD";
+        break;
+      case "withdraw":
+      case "withdrawal":
+        title = tx.description || "Withdraw";
+        icon = image.withdraw_trans;
+        bgColor = "#FFE5E5";
+        break;
+      case "won":
+      case "purchase":
+      case "bid_won":
+        title = tx.description || "Won Auction";
+        icon = image.won_auction;
+        bgColor = "#FFE5E5";
+        break;
+      case "bid":
+        title = tx.description || "Bid Placed";
+        icon = image.won_auction;
+        bgColor = "#FFF3E0";
+        break;
+      case "refund":
+        title = tx.description || "Refund";
+        icon = image.topup;
+        bgColor = "#D4F5DD";
+        break;
+      case "sale":
+      case "earning":
+        title = tx.description || "Sale Earning";
+        icon = image.topup;
+        bgColor = "#D4F5DD";
+        break;
+      default:
+        title = tx.description || type || "Transaction";
+        break;
+    }
+
+    const absAmount = Math.abs(amount);
+    const formattedAmount = `${isNegative ? "-" : "+"}฿${absAmount.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+    // Format time
+    let timeText = "";
+    const dateStr = tx.created_at || tx.date;
+    if (dateStr) {
+      const txDate = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now.getTime() - txDate.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) timeText = "just now";
+      else if (diffMins < 60) timeText = `${diffMins} min ago`;
+      else if (diffMins < 1440)
+        timeText = `${Math.floor(diffMins / 60)} hours ago`;
+      else if (diffMins < 43200)
+        timeText = `${Math.floor(diffMins / 1440)} days ago`;
+      else
+        timeText = txDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+    }
+
+    return {
+      id: tx.id,
+      title,
+      time: timeText,
+      amount: formattedAmount,
+      icon,
+      bgColor,
+      isNegative,
+    };
+  };
 
   const wallet: UserWallet | undefined = user?.wallet;
 
@@ -68,54 +191,6 @@ const WalletPage = () => {
     { id: 1, name: "Deposit", icon: image.deposit, bgColor: "#D6E9FF" },
     { id: 2, name: "Withdraw", icon: image.withdraw, bgColor: "#D4F5DD" },
     { id: 3, name: "History", icon: image.history, bgColor: "#E8D9FF" },
-  ];
-
-  const transactions = [
-    {
-      id: 1,
-      title: "Won Auction - Bid on iPhone 15 Pro Max",
-      time: "2 hours ago",
-      amount: "-฿32,300",
-      icon: image.won_auction,
-      bgColor: "#FFE5E5",
-      isNegative: true,
-    },
-    {
-      id: 2,
-      title: "Top Up - Mobile Banking",
-      time: "12 days ago",
-      amount: "+฿100,000",
-      icon: image.topup,
-      bgColor: "#D4F5DD",
-      isNegative: false,
-    },
-    {
-      id: 3,
-      title: "Withdraw - KBANK Kasikorn Bank",
-      time: "21 days ago",
-      amount: "-฿32,300",
-      icon: image.withdraw_trans,
-      bgColor: "#FFE5E5",
-      isNegative: true,
-    },
-    {
-      id: 4,
-      title: "Withdraw - KBANK Kasikorn Bank",
-      time: "21 days ago",
-      amount: "-฿32,300",
-      icon: image.withdraw_trans,
-      bgColor: "#FFE5E5",
-      isNegative: true,
-    },
-    {
-      id: 5,
-      title: "Withdraw - KBANK Kasikorn Bank",
-      time: "21 days ago",
-      amount: "-฿32,300",
-      icon: image.withdraw_trans,
-      bgColor: "#FFE5E5",
-      isNegative: true,
-    },
   ];
 
   // Animation values
@@ -256,6 +331,13 @@ const WalletPage = () => {
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: false },
         )}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            progressViewOffset={HEADER_MAX_HEIGHT}
+          />
+        }
       >
         {/* Quick Actions */}
         <View
@@ -303,50 +385,104 @@ const WalletPage = () => {
                 ? `Transactions - ${new Date(selectedYear, selectedMonth - 1).toLocaleDateString("en-US", { month: "long", year: "numeric" })}`
                 : "Recent Transactions"}
             </AppText>
+            {selectedMonth && selectedYear && (
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedMonth(null);
+                  setSelectedYear(null);
+                  fetchTransactions(null, null);
+                }}
+                style={{
+                  backgroundColor: "#FFE5E5",
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                }}
+              >
+                <AppText
+                  weight="medium"
+                  style={{ fontSize: 11, color: "#FF4444" }}
+                  numberOfLines={1}
+                >
+                  Clear
+                </AppText>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.transactionsList}>
-            {(selectedMonth && selectedYear
-              ? filteredTransactions
-              : transactions
-            ).map((transaction) => (
-              <View key={transaction.id} style={styles.transactionItem}>
-                <View
-                  style={[
-                    styles.transactionIcon,
-                    { backgroundColor: transaction.bgColor },
-                  ]}
-                >
-                  <Image
-                    source={transaction.icon}
-                    style={{ width: 28, height: 28 }}
-                    resizeMode="contain"
-                  />
-                </View>
-
-                <View style={styles.transactionInfo}>
-                  <AppText numberOfLines={1} style={styles.transactionTitle}>
-                    {transaction.title}
-                  </AppText>
-                  <AppText numberOfLines={1} style={styles.transactionTime}>
-                    {transaction.time}
-                  </AppText>
-                </View>
-
+            {transLoading ? (
+              <View style={{ alignItems: "center", paddingVertical: 30 }}>
+                <LottieView
+                  source={require("../../assets/animations/loading.json")}
+                  autoPlay
+                  loop
+                  style={{ width: 80, height: 80 }}
+                />
+              </View>
+            ) : transactions.length === 0 ? (
+              <View style={{ alignItems: "center", paddingVertical: 30 }}>
+                <LottieView
+                  source={require("../../assets/animations/trans.json")}
+                  autoPlay
+                  loop
+                  style={{ width: 100, height: 100 }}
+                />
                 <AppText
-                  weight="semibold"
-                  numberOfLines={1}
-                  style={[
-                    styles.transactionAmount,
-                    transaction.isNegative
-                      ? styles.negativeAmount
-                      : styles.positiveAmount,
-                  ]}
+                  weight="medium"
+                  style={{ color: "#9CA3AF", fontSize: 13, marginTop: 8 }}
                 >
-                  {transaction.amount}
+                  {selectedMonth && selectedYear
+                    ? "No transactions found for this period"
+                    : "No recent transactions"}
                 </AppText>
               </View>
-            ))}
+            ) : (
+              transactions.map((tx) => {
+                const display = getTransactionDisplay(tx);
+                return (
+                  <View key={display.id} style={styles.transactionItem}>
+                    <View
+                      style={[
+                        styles.transactionIcon,
+                        { backgroundColor: display.bgColor },
+                      ]}
+                    >
+                      <Image
+                        source={display.icon}
+                        style={{ width: 28, height: 28 }}
+                        resizeMode="contain"
+                      />
+                    </View>
+
+                    <View style={styles.transactionInfo}>
+                      <AppText
+                        numberOfLines={1}
+                        style={styles.transactionTitle}
+                      >
+                        {display.title}
+                      </AppText>
+                      <AppText numberOfLines={1} style={styles.transactionTime}>
+                        {display.time}
+                      </AppText>
+                    </View>
+
+                    <AppText
+                      weight="semibold"
+                      numberOfLines={1}
+                      style={[
+                        styles.transactionAmount,
+                        display.isNegative
+                          ? styles.negativeAmount
+                          : styles.positiveAmount,
+                      ]}
+                    >
+                      {display.amount}
+                    </AppText>
+                  </View>
+                );
+              })
+            )}
           </View>
         </View>
       </Animated.ScrollView>
@@ -378,8 +514,7 @@ const WalletPage = () => {
         onApply={(month, year) => {
           setSelectedMonth(month);
           setSelectedYear(year);
-          // ฟิลเตอร์ transactions (ในตัวอย่างนี้แสดงทั้งหมด แต่คุณสามารถเพิ่มข้อมูลเดือน/ปีได้)
-          setFilteredTransactions(transactions);
+          fetchTransactions(month, year);
         }}
       />
     </View>

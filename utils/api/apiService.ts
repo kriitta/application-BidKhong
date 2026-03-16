@@ -1,55 +1,55 @@
 import apiClient, {
-  ApiResponse,
-  ENDPOINTS,
-  PaginatedResponse,
-  handleApiError,
-  tokenManager,
+    ApiResponse,
+    ENDPOINTS,
+    PaginatedResponse,
+    handleApiError,
+    tokenManager,
 } from "./config";
 import {
-  ActiveBid,
-  AdminIncomingProduct,
-  AdminReplyRequest,
-  AdminReport,
-  AdminStats,
-  AdminUpdateReportStatusRequest,
-  Auction,
-  AuctionDetail,
-  AuctionListType,
-  BidHistoryEntry,
-  BidStats,
-  BuyNowRequest,
-  Category,
-  CategoryProduct,
-  ChangePasswordRequest,
-  CreateAuctionRequest,
-  EvidenceImage,
-  FAQ,
-  ForgotPasswordRequest,
-  HistoryBid,
-  HistoryStats,
-  LoginRequest,
-  LoginResponse,
-  Order,
-  PlaceBidRequest,
-  Product,
-  ProductPaginatedResponse,
-  RegisterRequest,
-  ReportStatus,
-  ResetPasswordRequest,
-  SearchResult,
-  Subcategory,
-  SubmitReportRequest,
-  TopUpRequest,
-  Transaction,
-  TransactionFilter,
-  TrendingTag,
-  UpdateProfileRequest,
-  UploadResponse,
-  User,
-  UserReport,
-  WalletBalance,
-  WithdrawRequest,
-  WonProduct
+    ActiveBid,
+    AdminIncomingProduct,
+    AdminReplyRequest,
+    AdminReport,
+    AdminStats,
+    AdminUpdateReportStatusRequest,
+    Auction,
+    AuctionDetail,
+    AuctionListType,
+    BidHistoryEntry,
+    BidStats,
+    BuyNowRequest,
+    Category,
+    CategoryProduct,
+    ChangePasswordRequest,
+    CreateAuctionRequest,
+    EvidenceImage,
+    FAQ,
+    ForgotPasswordRequest,
+    HistoryBid,
+    HistoryStats,
+    LoginRequest,
+    LoginResponse,
+    Order,
+    PlaceBidRequest,
+    Product,
+    ProductPaginatedResponse,
+    RegisterRequest,
+    ReportStatus,
+    ResetPasswordRequest,
+    SearchResult,
+    Subcategory,
+    SubmitReportRequest,
+    TopUpRequest,
+    Transaction,
+    TransactionFilter,
+    TrendingTag,
+    UpdateProfileRequest,
+    UploadResponse,
+    User,
+    UserReport,
+    WalletBalance,
+    WithdrawRequest,
+    WonProduct,
 } from "./types";
 
 // ============================================================
@@ -285,25 +285,24 @@ const apiService = {
   // 💰 Bid
   // ════════════════════════════════════════════════════════
   bid: {
-    placeBid: async (
-      data: PlaceBidRequest,
-    ): Promise<{ success: boolean; currentBid: number }> => {
+    placeBid: async (data: PlaceBidRequest): Promise<any> => {
       try {
-        const response = await apiClient.post<
-          ApiResponse<{ success: boolean; currentBid: number }>
-        >(ENDPOINTS.BID.PLACE, data);
-        return response.data.data;
+        const response = await apiClient.post(
+          ENDPOINTS.BID.PLACE(data.productId),
+          { price: data.price },
+        );
+        return response.data;
       } catch (error) {
         throw new Error(handleApiError(error));
       }
     },
 
-    buyNow: async (data: BuyNowRequest): Promise<{ success: boolean }> => {
+    buyNow: async (data: BuyNowRequest): Promise<any> => {
       try {
-        const response = await apiClient.post<
-          ApiResponse<{ success: boolean }>
-        >(ENDPOINTS.BID.BUY_NOW, data);
-        return response.data.data;
+        const response = await apiClient.post(
+          ENDPOINTS.BID.BUY_NOW(data.productId),
+        );
+        return response.data;
       } catch (error) {
         throw new Error(handleApiError(error));
       }
@@ -397,15 +396,15 @@ const apiService = {
       }
     },
 
-    getTransactions: async (
-      filter?: TransactionFilter,
-    ): Promise<PaginatedResponse<Transaction>> => {
+    getTransactions: async (filter?: TransactionFilter): Promise<any[]> => {
       try {
-        const response = await apiClient.get<PaginatedResponse<Transaction>>(
-          ENDPOINTS.WALLET.TRANSACTIONS,
-          { params: filter },
-        );
-        return response.data;
+        const response = await apiClient.get(ENDPOINTS.WALLET.TRANSACTIONS, {
+          params: filter,
+        });
+        const data = response.data;
+        if (Array.isArray(data)) return data;
+        if (data?.data && Array.isArray(data.data)) return data.data;
+        return [];
       } catch (error) {
         throw new Error(handleApiError(error));
       }
@@ -469,6 +468,19 @@ const apiService = {
           ENDPOINTS.PRODUCT.DETAIL(id),
         );
         return response.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    /** GET /products/:id/bids — ดึงประวัติการ bid */
+    getProductBids: async (id: number): Promise<any[]> => {
+      try {
+        const response = await apiClient.get(ENDPOINTS.PRODUCT.BIDS(id));
+        const data = response.data;
+        if (Array.isArray(data)) return data;
+        if (data?.data && Array.isArray(data.data)) return data.data;
+        return [];
       } catch (error) {
         throw new Error(handleApiError(error));
       }
@@ -803,10 +815,11 @@ const apiService = {
   admin: {
     getStats: async (): Promise<AdminStats> => {
       try {
-        const response = await apiClient.get<ApiResponse<AdminStats>>(
-          ENDPOINTS.ADMIN.STATS,
-        );
-        return response.data.data;
+        const response = await apiClient.get(ENDPOINTS.ADMIN.STATS);
+        // API returns the stats object directly (not wrapped in { data })
+        const data = response.data;
+        if (data?.data) return data.data;
+        return data;
       } catch (error) {
         throw new Error(handleApiError(error));
       }
@@ -868,9 +881,15 @@ const apiService = {
       data: AdminUpdateReportStatusRequest,
     ): Promise<AdminReport> => {
       try {
-        const response = await apiClient.put<ApiResponse<AdminReport>>(
+        const body: { status: string; admin_note?: string } = {
+          status: data.status,
+        };
+        if (data.admin_note) {
+          body.admin_note = data.admin_note;
+        }
+        const response = await apiClient.patch<ApiResponse<AdminReport>>(
           ENDPOINTS.ADMIN.REPORT_STATUS(data.reportId),
-          { status: data.status },
+          body,
         );
         return response.data.data;
       } catch (error) {

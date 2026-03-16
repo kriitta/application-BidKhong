@@ -69,6 +69,8 @@ export type {
     OrderStatus,
     PlaceBidRequest,
     Product,
+    ProductBid,
+    ProductCertificate,
     ProductImage,
     ProductPaginatedResponse,
     ProductStatus,

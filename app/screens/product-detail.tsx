@@ -4,6 +4,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   NativeScrollEvent,
@@ -20,7 +22,7 @@ import {
 } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiService, getFullImageUrl } from "../../utils/api";
-import { Product } from "../../utils/api/types";
+import { Product, ProductBid } from "../../utils/api/types";
 import { AppText } from "../components/appText";
 import { AuthModal } from "../components/AuthModal";
 
@@ -37,6 +39,7 @@ const ProductDetailPage = () => {
   const [authModalVisible, setAuthModalVisible] = useState(false);
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const [bidHistory, setBidHistory] = useState<ProductBid[]>([]);
 
   // ─── Real-time countdown tick (re-render every second) ───
   const [, setTick] = useState(0);
@@ -53,6 +56,13 @@ const ProductDetailPage = () => {
         if (!id) return;
         const data = await apiService.product.getProduct(id);
         setProduct(data);
+        // Fetch bid history
+        try {
+          const bids = await apiService.product.getProductBids(id);
+          setBidHistory(bids);
+        } catch (e) {
+          // bid history optional
+        }
       } catch (error: any) {
         console.error("Failed to fetch product:", error.message);
       } finally {
@@ -131,12 +141,72 @@ const ProductDetailPage = () => {
   const minBidAmount = currentBid + bidIncrement;
   const productImages = getProductImages();
 
+  const [bidLoading, setBidLoading] = useState(false);
+  const [buyNowLoading, setBuyNowLoading] = useState(false);
+
   const handleBid = () => {
     if (isGuest) {
       setAuthModalVisible(true);
       return;
     }
-    console.log("Bid placed:", bidAmount);
+    if (!product) return;
+
+    const amount = parseFloat(bidAmount);
+    if (!amount || isNaN(amount)) {
+      Alert.alert(
+        "กรุณาใส่จำนวนเงิน",
+        `ขั้นต่ำ ฿${minBidAmount.toLocaleString("en-US")}`,
+      );
+      return;
+    }
+    if (amount < minBidAmount) {
+      Alert.alert(
+        "ราคาต่ำเกินไป",
+        `กรุณาบิดขั้นต่ำ ฿${minBidAmount.toLocaleString("en-US")}`,
+      );
+      return;
+    }
+
+    Alert.alert(
+      "ยืนยันการบิด",
+      `คุณต้องการบิดราคา ฿${amount.toLocaleString("en-US")} ใช่ไหม?`,
+      [
+        { text: "ยกเลิก" },
+        {
+          text: "ยืนยัน",
+          onPress: async () => {
+            setBidLoading(true);
+            try {
+              await apiService.bid.placeBid({
+                productId: product.id,
+                price: amount,
+              });
+              Alert.alert(
+                "บิดสำเร็จ! 🎉",
+                `คุณบิดราคา ฿${amount.toLocaleString("en-US")} เรียบร้อยแล้ว`,
+              );
+              setBidAmount("");
+              // Refresh product data + bid history
+              const updated = await apiService.product.getProduct(product.id);
+              setProduct(updated);
+              try {
+                const bids = await apiService.product.getProductBids(
+                  product.id,
+                );
+                setBidHistory(bids);
+              } catch (_) {}
+            } catch (error: any) {
+              Alert.alert(
+                "บิดไม่สำเร็จ",
+                error.message || "เกิดข้อผิดพลาด กรุณาลองใหม่",
+              );
+            } finally {
+              setBidLoading(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleBuyNow = () => {
@@ -144,7 +214,37 @@ const ProductDetailPage = () => {
       setAuthModalVisible(true);
       return;
     }
-    console.log("Buy now clicked");
+    if (!product) return;
+
+    Alert.alert(
+      "ยืนยัน Buy Now",
+      `คุณต้องการซื้อสินค้านี้ในราคา ฿${buyNowPrice.toLocaleString("en-US")} ใช่ไหม?`,
+      [
+        { text: "ยกเลิก" },
+        {
+          text: "ซื้อเลย",
+          onPress: async () => {
+            setBuyNowLoading(true);
+            try {
+              await apiService.bid.buyNow({ productId: product.id });
+              Alert.alert("ซื้อสำเร็จ! 🎉", "คุณได้รับสินค้านี้เรียบร้อยแล้ว", [
+                {
+                  text: "ตกลง",
+                  onPress: () => router.back(),
+                },
+              ]);
+            } catch (error: any) {
+              Alert.alert(
+                "ซื้อไม่สำเร็จ",
+                error.message || "เกิดข้อผิดพลาด กรุณาลองใหม่",
+              );
+            } finally {
+              setBuyNowLoading(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   if (loading) {
@@ -302,6 +402,42 @@ const ProductDetailPage = () => {
               </AppText>
             </View>
           )}
+          {product.certificate && (
+            <View
+              style={[
+                styles.tag,
+                {
+                  backgroundColor:
+                    product.certificate.status === "approved"
+                      ? "#E8F5E9"
+                      : "#FFF8E1",
+                  borderWidth: 0.5,
+                  borderColor:
+                    product.certificate.status === "approved"
+                      ? "#4CAF50"
+                      : "#FFC107",
+                },
+              ]}
+            >
+              <AppText
+                weight="semibold"
+                style={[
+                  styles.tagText,
+                  {
+                    color:
+                      product.certificate.status === "approved"
+                        ? "#2E7D32"
+                        : "#F57F17",
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {product.certificate.status === "approved"
+                  ? "✅ Certified"
+                  : "🕐 Pending Certificate"}
+              </AppText>
+            </View>
+          )}
           {product.category && (
             <View style={styles.tag}>
               <AppText weight="medium" style={styles.tagText} numberOfLines={1}>
@@ -351,13 +487,27 @@ const ProductDetailPage = () => {
           /> */}
 
           <View style={{ flex: 1 }}>
-            <AppText
-              weight="semibold"
-              style={styles.sellerName}
-              numberOfLines={1}
-            >
-              {product.user?.name || "Unknown Seller"}
-            </AppText>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <AppText
+                weight="semibold"
+                style={styles.sellerName}
+                numberOfLines={1}
+              >
+                {product.user?.name || "Unknown Seller"}
+              </AppText>
+              <AppText
+                weight="regular"
+                style={{
+                  fontSize: 12,
+                  color: "#B0B0B0",
+                  marginLeft: 4,
+                  marginBottom: 4,
+                }}
+                numberOfLines={1}
+              >
+                ({product.user?.id || product.user_id})
+              </AppText>
+            </View>
             <View style={styles.userIdRow}>
               <Image
                 source={image.phone}
@@ -824,17 +974,101 @@ const ProductDetailPage = () => {
                 numberOfLines={1}
               >
                 {" "}
-                ( 5 lastest bid )
+                ({" "}
+                {bidHistory.length > 0
+                  ? `${Math.min(bidHistory.length, 5)} latest bid`
+                  : `${product.bids_count} bids`}{" "}
+                )
               </AppText>
             </AppText>
 
-            {product.bids_count > 0 ? (
-              <AppText
-                weight="regular"
-                style={{ color: "#9CA3AF", fontSize: 13, marginTop: 8 }}
-              >
-                Total {product.bids_count} bids placed
-              </AppText>
+            {bidHistory.length > 0 ? (
+              bidHistory.slice(0, 5).map((bid, index) => {
+                const bidTime = new Date(bid.created_at);
+                const timeAgo = () => {
+                  const diff = Date.now() - bidTime.getTime();
+                  const mins = Math.floor(diff / 60000);
+                  if (mins < 1) return "just now";
+                  if (mins < 60) return `${mins}m ago`;
+                  const hrs = Math.floor(mins / 60);
+                  if (hrs < 24) return `${hrs}h ago`;
+                  const days = Math.floor(hrs / 24);
+                  return `${days}d ago`;
+                };
+                return (
+                  <View key={bid.id || index} style={styles.bidHistoryItem}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        flex: 1,
+                      }}
+                    >
+                      <View
+                        style={[
+                          styles.sellerAvatar,
+                          styles.defaultAvatar,
+                          {
+                            width: 36,
+                            height: 36,
+                            borderRadius: 18,
+                            marginRight: 10,
+                          },
+                        ]}
+                      >
+                        <AppText
+                          weight="bold"
+                          style={{ fontSize: 14, color: "#FFF" }}
+                        >
+                          {bid.user?.name?.charAt(0).toUpperCase() || "U"}
+                        </AppText>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View
+                          style={{ flexDirection: "row", alignItems: "center" }}
+                        >
+                          <AppText
+                            weight="semibold"
+                            style={styles.bidHistoryName}
+                            numberOfLines={1}
+                          >
+                            {bid.user?.name || `User #${bid.user_id}`}
+                          </AppText>
+                          <AppText
+                            weight="regular"
+                            style={{
+                              fontSize: 11,
+                              color: "#C0C0C0",
+                              marginLeft: 4,
+                              marginBottom: 4,
+                            }}
+                            numberOfLines={1}
+                          >
+                            ({bid.user?.id || bid.user_id})
+                          </AppText>
+                        </View>
+                        <AppText
+                          weight="regular"
+                          style={styles.bidHistoryTime}
+                          numberOfLines={1}
+                        >
+                          {timeAgo()}
+                        </AppText>
+                      </View>
+                    </View>
+                    <AppText
+                      weight="bold"
+                      style={[
+                        styles.bidHistoryAmount,
+                        index === 0 && { color: "#22C55E" },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      ฿{parseFloat(bid.price).toLocaleString("en-US")}
+                    </AppText>
+                  </View>
+                );
+              })
             ) : (
               <AppText
                 weight="regular"
@@ -855,37 +1089,57 @@ const ProductDetailPage = () => {
             { paddingBottom: insets.bottom },
           ]}
         >
-          <TouchableOpacity onPress={handleBid} activeOpacity={0.8}>
+          <TouchableOpacity
+            onPress={handleBid}
+            activeOpacity={0.8}
+            disabled={bidLoading || buyNowLoading}
+          >
             <LinearGradient
-              colors={["#2EA200", "#3CD500"]}
+              colors={
+                bidLoading ? ["#9CA3AF", "#9CA3AF"] : ["#2EA200", "#3CD500"]
+              }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.primaryButton2}
             >
-              <AppText
-                weight="bold"
-                style={styles.placeBidButtonText}
-                numberOfLines={1}
-              >
-                Place Bid
-              </AppText>
+              {bidLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <AppText
+                  weight="bold"
+                  style={styles.placeBidButtonText}
+                  numberOfLines={1}
+                >
+                  Place Bid
+                </AppText>
+              )}
             </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleBuyNow} activeOpacity={0.8}>
+          <TouchableOpacity
+            onPress={handleBuyNow}
+            activeOpacity={0.8}
+            disabled={bidLoading || buyNowLoading}
+          >
             <LinearGradient
-              colors={["#00112E", "#003994"]}
+              colors={
+                buyNowLoading ? ["#9CA3AF", "#9CA3AF"] : ["#00112E", "#003994"]
+              }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.primaryButton2}
             >
-              <AppText
-                weight="bold"
-                style={styles.buyNowButtonText}
-                numberOfLines={1}
-              >
-                Buy Now
-              </AppText>
+              {buyNowLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <AppText
+                  weight="bold"
+                  style={styles.buyNowButtonText}
+                  numberOfLines={1}
+                >
+                  Buy Now
+                </AppText>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </View>

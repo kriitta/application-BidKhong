@@ -59,6 +59,7 @@ export const ENDPOINTS = {
     LIST: "/products",
     CREATE: "/products",
     DETAIL: (id: number) => `/products/${id}`,
+    BIDS: (id: number) => `/products/${id}/bids`,
     MY_PRODUCTS: "/my-products",
   },
 
@@ -72,8 +73,8 @@ export const ENDPOINTS = {
 
   // 💰 Bid
   BID: {
-    PLACE: "/bids",
-    BUY_NOW: "/bids/buy-now",
+    PLACE: (productId: number) => `/products/${productId}/bid`,
+    BUY_NOW: (productId: number) => `/products/${productId}/buy-now`,
     ACTIVE: "/bids/active",
     HISTORY: "/bids/history",
     STATS: "/bids/stats",
@@ -126,12 +127,12 @@ export const ENDPOINTS = {
 
   // �🛡️ Admin
   ADMIN: {
-    STATS: "/admin/stats",
+    STATS: "/admin/dashboard",
     INCOMING: "/admin/incoming",
     APPROVE: (id: string) => `/admin/incoming/${id}/approve`,
     REJECT: (id: string) => `/admin/incoming/${id}`,
     REPORTS: "/admin/reports",
-    REPORT_STATUS: (id: string) => `/admin/reports/${id}/status`,
+    REPORT_STATUS: (id: string) => `/admin/reports/${id}`,
     REPORT_REPLY: (id: string) => `/admin/reports/${id}/reply`,
   },
 

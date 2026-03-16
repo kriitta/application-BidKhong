@@ -146,8 +146,8 @@ const MyBidPage = () => {
     try {
       setBidSubmitting(true);
       await apiService.bid.placeBid({
-        auctionId: bidModalItem.auctionId,
-        amount,
+        productId: Number(bidModalItem.auctionId),
+        price: amount,
       });
       Alert.alert("Success", "Your bid has been placed!");
       setBidModalVisible(false);

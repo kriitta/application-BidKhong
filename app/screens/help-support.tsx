@@ -687,6 +687,20 @@ const HelpSupportPage = () => {
                 </AppText>
               </View>
 
+              {/* Admin Note Preview */}
+              {report.admin_note && (
+                <View style={styles.replyPreview}>
+                  <AppText style={{ fontSize: 13, marginRight: 6 }}>📝</AppText>
+                  <AppText
+                    weight="regular"
+                    style={styles.replyPreviewText}
+                    numberOfLines={1}
+                  >
+                    {report.admin_note}
+                  </AppText>
+                </View>
+              )}
+
               {/* Admin Reply Preview */}
               {report.admin_reply && (
                 <View style={styles.replyPreview}>
@@ -992,16 +1006,24 @@ const HelpSupportPage = () => {
                 )}
               </View>
 
-              {/* Admin Reply */}
-              <View style={styles.modalSection}>
-                <AppText weight="semibold" style={styles.modalSectionTitle}>
-                  💬 การตอบกลับจากแอดมิน
-                </AppText>
-                {selectedReport.admin_reply ? (
+              {/* Admin Note */}
+              {selectedReport.admin_note && (
+                <View style={styles.modalSection}>
+                  <AppText weight="semibold" style={styles.modalSectionTitle}>
+                    📝 หมายเหตุจากแอดมิน
+                  </AppText>
                   <View style={styles.adminReplyCard}>
                     <View style={styles.adminReplyHeader}>
-                      <View style={styles.adminAvatar}>
-                        <AppText weight="bold" style={styles.adminAvatarText}>
+                      <View
+                        style={[
+                          styles.adminAvatar,
+                          { backgroundColor: "#FEF3C7" },
+                        ]}
+                      >
+                        <AppText
+                          weight="bold"
+                          style={[styles.adminAvatarText, { color: "#D97706" }]}
+                        >
                           A
                         </AppText>
                       </View>
@@ -1009,34 +1031,15 @@ const HelpSupportPage = () => {
                         <AppText weight="semibold" style={styles.adminName}>
                           Admin BidKhong
                         </AppText>
-                        {selectedReport.admin_reply_at && (
-                          <AppText
-                            weight="regular"
-                            style={styles.adminReplyDate}
-                          >
-                            {formatDate(selectedReport.admin_reply_at)}
-                          </AppText>
-                        )}
                       </View>
                     </View>
                     <AppText weight="regular" style={styles.adminReplyText}>
-                      {selectedReport.admin_reply}
+                      {selectedReport.admin_note}
                     </AppText>
                   </View>
-                ) : (
-                  <View style={styles.noReplyCard}>
-                    <AppText style={{ fontSize: 32, marginBottom: 8 }}>
-                      ⏳
-                    </AppText>
-                    <AppText weight="semibold" style={styles.noReplyTitle}>
-                      ยังไม่มีการตอบกลับ
-                    </AppText>
-                    <AppText weight="regular" style={styles.noReplyText}>
-                      ทีมงานจะตอบกลับภายใน 24-48 ชั่วโมง
-                    </AppText>
-                  </View>
-                )}
-              </View>
+                </View>
+              )}
+              
             </ScrollView>
           </View>
         </View>

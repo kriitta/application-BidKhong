@@ -87,6 +87,33 @@ export interface ProductImage {
   updated_at: string;
 }
 
+export interface ProductCertificate {
+  id: number;
+  product_id: number;
+  file_path: string;
+  original_name: string;
+  status: "pending" | "approved" | "rejected";
+  admin_note: string | null;
+  verified_by: number | null;
+  verified_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductBid {
+  id: number;
+  user_id: number;
+  product_id: number;
+  price: string;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    id: number;
+    name: string;
+    phone_number?: string;
+  };
+}
+
 export interface Product {
   id: number;
   user_id: number;
@@ -109,7 +136,10 @@ export interface Product {
   updated_at: string;
   bids_count: number;
   tag: ProductTag;
+  is_certified: boolean;
   images: ProductImage[];
+  certificate?: ProductCertificate | null;
+  bids?: ProductBid[];
   // Relations (populated when included)
   category?: import("./types").Category;
   subcategory?: import("./types").Subcategory;
@@ -234,12 +264,12 @@ export interface HistoryStats {
 }
 
 export interface PlaceBidRequest {
-  auctionId: string;
-  amount: number;
+  productId: number;
+  price: number;
 }
 
 export interface BuyNowRequest {
-  auctionId: string;
+  productId: number;
 }
 
 // ─── Won Product / Verification ──────────────────────────────
@@ -505,11 +535,14 @@ export interface DisputeOrderRequest {
 // ─── Admin ───────────────────────────────────────────────────
 
 export interface AdminStats {
-  totalUsers: number;
-  totalRevenue: number;
-  totalAuctions: number;
-  pendingProducts: number;
-  pendingReports: number;
+  total_users: number;
+  total_products: number;
+  total_orders: number;
+  active_auctions: number;
+  open_disputes: number;
+  pending_reports: number;
+  pending_certificates: number;
+  recent_orders: any[];
 }
 
 export type AdminReportPriority = "low" | "medium" | "high" | "critical";
@@ -550,6 +583,7 @@ export interface AdminReplyRequest {
 export interface AdminUpdateReportStatusRequest {
   reportId: string;
   status: ReportStatus;
+  admin_note?: string;
 }
 
 // ─── Upload ──────────────────────────────────────────────────
