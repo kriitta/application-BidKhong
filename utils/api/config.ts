@@ -1,9 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios, {
-    AxiosError,
-    AxiosInstance,
-    AxiosResponse,
-    InternalAxiosRequestConfig,
+  AxiosError,
+  AxiosInstance,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
 } from "axios";
 
 // ============================================================
@@ -61,6 +61,7 @@ export const ENDPOINTS = {
     DETAIL: (id: number) => `/products/${id}`,
     BIDS: (id: number) => `/products/${id}/bids`,
     MY_PRODUCTS: "/my-products",
+    RECOMMENDATIONS: "/recommendations",
   },
 
   // 🏷️ Auction
@@ -117,7 +118,7 @@ export const ENDPOINTS = {
 
   // � Order (Post-Auction / Escrow)
   ORDER: {
-    MY_ORDERS: "/orders",
+    MY_ORDERS: "/users/me/orders",
     DETAIL: (id: number) => `/orders/${id}/detail`,
     CONFIRM: (id: number) => `/orders/${id}/confirm`,
     SHIP: (id: number) => `/orders/${id}/ship`,
@@ -129,17 +130,31 @@ export const ENDPOINTS = {
   ADMIN: {
     STATS: "/admin/dashboard",
     INCOMING: "/admin/incoming",
+    PENDING_PRODUCTS: "/admin/products",
+    APPROVE_PRODUCT: (id: number) => `/admin/products/${id}/approve`,
+    REJECT_PRODUCT: (id: number) => `/admin/products/${id}/reject`,
     APPROVE: (id: string) => `/admin/incoming/${id}/approve`,
     REJECT: (id: string) => `/admin/incoming/${id}`,
     REPORTS: "/admin/reports",
     REPORT_STATUS: (id: string) => `/admin/reports/${id}`,
     REPORT_REPLY: (id: string) => `/admin/reports/${id}/reply`,
+    USERS: "/admin/users",
+    USER_DETAIL: (id: number) => `/admin/users/${id}`,
+    USER_BAN: (id: number) => `/admin/users/${id}/ban`,
+    USER_UNBAN: (id: number) => `/admin/users/${id}/unban`,
+    CERTIFICATE_VIEW: (id: number) => `/admin/certificates/${id}`,
+    CERTIFICATE_VERIFY: (id: number) => `/admin/certificates/${id}/verify`,
   },
 
   // 📸 Upload
   UPLOAD: {
     IMAGE: "/upload/image",
     IMAGES: "/upload/images",
+  },
+
+  // 📊 Public
+  PUBLIC: {
+    STATS: "/public/stats",
   },
 } as const;
 

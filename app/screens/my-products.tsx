@@ -1,19 +1,9 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Dimensions,
   Image,
-  Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -22,24 +12,22 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
+import { useAuth } from "../../contexts/AuthContext";
 import { apiService, getFullImageUrl } from "../../utils/api";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Product } from "../../utils/api/types";
 import { AppText } from "../components/appText";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-type FilterTab = "all" | "incoming" | "active" | "ended";
+type FilterTab = "all" | "incoming" | "active" | "ended" | "shipping";
 
 const MyProductsPage = () => {
   const router = useRouter();
+  const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
+  const [shippingProducts, setShippingProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [detailVisible, setDetailVisible] = useState(false);
-  const [detailImageIndex, setDetailImageIndex] = useState(0);
-  const detailScrollRef = useRef<ScrollView>(null);
 
   // Real-time countdown tick
   const [, setTick] = useState(0);
@@ -48,27 +36,35 @@ const MyProductsPage = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // ─── Fetch products from API ───
+  // ─── Fetch products from API (including shipping/completed) ───
   const fetchProducts = useCallback(async () => {
     try {
-      const data = await apiService.product.getMyProducts();
-      setProducts(data);
+      if (user?.id) {
+        const { allProducts, shippingProducts: shipping } =
+          await apiService.product.getMyProductsWithShipping(user.id);
+        setProducts(allProducts);
+        setShippingProducts(shipping);
+      } else {
+        const data = await apiService.product.getMyProducts();
+        setProducts(data);
+      }
     } catch (error: any) {
       console.error("Failed to load my products:", error.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
   const openDetail = (product: Product) => {
-    setSelectedProduct(product);
-    setDetailImageIndex(0);
-    setDetailVisible(true);
+    router.push({
+      pathname: "/screens/product-detail",
+      params: { productId: product.id.toString() },
+    });
   };
 
   const onRefresh = useCallback(() => {
@@ -93,9 +89,13 @@ const MyProductsPage = () => {
           (p.tag === "hot" || p.tag === "ending" || p.tag === "default") &&
           !isRealEnded(p),
       );
-    if (activeTab === "ended") return products.filter((p) => isRealEnded(p));
+    if (activeTab === "ended")
+      return products.filter(
+        (p) => isRealEnded(p) && !shippingProducts.some((sp) => sp.id === p.id),
+      );
+    if (activeTab === "shipping") return shippingProducts;
     return products;
-  }, [products, activeTab, isRealEnded]);
+  }, [products, shippingProducts, activeTab, isRealEnded]);
 
   const stats = useMemo(
     () => ({
@@ -106,9 +106,12 @@ const MyProductsPage = () => {
           (p.tag === "hot" || p.tag === "ending" || p.tag === "default") &&
           !isRealEnded(p),
       ).length,
-      ended: products.filter((p) => isRealEnded(p)).length,
+      ended: products.filter(
+        (p) => isRealEnded(p) && !shippingProducts.some((sp) => sp.id === p.id),
+      ).length,
+      shipping: shippingProducts.length,
     }),
-    [products, isRealEnded],
+    [products, shippingProducts, isRealEnded],
   );
 
   const formatTimeRemaining = (endTime: string) => {
@@ -122,19 +125,6 @@ const MyProductsPage = () => {
     if (days > 0) return `${days}d ${hours}h`;
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
-  };
-
-  const formatDetailTime = (endTime: string) => {
-    const now = new Date();
-    const end = new Date(endTime);
-    const diff = end.getTime() - now.getTime();
-    if (diff <= 0) return "สิ้นสุดแล้ว";
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   };
 
   const formatDate = (dateStr: string) => {
@@ -169,27 +159,6 @@ const MyProductsPage = () => {
     return image.macbook;
   };
 
-  /** Get gallery images for detail modal */
-  const getProductGallery = (product: Product) => {
-    const gallery: any[] = [];
-    if (product.images && product.images.length > 0) {
-      product.images.forEach((img) => {
-        const url = getFullImageUrl(img.image_url);
-        if (url) gallery.push({ uri: url });
-      });
-    }
-    if (gallery.length === 0 && product.image_url) {
-      const url = getFullImageUrl(product.image_url);
-      if (url) gallery.push({ uri: url });
-    }
-    if (gallery.length === 0 && product.picture) {
-      const url = getFullImageUrl(product.picture);
-      if (url) gallery.push({ uri: url });
-    }
-    if (gallery.length === 0) gallery.push(image.macbook);
-    return gallery;
-  };
-
   const getTagConfig = (tag: string) => {
     switch (tag) {
       case "hot":
@@ -218,7 +187,23 @@ const MyProductsPage = () => {
     }
   };
 
+  /** Check if product is in shipping state (sold, waiting for buyer verification) */
+  const isShippingProduct = useCallback(
+    (product: Product) => {
+      return shippingProducts.some((sp) => sp.id === product.id);
+    },
+    [shippingProducts],
+  );
+
   const getStatusConfig = (product: Product) => {
+    if (isShippingProduct(product)) {
+      return {
+        label: "Shipping",
+        color: "#E65100",
+        bg: "#FFF3E0",
+        icon: "📦",
+      };
+    }
     if (isRealEnded(product)) {
       return { label: "Ended", color: "#999", bg: "#F5F5F5" };
     }
@@ -230,6 +215,7 @@ const MyProductsPage = () => {
     { key: "incoming", label: "Incoming", count: stats.incoming },
     { key: "active", label: "Active", count: stats.active },
     { key: "ended", label: "Ended", count: stats.ended },
+    { key: "shipping", label: "Shipping", count: stats.shipping },
   ];
 
   return (
@@ -304,13 +290,16 @@ const MyProductsPage = () => {
             <AppText weight="regular" style={styles.emptySubtitle}>
               {activeTab === "all"
                 ? "คุณยังไม่มีสินค้าที่วางขาย\nกดปุ่ม Seller เพื่อเริ่มสร้างรายการประมูล"
-                : "ไม่มีสินค้าในหมวดนี้"}
+                : activeTab === "shipping"
+                  ? "ไม่มีสินค้าที่รอการยืนยันจากผู้ซื้อ"
+                  : "ไม่มีสินค้าในหมวดนี้"}
             </AppText>
           </View>
         ) : (
           filteredProducts.map((product) => {
             const statusConfig = getStatusConfig(product);
             const isEnded = isRealEnded(product);
+            const isShipping = isShippingProduct(product);
             const timeDisplay =
               product.tag === "incoming"
                 ? formatTimeRemaining(product.auction_start_time)
@@ -319,7 +308,7 @@ const MyProductsPage = () => {
             return (
               <TouchableOpacity
                 key={product.id}
-                style={styles.productCard}
+                style={[styles.productCard, isShipping && styles.shippingCard]}
                 activeOpacity={0.7}
                 onPress={() => openDetail(product)}
               >
@@ -360,39 +349,76 @@ const MyProductsPage = () => {
                   <View style={styles.priceRow}>
                     <View>
                       <AppText weight="regular" style={styles.priceLabel}>
-                        {isEnded ? "ราคาสุดท้าย" : "ราคาปัจจุบัน"}
+                        {isShipping
+                          ? "ราคาขาย"
+                          : isEnded
+                            ? "ราคาสุดท้าย"
+                            : "ราคาปัจจุบัน"}
                       </AppText>
-                      <AppText weight="bold" style={styles.priceValue}>
+                      <AppText
+                        weight="bold"
+                        style={[
+                          styles.priceValue,
+                          isShipping && { color: "#E65100" },
+                        ]}
+                      >
                         ฿
                         {parseFloat(
                           product.current_price || product.starting_price,
                         ).toLocaleString()}
                       </AppText>
                     </View>
-                    {!isEnded && (
+                    {isShipping ? (
                       <View style={styles.timeContainer}>
-                        <AppText weight="regular" style={styles.timeLabel}>
-                          {product.tag === "incoming" ? "เริ่มใน" : "เหลือเวลา"}
-                        </AppText>
-                        <AppText weight="semibold" style={styles.timeValue}>
-                          {timeDisplay}
-                        </AppText>
+                        <View style={styles.shippingBadge}>
+                          <AppText
+                            weight="semibold"
+                            style={styles.shippingBadgeText}
+                          >
+                            📦 รอ Verify
+                          </AppText>
+                        </View>
                       </View>
+                    ) : (
+                      !isEnded && (
+                        <View style={styles.timeContainer}>
+                          <AppText weight="regular" style={styles.timeLabel}>
+                            {product.tag === "incoming"
+                              ? "เริ่มใน"
+                              : "เหลือเวลา"}
+                          </AppText>
+                          <AppText weight="semibold" style={styles.timeValue}>
+                            {timeDisplay}
+                          </AppText>
+                        </View>
+                      )
                     )}
                   </View>
 
                   <View style={styles.productMeta}>
-                    <View style={styles.metaItem}>
-                      <AppText weight="regular" style={styles.metaText}>
-                        🏷️ เริ่มต้น ฿
-                        {parseFloat(product.starting_price).toLocaleString()}
-                      </AppText>
-                    </View>
-                    <View style={styles.metaItem}>
-                      <AppText weight="regular" style={styles.metaText}>
-                        👥 {product.bids_count || 0} bids
-                      </AppText>
-                    </View>
+                    {isShipping ? (
+                      <View style={styles.metaItem}>
+                        <AppText weight="regular" style={styles.metaText}>
+                          🕐 รอผู้ซื้อยืนยันการรับสินค้า
+                        </AppText>
+                      </View>
+                    ) : (
+                      <>
+                        <View style={styles.metaItem}>
+                          <AppText weight="regular" style={styles.metaText}>
+                            🏷️ เริ่มต้น ฿
+                            {parseFloat(
+                              product.starting_price,
+                            ).toLocaleString()}
+                          </AppText>
+                        </View>
+                        <View style={styles.metaItem}>
+                          <AppText weight="regular" style={styles.metaText}>
+                            👥 {product.bids_count || 0} bids
+                          </AppText>
+                        </View>
+                      </>
+                    )}
                   </View>
                 </View>
               </TouchableOpacity>
@@ -401,565 +427,6 @@ const MyProductsPage = () => {
         )}
         <View style={{ height: 30 }} />
       </ScrollView>
-
-      {/* ─── Product Detail Modal (styled like product-detail page) ─── */}
-      <Modal
-        visible={detailVisible}
-        animationType="slide"
-        onRequestClose={() => setDetailVisible(false)}
-      >
-        {selectedProduct &&
-          (() => {
-            const sp = selectedProduct;
-            const ended = isRealEnded(sp);
-            const isIncoming = sp.tag === "incoming";
-            const isHot = sp.tag === "hot";
-            const isEnding = sp.tag === "ending";
-            const currentBid = parseFloat(sp.current_price);
-            const buyNowPrice = parseFloat(sp.buyout_price);
-            const bidIncrement = parseFloat(sp.bid_increment);
-            const gallery = getProductGallery(sp);
-            const categoryName = sp.category?.name || "";
-            const sellerName = sp.user?.name || "You";
-
-            return (
-              <SafeAreaView style={dStyles.container}>
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingBottom: 40 }}
-                >
-                  {/* Header */}
-                  <View style={dStyles.headerContainer}>
-                    <TouchableOpacity onPress={() => setDetailVisible(false)}>
-                      <Image
-                        source={image.back}
-                        style={{ width: 32, height: 32 }}
-                      />
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Image Carousel */}
-                  <View style={dStyles.imageCarouselContainer}>
-                    <ScrollView
-                      ref={detailScrollRef}
-                      horizontal
-                      pagingEnabled
-                      showsHorizontalScrollIndicator={false}
-                      onMomentumScrollEnd={(
-                        e: NativeSyntheticEvent<NativeScrollEvent>,
-                      ) => {
-                        const idx = Math.round(
-                          e.nativeEvent.contentOffset.x / SCREEN_WIDTH,
-                        );
-                        setDetailImageIndex(idx);
-                      }}
-                      scrollEnabled={gallery.length > 1}
-                    >
-                      {gallery.map((img, idx) => (
-                        <View
-                          key={idx}
-                          style={[
-                            dStyles.imageContainer,
-                            { width: SCREEN_WIDTH },
-                          ]}
-                        >
-                          <Image
-                            source={img}
-                            style={dStyles.productImage}
-                            resizeMode="contain"
-                          />
-                        </View>
-                      ))}
-                    </ScrollView>
-
-                    {gallery.length > 1 && (
-                      <View style={dStyles.dotsContainer}>
-                        {gallery.map((_, idx) => (
-                          <View
-                            key={idx}
-                            style={[
-                              dStyles.dot,
-                              idx === detailImageIndex
-                                ? dStyles.dotActive
-                                : dStyles.dotInactive,
-                            ]}
-                          />
-                        ))}
-                      </View>
-                    )}
-
-                    {gallery.length > 1 && (
-                      <View style={dStyles.imageCounterBadge}>
-                        <AppText
-                          weight="medium"
-                          style={dStyles.imageCounterText}
-                          numberOfLines={1}
-                        >
-                          {detailImageIndex + 1} / {gallery.length}
-                        </AppText>
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Tags */}
-                  <View style={dStyles.tagsContainer}>
-                    {sp.tag && !ended && (
-                      <View
-                        style={[
-                          dStyles.tag,
-                          {
-                            backgroundColor: isHot
-                              ? "#FFE5E5"
-                              : isEnding
-                                ? "#FFF3E0"
-                                : isIncoming
-                                  ? "#F3E5F5"
-                                  : "#E3F2FD",
-                          },
-                        ]}
-                      >
-                        <AppText
-                          weight="medium"
-                          style={[
-                            dStyles.tagText,
-                            {
-                              color: isHot
-                                ? "#FF3B30"
-                                : isEnding
-                                  ? "#FF8C00"
-                                  : isIncoming
-                                    ? "#9B27B0"
-                                    : "#4285F4",
-                            },
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {isHot
-                            ? "🔥 Hot"
-                            : isEnding
-                              ? "⏰ Ending Soon"
-                              : isIncoming
-                                ? "🔜 Incoming"
-                                : ""}
-                        </AppText>
-                      </View>
-                    )}
-                    {ended && (
-                      <View
-                        style={[dStyles.tag, { backgroundColor: "#F5F5F5" }]}
-                      >
-                        <AppText
-                          weight="medium"
-                          style={[dStyles.tagText, { color: "#999" }]}
-                        >
-                          สิ้นสุดแล้ว
-                        </AppText>
-                      </View>
-                    )}
-                    <View style={dStyles.tag}>
-                      <AppText
-                        weight="medium"
-                        style={dStyles.tagText}
-                        numberOfLines={1}
-                      >
-                        {categoryName}
-                      </AppText>
-                    </View>
-                  </View>
-
-                  {/* Product Title */}
-                  <View style={dStyles.titleSection}>
-                    <AppText
-                      weight="bold"
-                      numberOfLines={2}
-                      style={dStyles.productTitle}
-                    >
-                      {sp.name}
-                    </AppText>
-                  </View>
-
-                  {/* Seller Info */}
-                  <View style={dStyles.sellerContainer}>
-                    <View style={dStyles.sellerAvatar}>
-                      <AppText
-                        weight="bold"
-                        style={{ color: "#FFF", fontSize: 18 }}
-                      >
-                        {sellerName.charAt(0).toUpperCase()}
-                      </AppText>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <AppText
-                        weight="semibold"
-                        style={dStyles.sellerName}
-                        numberOfLines={1}
-                      >
-                        {sellerName}
-                      </AppText>
-                      <View style={dStyles.userIdRow}>
-                        <Image
-                          source={image.location}
-                          style={{
-                            width: 12,
-                            height: 14,
-                            tintColor: "#9CA3AF",
-                            marginRight: 4,
-                          }}
-                        />
-                        <AppText
-                          weight="regular"
-                          style={dStyles.sellerLocation}
-                          numberOfLines={1}
-                        >
-                          {sp.location}
-                        </AppText>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Incoming Banner */}
-                  {isIncoming && !ended && (
-                    <View style={dStyles.incomingBanner}>
-                      <View style={dStyles.incomingBannerIcon}>
-                        <Image
-                          source={image.incoming_time}
-                          style={{ width: 20, height: 20 }}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <AppText
-                          weight="semibold"
-                          style={dStyles.incomingBannerTitle}
-                          numberOfLines={1}
-                        >
-                          Upcoming Auction
-                        </AppText>
-                        <AppText
-                          weight="regular"
-                          style={dStyles.incomingBannerSub}
-                          numberOfLines={2}
-                        >
-                          This auction hasn't started yet. Starts in{" "}
-                          {formatDetailTime(sp.auction_start_time)}.
-                        </AppText>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Bid Info Cards */}
-                  <View style={dStyles.bidInfoContainer}>
-                    <View
-                      style={[
-                        dStyles.bidCard,
-                        {
-                          backgroundColor: "#E8F5E9",
-                          borderWidth: 0.5,
-                          borderColor: "#22C55E",
-                        },
-                      ]}
-                    >
-                      <View style={dStyles.bidCardHeader}>
-                        <Image
-                          source={image.current_bid}
-                          style={{
-                            width: 13,
-                            height: 7,
-                            tintColor: "#22C55E",
-                            marginRight: 4,
-                          }}
-                        />
-                        <AppText
-                          weight="medium"
-                          style={[dStyles.bidLabel, { color: "#22C55E" }]}
-                          numberOfLines={1}
-                        >
-                          {sp.bids_count} Bids
-                        </AppText>
-                      </View>
-                      <AppText
-                        weight="regular"
-                        style={dStyles.bidLabelSmall}
-                        numberOfLines={1}
-                      >
-                        {ended ? "Final Price" : "Current Bid"}
-                      </AppText>
-                      <AppText
-                        weight="bold"
-                        style={dStyles.bidAmount}
-                        numberOfLines={1}
-                        adjustsFontSizeToFit
-                      >
-                        ฿{currentBid.toLocaleString("en-US")}
-                      </AppText>
-                    </View>
-
-                    <View
-                      style={[
-                        dStyles.bidCard,
-                        {
-                          backgroundColor: "#E3F2FD",
-                          borderWidth: 0.5,
-                          borderColor: "#2C7BFC",
-                        },
-                      ]}
-                    >
-                      <View style={dStyles.bidCardHeader}>
-                        <Image
-                          source={image.buynow}
-                          style={{
-                            width: 14,
-                            height: 14,
-                            tintColor: "#2C7BFC",
-                            marginRight: 4,
-                          }}
-                        />
-                        <AppText
-                          weight="medium"
-                          style={[dStyles.bidLabel, { color: "#2C7BFC" }]}
-                          numberOfLines={1}
-                        >
-                          Buy Now
-                        </AppText>
-                      </View>
-                      <AppText
-                        weight="regular"
-                        style={dStyles.bidLabelSmall}
-                        numberOfLines={1}
-                      >
-                        Buyout Price
-                      </AppText>
-                      <AppText
-                        weight="bold"
-                        style={dStyles.bidAmount}
-                        numberOfLines={1}
-                        adjustsFontSizeToFit
-                      >
-                        ฿{buyNowPrice.toLocaleString("en-US")}
-                      </AppText>
-                    </View>
-                  </View>
-
-                  {/* Min bid increment note */}
-                  {!ended && (
-                    <View style={dStyles.minBidNote}>
-                      <Image
-                        source={image.info}
-                        style={{
-                          width: 14,
-                          height: 14,
-                          tintColor: "#6B7280",
-                          marginRight: 6,
-                        }}
-                      />
-                      <AppText
-                        weight="regular"
-                        style={dStyles.minBidText}
-                        numberOfLines={1}
-                      >
-                        Minimum bid increment: ฿{bidIncrement.toLocaleString()}
-                      </AppText>
-                    </View>
-                  )}
-
-                  {/* Auction Information */}
-                  <View style={dStyles.auctionInfoSection}>
-                    <AppText
-                      weight="bold"
-                      style={dStyles.sectionTitle}
-                      numberOfLines={1}
-                    >
-                      Auction Information
-                    </AppText>
-
-                    <View style={dStyles.infoRow}>
-                      <View style={dStyles.infoIconContainer}>
-                        <Image
-                          source={image.ends}
-                          style={{
-                            width: 16,
-                            height: 16,
-                            tintColor: "#6B7280",
-                          }}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <AppText
-                          weight="regular"
-                          style={dStyles.infoLabel}
-                          numberOfLines={1}
-                        >
-                          {isIncoming ? "Starts" : "Ends"}
-                        </AppText>
-                        <AppText
-                          weight="semibold"
-                          style={dStyles.infoValue}
-                          numberOfLines={1}
-                        >
-                          {isIncoming
-                            ? formatDate(sp.auction_start_time)
-                            : formatDate(sp.auction_end_time)}
-                        </AppText>
-                      </View>
-                    </View>
-
-                    <View style={dStyles.infoRow}>
-                      <View style={dStyles.infoIconContainer}>
-                        <Image
-                          source={image.time_remaining}
-                          style={{
-                            width: 10,
-                            height: 17,
-                            tintColor: "#6B7280",
-                          }}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <AppText
-                          weight="regular"
-                          style={dStyles.infoLabel}
-                          numberOfLines={1}
-                        >
-                          {ended
-                            ? "Status"
-                            : isIncoming
-                              ? "Starts In"
-                              : "Time Remaining"}
-                        </AppText>
-                        <AppText
-                          weight="semibold"
-                          style={[
-                            dStyles.infoValue,
-                            isIncoming && { color: "#9B27B0" },
-                            ended && { color: "#999" },
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {ended
-                            ? "สิ้นสุดแล้ว"
-                            : isIncoming
-                              ? formatDetailTime(sp.auction_start_time)
-                              : formatDetailTime(sp.auction_end_time)}
-                        </AppText>
-                      </View>
-                    </View>
-
-                    <View style={dStyles.infoRow}>
-                      <View style={dStyles.infoIconContainer}>
-                        <Image
-                          source={image.starting_bid}
-                          style={{
-                            width: 17,
-                            height: 17,
-                            tintColor: "#6B7280",
-                          }}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <AppText
-                          weight="regular"
-                          style={dStyles.infoLabel}
-                          numberOfLines={1}
-                        >
-                          Starting Bid
-                        </AppText>
-                        <AppText
-                          weight="semibold"
-                          style={dStyles.infoValue}
-                          numberOfLines={1}
-                        >
-                          {formatPrice(sp.starting_price)}
-                        </AppText>
-                      </View>
-                    </View>
-
-                    <View style={dStyles.infoRow}>
-                      <View style={dStyles.infoIconContainer}>
-                        <Image
-                          source={image.location}
-                          style={{
-                            width: 16,
-                            height: 18,
-                            tintColor: "#6B7280",
-                          }}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <AppText
-                          weight="regular"
-                          style={dStyles.infoLabel}
-                          numberOfLines={1}
-                        >
-                          Location
-                        </AppText>
-                        <AppText
-                          weight="semibold"
-                          style={dStyles.infoValue}
-                          numberOfLines={1}
-                        >
-                          {sp.location}
-                        </AppText>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Description */}
-                  <View style={dStyles.descriptionSection}>
-                    <AppText
-                      weight="bold"
-                      style={dStyles.sectionTitle}
-                      numberOfLines={1}
-                    >
-                      Description
-                    </AppText>
-                    <AppText
-                      weight="regular"
-                      style={dStyles.descriptionText}
-                      numberOfLines={10}
-                    >
-                      {sp.description}
-                    </AppText>
-                  </View>
-
-                  {/* Bid History */}
-                  {!isIncoming && (
-                    <View style={dStyles.bidHistorySection}>
-                      <AppText
-                        weight="bold"
-                        style={dStyles.sectionTitle}
-                        numberOfLines={1}
-                      >
-                        Bid History
-                      </AppText>
-                      {sp.bids_count > 0 ? (
-                        <AppText
-                          weight="regular"
-                          style={{
-                            color: "#9CA3AF",
-                            fontSize: 13,
-                            marginTop: 8,
-                          }}
-                        >
-                          Total {sp.bids_count} bids placed
-                        </AppText>
-                      ) : (
-                        <AppText
-                          weight="regular"
-                          style={{
-                            color: "#9CA3AF",
-                            fontSize: 13,
-                            marginTop: 8,
-                          }}
-                        >
-                          No bids yet
-                        </AppText>
-                      )}
-                    </View>
-                  )}
-                </ScrollView>
-              </SafeAreaView>
-            );
-          })()}
-      </Modal>
     </View>
   );
 };
@@ -1157,243 +624,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#999",
   },
-});
 
-// ─── Detail Modal Styles (matching product-detail page) ───
-const dStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  headerContainer: {
-    paddingHorizontal: 12,
-    paddingTop: 16,
-    paddingBottom: 16,
-  },
-  imageCarouselContainer: {
-    position: "relative",
-    width: "100%",
-    height: 280,
-    backgroundColor: "#fff",
-  },
-  imageContainer: {
-    width: "100%",
-    height: 280,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  productImage: {
-    width: "100%",
-    height: "100%",
-  },
-  dotsContainer: {
-    position: "absolute",
-    bottom: 16,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 6,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  dotActive: {
-    backgroundColor: "#1F3A93",
-    width: 24,
-  },
-  dotInactive: {
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
-  },
-  imageCounterBadge: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  imageCounterText: {
-    fontSize: 12,
-    color: "#fff",
-  },
-  tagsContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 12,
-    paddingTop: 16,
-    gap: 8,
-  },
-  tag: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: "#E3F2FD",
-  },
-  tagText: {
-    fontSize: 12,
-    color: "#1976D2",
-  },
-  titleSection: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-  },
-  productTitle: {
-    fontSize: 20,
-    color: "#111827",
-  },
-  sellerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 12,
-    backgroundColor: "#F9FAFB",
-    marginTop: 16,
-    marginHorizontal: 20,
-    borderRadius: 12,
-  },
-  sellerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
-    backgroundColor: "#003994",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  sellerName: {
-    fontSize: 14,
-    color: "#111827",
-    marginBottom: 4,
-  },
-  userIdRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  sellerLocation: {
-    fontSize: 13,
-    color: "#6B7280",
-  },
-  incomingBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F3E5F5",
+  // Shipping card
+  shippingCard: {
     borderWidth: 1,
-    borderColor: "#CE93D8",
-    borderRadius: 14,
-    marginHorizontal: 20,
-    marginTop: 16,
-    padding: 16,
+    borderColor: "#FFB74D",
+    backgroundColor: "#FFFBF5",
   },
-  incomingBannerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#9B27B0",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 14,
-  },
-  incomingBannerTitle: {
-    fontSize: 15,
-    color: "#7B1FA2",
-    marginBottom: 2,
-  },
-  incomingBannerSub: {
-    fontSize: 12,
-    color: "#9C27B0",
-    lineHeight: 18,
-  },
-  bidInfoContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    flexDirection: "row",
-    gap: 12,
-  },
-  bidCard: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderRadius: 16,
-  },
-  bidCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  bidLabel: {
-    fontSize: 12,
-    color: "#111827",
-  },
-  bidLabelSmall: {
-    fontSize: 11,
-    color: "#6B7280",
-    marginBottom: 4,
-  },
-  bidAmount: {
-    fontSize: 18,
-    color: "#111827",
-  },
-  minBidNote: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    marginBottom: 16,
-  },
-  minBidText: {
-    fontSize: 12,
-    color: "#6B7280",
-  },
-  auctionInfoSection: {
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    color: "#111827",
-    marginBottom: 16,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    paddingVertical: 12,
-  },
-  infoIconContainer: {
-    width: 32,
-    height: 32,
+  shippingBadge: {
+    backgroundColor: "#FFF3E0",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 8,
-    backgroundColor: "#F9FAFB",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
+    borderWidth: 1,
+    borderColor: "#FFB74D",
   },
-  infoLabel: {
-    fontSize: 12,
-    color: "#9CA3AF",
-    marginBottom: 4,
-  },
-  infoValue: {
-    fontSize: 14,
-    color: "#111827",
-  },
-  descriptionSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-  descriptionText: {
-    fontSize: 14,
-    color: "#6B7280",
-    lineHeight: 22,
-  },
-  bidHistorySection: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
+  shippingBadgeText: {
+    fontSize: 11,
+    color: "#E65100",
   },
 });
 

@@ -17,7 +17,7 @@
 //
 // ============================================================
 
-export { default as apiService } from "./apiService";
+export { default as apiService, getPublicStats } from "./apiService";
 
 // Config & Helpers
 export {

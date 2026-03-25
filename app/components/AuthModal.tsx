@@ -48,6 +48,10 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
   const [loading, setLoading] = useState(false);
   const [pdpaAccepted, setPdpaAccepted] = useState(false);
 
+  // Inline error messages
+  const [loginError, setLoginError] = useState("");
+  const [signupError, setSignupError] = useState("");
+
   // Forgot/Reset Password states
   const [resetToken, setResetToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -63,6 +67,8 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
     setShowPassword(false);
     setShowConfirmPassword(false);
     setPdpaAccepted(false);
+    setLoginError("");
+    setSignupError("");
     setResetToken("");
     setNewPassword("");
     setShowNewPassword(false);
@@ -76,15 +82,15 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
   };
 
   const handleLogin = async () => {
+    setLoginError("");
     if (!email || !password) {
-      Alert.alert("ข้อผิดพลาด", "กรุณากรอกอีเมลและรหัสผ่าน");
+      setLoginError("กรุณากรอกอีเมลและรหัสผ่าน");
       return;
     }
     setLoading(true);
     try {
       const { user } = await apiService.auth.login({ email, password });
       loginSuccess(user);
-      Alert.alert("สำเร็จ", "เข้าสู่ระบบสำเร็จ");
       handleClose();
       if (user.role === "admin") {
         router.replace("/admin");
@@ -92,23 +98,34 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
         router.replace("/tabs/home");
       }
     } catch (error: any) {
-      Alert.alert("ข้อผิดพลาด", error.message || "เกิดข้อผิดพลาด");
+      const msg = (error.message || "").toLowerCase();
+      if (
+        msg.includes("validation") ||
+        msg.includes("unauthorized") ||
+        msg.includes("credentials") ||
+        msg.includes("invalid")
+      ) {
+        setLoginError("อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองอีกครั้ง");
+      } else {
+        setLoginError(error.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleSignup = async () => {
+    setSignupError("");
     if (!fullName || !email || !phoneNumber || !password || !confirmPassword) {
-      Alert.alert("ข้อผิดพลาด", "กรุณากรอกข้อมูลทั้งหมด");
+      setSignupError("กรุณากรอกข้อมูลทั้งหมด");
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert("ข้อผิดพลาด", "รหัสผ่านไม่ตรงกัน");
+      setSignupError("รหัสผ่านไม่ตรงกัน");
       return;
     }
     if (password.length < 6) {
-      Alert.alert("ข้อผิดพลาด", "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร");
+      setSignupError("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร");
       return;
     }
     setLoading(true);
@@ -120,11 +137,10 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
         phone_number: phoneNumber,
       });
       loginSuccess(user);
-      Alert.alert("สำเร็จ", "สร้างบัญชีสำเร็จ");
       handleClose();
       router.replace("/tabs/home");
     } catch (error: any) {
-      Alert.alert("ข้อผิดพลาด", error.message || "เกิดข้อผิดพลาด");
+      setSignupError(error.message || "เกิดข้อผิดพลาด");
     } finally {
       setLoading(false);
     }
@@ -271,7 +287,10 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       <AppTextInput
                         placeholder="you@example.com"
                         value={email}
-                        onChangeText={setEmail}
+                        onChangeText={(text: string) => {
+                          setEmail(text);
+                          if (loginError) setLoginError("");
+                        }}
                         keyboardType="email-address"
                         editable={!loading}
                         style={styles.input}
@@ -293,7 +312,10 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       <AppTextInput
                         placeholder="••••••••"
                         value={password}
-                        onChangeText={setPassword}
+                        onChangeText={(text: string) => {
+                          setPassword(text);
+                          if (loginError) setLoginError("");
+                        }}
                         secureTextEntry={!showPassword}
                         editable={!loading}
                         style={styles.input}
@@ -312,10 +334,20 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                     </View>
                   </View>
 
+                  {/* Login Error Message */}
+                  {loginError ? (
+                    <View style={styles.loginErrorContainer}>
+                      <AppText weight="medium" style={styles.loginErrorText}>
+                        {loginError}
+                      </AppText>
+                    </View>
+                  ) : null}
+
                   {/* Forgot Password Link */}
                   <TouchableOpacity
                     onPress={() => {
                       setForgotEmail(email);
+                      setLoginError("");
                       setMode("forgot-password");
                     }}
                     style={styles.forgotPasswordContainer}
@@ -562,7 +594,10 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       <AppTextInput
                         placeholder="John Doe"
                         value={fullName}
-                        onChangeText={setFullName}
+                        onChangeText={(text: string) => {
+                          setFullName(text);
+                          if (signupError) setSignupError("");
+                        }}
                         editable={!loading}
                         style={styles.input}
                       />
@@ -583,7 +618,10 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       <AppTextInput
                         placeholder="you@example.com"
                         value={email}
-                        onChangeText={setEmail}
+                        onChangeText={(text: string) => {
+                          setEmail(text);
+                          if (signupError) setSignupError("");
+                        }}
                         keyboardType="email-address"
                         editable={!loading}
                         style={styles.input}
@@ -605,7 +643,10 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       <AppTextInput
                         placeholder="08X-XXX-XXXX"
                         value={phoneNumber}
-                        onChangeText={setPhoneNumber}
+                        onChangeText={(text: string) => {
+                          setPhoneNumber(text);
+                          if (signupError) setSignupError("");
+                        }}
                         keyboardType="phone-pad"
                         editable={!loading}
                         style={styles.input}
@@ -627,7 +668,10 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       <AppTextInput
                         placeholder="••••••••"
                         value={password}
-                        onChangeText={setPassword}
+                        onChangeText={(text: string) => {
+                          setPassword(text);
+                          if (signupError) setSignupError("");
+                        }}
                         secureTextEntry={!showPassword}
                         editable={!loading}
                         style={styles.input}
@@ -660,7 +704,10 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       <AppTextInput
                         placeholder="••••••••"
                         value={confirmPassword}
-                        onChangeText={setConfirmPassword}
+                        onChangeText={(text: string) => {
+                          setConfirmPassword(text);
+                          if (signupError) setSignupError("");
+                        }}
                         secureTextEntry={!showConfirmPassword}
                         editable={!loading}
                         style={styles.input}
@@ -682,6 +729,15 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       </TouchableOpacity>
                     </View>
                   </View>
+
+                  {/* Signup Error Message */}
+                  {signupError ? (
+                    <View style={styles.loginErrorContainer}>
+                      <AppText weight="medium" style={styles.loginErrorText}>
+                        {signupError}
+                      </AppText>
+                    </View>
+                  ) : null}
 
                   {/* Signup Button */}
                   <TouchableOpacity
@@ -1111,6 +1167,20 @@ const styles = StyleSheet.create({
   },
   eyeIconText: {
     fontSize: 18,
+  },
+  loginErrorContainer: {
+    backgroundColor: "#FEF2F2",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#FECACA",
+  },
+  loginErrorText: {
+    fontSize: 13,
+    color: "#DC2626",
+    textAlign: "center",
   },
   forgotPasswordContainer: {
     alignItems: "flex-end",

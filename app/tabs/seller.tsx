@@ -5,12 +5,13 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
   Image,
   Modal,
@@ -111,6 +112,45 @@ const THAI_PROVINCES = [
 const SellerPage = () => {
   const router = useRouter();
 
+  // ─── Intro splash animation ───
+  const [showIntro, setShowIntro] = useState(true);
+  const introOpacity = useRef(new Animated.Value(1)).current;
+  const introScale = useRef(new Animated.Value(1)).current;
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+
+  useFocusEffect(
+    useCallback(() => {
+      // Reset and show intro every time tab is focused
+      setShowIntro(true);
+      introOpacity.setValue(1);
+      introScale.setValue(1);
+      contentOpacity.setValue(0);
+
+      const timer = setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(introOpacity, {
+            toValue: 0,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(introScale, {
+            toValue: 1.05,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(contentOpacity, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          setShowIntro(false);
+        });
+      }, 2000);
+      return () => clearTimeout(timer);
+    }, []),
+  );
+
   // ─── API Categories & Subcategories ───
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
@@ -133,6 +173,10 @@ const SellerPage = () => {
   const [photos, setPhotos] = useState<string[]>([]);
   const [certificateUri, setCertificateUri] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitResult, setSubmitResult] = useState<"success" | "error" | null>(
+    null,
+  );
+  const [submitMessage, setSubmitMessage] = useState("");
 
   // ─── Province Modal ───
   const [provinceModalVisible, setProvinceModalVisible] = useState(false);
@@ -424,999 +468,1104 @@ const SellerPage = () => {
         certificate: certificateUri || undefined,
       });
 
-      Alert.alert("Success", "Auction created successfully!", [
-        {
-          text: "OK",
-          onPress: () => {
-            setProductTitle("");
-            setDescription("");
-            setStartingBid("");
-            setBidIncrement("");
-            setBuyoutPrice("");
-            setLocation("");
-            setPhotos([]);
-            setCertificateUri(null);
-            setSelectedCategoryId(null);
-            setSelectedSubcategoryId(null);
-            setAuctionStartDate(null);
-            setAuctionStartTime(null);
-            setAuctionDate(null);
-            setAuctionTime(null);
-            router.push("/tabs/home");
-          },
-        },
-      ]);
+      // Show success in overlay
+      setSubmitResult("success");
+      setSubmitMessage("สร้างประมูลสำเร็จ!");
+
+      // Wait for user to read, then reset and navigate
+      setTimeout(() => {
+        setSubmitting(false);
+        setSubmitResult(null);
+        setSubmitMessage("");
+        setProductTitle("");
+        setDescription("");
+        setStartingBid("");
+        setBidIncrement("");
+        setBuyoutPrice("");
+        setLocation("");
+        setPhotos([]);
+        setCertificateUri(null);
+        setSelectedCategoryId(null);
+        setSelectedSubcategoryId(null);
+        setAuctionStartDate(null);
+        setAuctionStartTime(null);
+        setAuctionDate(null);
+        setAuctionTime(null);
+        router.push("/tabs/home");
+      }, 2500);
     } catch (error: any) {
-      Alert.alert(
-        "Error",
-        error.message || "Failed to create auction. Please try again.",
+      // Show error in overlay
+      setSubmitResult("error");
+      setSubmitMessage(
+        error.message || "ไม่สามารถสร้างประมูลได้ กรุณาลองอีกครั้ง",
       );
-    } finally {
-      setSubmitting(false);
+
+      // Wait for user to read, then dismiss
+      setTimeout(() => {
+        setSubmitting(false);
+        setSubmitResult(null);
+        setSubmitMessage("");
+      }, 2500);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Image source={image.back} style={{ width: 32, height: 32 }} />
-        </TouchableOpacity>
-        <AppText weight="semibold" numberOfLines={1} style={styles.headerTitle}>
-          Create Auction
-        </AppText>
-        <View style={{ width: 40 }} />
-      </View>
-
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* ════════ Product Photos ════════ */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Image source={image.camera} style={{ width: 16.25, height: 13 }} />
-            <AppText
-              weight="medium"
-              numberOfLines={1}
-              style={styles.sectionTitle}
-            >
-              Product Photos * (Max 8)
-            </AppText>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.photosContainer}>
-              {photos.map((uri, index) => (
-                <View key={index} style={styles.photoWrapper}>
-                  <View style={styles.photoBox}>
-                    <Image source={{ uri }} style={styles.photoImage} />
-                    {index === 0 && (
-                      <View style={styles.coverBadge}>
-                        <Text style={styles.coverText}>Cover</Text>
-                      </View>
-                    )}
-                    <TouchableOpacity
-                      style={styles.removePhoto}
-                      onPress={() => handleRemovePhoto(index)}
-                    >
-                      <Image
-                        source={image.remove}
-                        style={{ width: 12, height: 12 }}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                  {index === 0 && (
-                    <Text style={styles.photoHint}>
-                      First Photo will be the cover image
-                    </Text>
-                  )}
-                </View>
-              ))}
-
-              {photos.length < 8 && (
-                <TouchableOpacity
-                  style={styles.addPhotoBox}
-                  onPress={handleAddPhoto}
-                >
-                  <Text style={styles.addPhotoIcon}>+</Text>
-                  <Text style={styles.addPhotoText}>Add Photo</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </ScrollView>
-        </View>
-
-        {/* ════════ Product Title ════════ */}
-        <View style={styles.section}>
-          <AppText weight="medium" numberOfLines={1} style={styles.label}>
-            Product Title *
-          </AppText>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., Nike Air Jordan 1"
-            value={productTitle}
-            placeholderTextColor="#D1D5DB"
-            onChangeText={setProductTitle}
-          />
-        </View>
-
-        {/* ════════ Category ════════ */}
-        <View style={styles.section}>
-          <AppText weight="medium" numberOfLines={1} style={styles.label}>
-            Category *
-          </AppText>
-          {loadingCategories ? (
-            <ActivityIndicator
-              size="small"
-              color="#0088FF"
-              style={{ marginVertical: 20 }}
-            />
-          ) : (
-            <View style={styles.gridContainer}>
-              {categories.map((cat) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.categoryBox,
-                    selectedCategoryId === cat.id && styles.categoryBoxSelected,
-                  ]}
-                  onPress={() => setSelectedCategoryId(cat.id)}
-                >
-                  <Text style={styles.categoryIcon}>
-                    {CATEGORY_ICONS[cat.name] || "📦"}
-                  </Text>
-                  <AppText
-                    weight={
-                      selectedCategoryId === cat.id ? "semibold" : "regular"
-                    }
-                    numberOfLines={1}
-                    style={[
-                      styles.categoryText,
-                      selectedCategoryId === cat.id &&
-                        styles.categoryTextSelected,
-                    ]}
-                  >
-                    {cat.name}
-                  </AppText>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* ════════ Subcategory ════════ */}
-        {selectedCategoryId && subcategories.length > 0 && (
-          <View style={styles.section}>
-            <AppText weight="medium" numberOfLines={1} style={styles.label}>
-              Subcategory *
-            </AppText>
-            <View style={styles.gridContainer}>
-              {subcategories.map((sub) => (
-                <TouchableOpacity
-                  key={sub.id}
-                  style={[
-                    styles.categoryBox,
-                    selectedSubcategoryId === sub.id &&
-                      styles.categoryBoxSelected,
-                  ]}
-                  onPress={() => setSelectedSubcategoryId(sub.id)}
-                >
-                  <Text style={styles.categoryIcon}>
-                    {SUBCATEGORY_ICONS[sub.name] || "📦"}
-                  </Text>
-                  <AppText
-                    weight={
-                      selectedSubcategoryId === sub.id ? "semibold" : "regular"
-                    }
-                    numberOfLines={1}
-                    style={[
-                      styles.categoryText,
-                      selectedSubcategoryId === sub.id &&
-                        styles.categoryTextSelected,
-                    ]}
-                  >
-                    {sub.name}
-                  </AppText>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* ════════ Description ════════ */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Image
-              source={image.description}
-              style={{ width: 13, height: 15 }}
-            />
-            <AppText
-              weight="medium"
-              numberOfLines={1}
-              style={styles.sectionTitle}
-            >
-              Description *
-            </AppText>
-          </View>
-          <TextInput
-            placeholderTextColor="#D1D5DB"
-            style={styles.textArea}
-            placeholder="Describe your product in detail..."
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-        </View>
-
-        {/* ════════ Location (Thai Province) ════════ */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Image
-              source={image.location_seller}
-              style={{ width: 14, height: 17 }}
-            />
-            <AppText
-              weight="medium"
-              numberOfLines={1}
-              style={styles.sectionTitle}
-            >
-              Location *
-            </AppText>
-          </View>
-          <TouchableOpacity
-            style={styles.locationButton}
-            onPress={() => {
-              setProvinceSearch("");
-              setProvinceModalVisible(true);
-            }}
-          >
-            <AppText
-              weight="regular"
-              style={{
-                fontSize: 14,
-                color: location ? "#111827" : "#D1D5DB",
-                flex: 1,
-              }}
-              numberOfLines={1}
-            >
-              {location || "เลือกจังหวัด..."}
-            </AppText>
-            <AppText style={{ fontSize: 16, color: "#9CA3AF" }}>▼</AppText>
-          </TouchableOpacity>
-        </View>
-
-        {/* ════════ Pricing ════════ */}
-        <View style={styles.section}>
-          <View
-            style={{
-              paddingTop: 16,
-              paddingHorizontal: 16,
-              borderWidth: 1,
-              borderRadius: 8,
-              borderColor: "#99FF94",
-              backgroundColor: "#F1FFF3",
-            }}
-          >
-            <View style={[styles.sectionHeader, { marginBottom: 16 }]}>
-              <Image source={image.pricing} style={{ width: 16, height: 16 }} />
-              <AppText
-                weight="medium"
-                numberOfLines={1}
-                style={styles.sectionTitle}
-              >
-                Pricing
-              </AppText>
-            </View>
-
-            <View style={styles.priceInputContainer}>
-              <AppText
-                weight="regular"
-                numberOfLines={1}
-                style={styles.priceLabel}
-              >
-                Starting Bid *
-              </AppText>
-              <View style={styles.priceInputWrapper}>
-                <Text style={styles.currencySymbol}>฿</Text>
-                <TextInput
-                  style={styles.priceInput}
-                  placeholder="0"
-                  value={startingBid}
-                  onChangeText={setStartingBid}
-                  keyboardType="numeric"
-                  placeholderTextColor="#D1D5DB"
-                />
-              </View>
-            </View>
-
-            <View style={styles.priceInputContainer}>
-              <AppText
-                weight="regular"
-                numberOfLines={1}
-                style={styles.priceLabel}
-              >
-                Bid Increment *
-              </AppText>
-              <View style={styles.priceInputWrapper}>
-                <Text style={styles.currencySymbol}>฿</Text>
-                <TextInput
-                  style={styles.priceInput}
-                  placeholder="0"
-                  value={bidIncrement}
-                  onChangeText={setBidIncrement}
-                  keyboardType="numeric"
-                  placeholderTextColor="#D1D5DB"
-                />
-              </View>
-              <View style={styles.infoRow}>
-                <Image source={image.info} style={{ width: 16, height: 16 }} />
-                <Text style={styles.infoText}>
-                  จำนวนเงินขั้นต่ำสุดต่อครั้ง (ถ้าไม่ใส่จะใช้ค่าเริ่มต้น 1)
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.priceInputContainer}>
-              <AppText
-                weight="regular"
-                numberOfLines={1}
-                style={styles.priceLabel}
-              >
-                Buyout Price
-              </AppText>
-              <View style={styles.priceInputWrapper}>
-                <Text style={styles.currencySymbol}>฿</Text>
-                <TextInput
-                  style={styles.priceInput}
-                  placeholder="0"
-                  placeholderTextColor="#D1D5DB"
-                  value={buyoutPrice}
-                  onChangeText={setBuyoutPrice}
-                  keyboardType="numeric"
-                />
-              </View>
-              <View style={styles.infoRow}>
-                <Image source={image.info} style={{ width: 16, height: 16 }} />
-                <Text style={styles.infoText}>
-                  Buyers can purchase immediately at this price
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* ════════ Auction Start Date & Time ════════ */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Image
-              source={image.auction_time}
-              style={{ width: 15.59, height: 17 }}
-            />
-            <AppText
-              weight="medium"
-              numberOfLines={1}
-              style={styles.sectionTitle}
-            >
-              Auction Start Date & Time *
-            </AppText>
-          </View>
-          <View style={styles.dateTimeContainer}>
-            {/* Start Date Picker */}
-            <TouchableOpacity
-              style={styles.dateTimeButton}
-              onPress={() => {
-                setTempPickerDate(auctionStartDate || new Date());
-                setShowStartDatePicker(true);
-              }}
-            >
-              <View style={styles.dateTimeInputWrapper}>
-                <AppText
-                  weight="regular"
-                  style={{
-                    fontSize: 14,
-                    color: auctionStartDate ? "#111827" : "#D1D5DB",
-                    flex: 1,
-                  }}
-                  numberOfLines={1}
-                >
-                  {auctionStartDate
-                    ? formatDate(auctionStartDate)
-                    : "DD/MM/YYYY"}
-                </AppText>
-                <Image
-                  source={image.select_date}
-                  style={{ width: 28, height: 28 }}
-                />
-              </View>
-            </TouchableOpacity>
-
-            {/* Start Time Picker */}
-            <TouchableOpacity
-              style={styles.dateTimeButton}
-              onPress={() => {
-                setTempPickerDate(auctionStartTime || new Date());
-                setShowStartTimePicker(true);
-              }}
-            >
-              <View style={styles.dateTimeInputWrapper}>
-                <AppText
-                  weight="regular"
-                  style={{
-                    fontSize: 14,
-                    color: auctionStartTime ? "#111827" : "#D1D5DB",
-                    flex: 1,
-                  }}
-                  numberOfLines={1}
-                >
-                  {auctionStartTime
-                    ? formatTime(auctionStartTime)
-                    : "XX:XX AM/PM"}
-                </AppText>
-                <Image
-                  source={image.select_time}
-                  style={{ width: 28, height: 28 }}
-                />
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Start Summary */}
-          {auctionStartDate && auctionStartTime && (
-            <View style={styles.dateTimeSummary}>
-              <AppText style={{ fontSize: 13, color: "#6B7280" }}>
-                Auction starts:{" "}
-              </AppText>
-              <AppText
-                weight="semibold"
-                style={{ fontSize: 13, color: "#16A34A" }}
-              >
-                {formatDate(auctionStartDate)} at {formatTime(auctionStartTime)}
-              </AppText>
-            </View>
-          )}
-        </View>
-
-        {/* ════════ Auction End Date & Time ════════ */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Image
-              source={image.auction_time}
-              style={{ width: 15.59, height: 17 }}
-            />
-            <AppText
-              weight="medium"
-              numberOfLines={1}
-              style={styles.sectionTitle}
-            >
-              Auction End Date & Time *
-            </AppText>
-          </View>
-          <View style={styles.dateTimeContainer}>
-            {/* Date Picker */}
-            <TouchableOpacity
-              style={styles.dateTimeButton}
-              onPress={() => {
-                setTempPickerDate(auctionDate || new Date());
-                setShowDatePicker(true);
-              }}
-            >
-              <View style={styles.dateTimeInputWrapper}>
-                <AppText
-                  weight="regular"
-                  style={{
-                    fontSize: 14,
-                    color: auctionDate ? "#111827" : "#D1D5DB",
-                    flex: 1,
-                  }}
-                  numberOfLines={1}
-                >
-                  {auctionDate ? formatDate(auctionDate) : "DD/MM/YYYY"}
-                </AppText>
-                <Image
-                  source={image.select_date}
-                  style={{ width: 28, height: 28 }}
-                />
-              </View>
-            </TouchableOpacity>
-
-            {/* Time Picker */}
-            <TouchableOpacity
-              style={styles.dateTimeButton}
-              onPress={() => {
-                setTempPickerDate(auctionTime || new Date());
-                setShowTimePicker(true);
-              }}
-            >
-              <View style={styles.dateTimeInputWrapper}>
-                <AppText
-                  weight="regular"
-                  style={{
-                    fontSize: 14,
-                    color: auctionTime ? "#111827" : "#D1D5DB",
-                    flex: 1,
-                  }}
-                  numberOfLines={1}
-                >
-                  {auctionTime ? formatTime(auctionTime) : "XX:XX AM/PM"}
-                </AppText>
-                <Image
-                  source={image.select_time}
-                  style={{ width: 28, height: 28 }}
-                />
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Summary */}
-          {auctionDate && auctionTime && (
-            <View style={styles.dateTimeSummary}>
-              <AppText style={{ fontSize: 13, color: "#6B7280" }}>
-                Auction ends:{" "}
-              </AppText>
-              <AppText
-                weight="semibold"
-                style={{ fontSize: 13, color: "#2563EB" }}
-              >
-                {formatDate(auctionDate)} at {formatTime(auctionTime)}
-              </AppText>
-            </View>
-          )}
-        </View>
-
-        {/* ════════ Certificate (Optional) ════════ */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="ribbon-outline" size={17} color="#111827" />
-            <AppText
-              weight="medium"
-              numberOfLines={1}
-              style={styles.sectionTitle}
-            >
-              Certificate of Authenticity
-            </AppText>
-            <View style={styles.optionalBadge}>
-              <AppText weight="regular" style={styles.optionalBadgeText}>
-                Optional
-              </AppText>
-            </View>
-          </View>
-
-          <View style={styles.certInfoRow}>
-            <Ionicons
-              name="information-circle-outline"
-              size={16}
-              color="#6B7280"
-            />
-            <AppText weight="regular" style={styles.certInfoText}>
-              Upload a certificate to prove this product is authentic
-            </AppText>
-          </View>
-
-          {certificateUri ? (
-            <View style={styles.certPreviewContainer}>
-              <Image
-                source={{ uri: certificateUri }}
-                style={styles.certPreviewImage}
-                resizeMode="cover"
-              />
-              <View style={styles.certPreviewActions}>
-                <TouchableOpacity
-                  style={styles.certChangeBtn}
-                  onPress={handlePickCertificate}
-                >
-                  <Ionicons
-                    name="swap-horizontal-outline"
-                    size={16}
-                    color="#2563EB"
-                  />
-                  <AppText
-                    weight="medium"
-                    style={{ fontSize: 13, color: "#2563EB" }}
-                  >
-                    Change
-                  </AppText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.certRemoveBtn}
-                  onPress={() => setCertificateUri(null)}
-                >
-                  <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                  <AppText
-                    weight="medium"
-                    style={{ fontSize: 13, color: "#EF4444" }}
-                  >
-                    Remove
-                  </AppText>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.certUploadBox}
-              onPress={handlePickCertificate}
-            >
-              <Ionicons name="cloud-upload-outline" size={32} color="#9CA3AF" />
-              <AppText weight="medium" style={styles.certUploadText}>
-                Upload Certificate
-              </AppText>
-              <AppText weight="regular" style={styles.certUploadHint}>
-                JPG, PNG supported
-              </AppText>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* ════════ Create Button ════════ */}
-        <LinearGradient
-          colors={["#00112E", "#003994"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[styles.createButton, submitting && { opacity: 0.7 }]}
+    <View style={{ flex: 1, backgroundColor: "#fff" }}>
+      {/* Intro Splash */}
+      {showIntro && (
+        <Animated.View
+          style={[
+            styles.introOverlay,
+            {
+              opacity: introOpacity,
+              transform: [{ scale: introScale }],
+            },
+          ]}
         >
-          <TouchableOpacity
-            onPress={handleCreateAuction}
-            style={styles.createButtonInner}
-            disabled={submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <AppText
-                weight="semibold"
-                numberOfLines={1}
-                style={styles.createButtonText}
-              >
-                Create Auction
-              </AppText>
-            )}
-          </TouchableOpacity>
-        </LinearGradient>
+          <LottieView
+            source={require("../../assets/animations/shopping.json")}
+            autoPlay
+            loop
+            style={{ width: 220, height: 220 }}
+          />
+          <AppText weight="bold" style={styles.introTitle}>
+            Seller Mode
+          </AppText>
+          <AppText weight="regular" style={styles.introSubtitle}>
+            กำลังเตรียมหน้าสร้างประมูล...
+          </AppText>
+        </Animated.View>
+      )}
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
-
-      {/* ════════ Province Modal ════════ */}
-      <Modal
-        visible={provinceModalVisible}
-        animationType="slide"
-        transparent
-        statusBarTranslucent
+      {/* Main Content */}
+      <Animated.View
+        style={{ flex: 1, opacity: showIntro ? contentOpacity : 1 }}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <AppText weight="semibold" style={styles.modalTitle}>
-                เลือกจังหวัด
-              </AppText>
-              <TouchableOpacity
-                onPress={() => setProvinceModalVisible(false)}
-                style={styles.modalCloseBtn}
-              >
+        <SafeAreaView style={styles.container} edges={["top"]}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Image source={image.back} style={{ width: 32, height: 32 }} />
+            </TouchableOpacity>
+            <AppText
+              weight="semibold"
+              numberOfLines={1}
+              style={styles.headerTitle}
+            >
+              Create Auction
+            </AppText>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* ════════ Product Photos ════════ */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Image
+                  source={image.camera}
+                  style={{ width: 16.25, height: 13 }}
+                />
                 <AppText
                   weight="medium"
-                  style={{ fontSize: 16, color: "#4285F4" }}
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
                 >
-                  ปิด
+                  Product Photos * (Max 8)
                 </AppText>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.photosContainer}>
+                  {photos.map((uri, index) => (
+                    <View key={index} style={styles.photoWrapper}>
+                      <View style={styles.photoBox}>
+                        <Image source={{ uri }} style={styles.photoImage} />
+                        {index === 0 && (
+                          <View style={styles.coverBadge}>
+                            <Text style={styles.coverText}>Cover</Text>
+                          </View>
+                        )}
+                        <TouchableOpacity
+                          style={styles.removePhoto}
+                          onPress={() => handleRemovePhoto(index)}
+                        >
+                          <Image
+                            source={image.remove}
+                            style={{ width: 12, height: 12 }}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                      {index === 0 && (
+                        <Text style={styles.photoHint}>
+                          First Photo will be the cover image
+                        </Text>
+                      )}
+                    </View>
+                  ))}
+
+                  {photos.length < 8 && (
+                    <TouchableOpacity
+                      style={styles.addPhotoBox}
+                      onPress={handleAddPhoto}
+                    >
+                      <Text style={styles.addPhotoIcon}>+</Text>
+                      <Text style={styles.addPhotoText}>Add Photo</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </ScrollView>
+            </View>
+
+            {/* ════════ Product Title ════════ */}
+            <View style={styles.section}>
+              <AppText weight="medium" numberOfLines={1} style={styles.label}>
+                Product Title *
+              </AppText>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., Nike Air Jordan 1"
+                value={productTitle}
+                placeholderTextColor="#D1D5DB"
+                onChangeText={setProductTitle}
+              />
+            </View>
+
+            {/* ════════ Category ════════ */}
+            <View style={styles.section}>
+              <AppText weight="medium" numberOfLines={1} style={styles.label}>
+                Category *
+              </AppText>
+              {loadingCategories ? (
+                <ActivityIndicator
+                  size="small"
+                  color="#0088FF"
+                  style={{ marginVertical: 20 }}
+                />
+              ) : (
+                <View style={styles.gridContainer}>
+                  {categories.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[
+                        styles.categoryBox,
+                        selectedCategoryId === cat.id &&
+                          styles.categoryBoxSelected,
+                      ]}
+                      onPress={() => setSelectedCategoryId(cat.id)}
+                    >
+                      <Text style={styles.categoryIcon}>
+                        {CATEGORY_ICONS[cat.name] || "📦"}
+                      </Text>
+                      <AppText
+                        weight={
+                          selectedCategoryId === cat.id ? "semibold" : "regular"
+                        }
+                        numberOfLines={1}
+                        style={[
+                          styles.categoryText,
+                          selectedCategoryId === cat.id &&
+                            styles.categoryTextSelected,
+                        ]}
+                      >
+                        {cat.name}
+                      </AppText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* ════════ Subcategory ════════ */}
+            {selectedCategoryId && subcategories.length > 0 && (
+              <View style={styles.section}>
+                <AppText weight="medium" numberOfLines={1} style={styles.label}>
+                  Subcategory *
+                </AppText>
+                <View style={styles.gridContainer}>
+                  {subcategories.map((sub) => (
+                    <TouchableOpacity
+                      key={sub.id}
+                      style={[
+                        styles.categoryBox,
+                        selectedSubcategoryId === sub.id &&
+                          styles.categoryBoxSelected,
+                      ]}
+                      onPress={() => setSelectedSubcategoryId(sub.id)}
+                    >
+                      <Text style={styles.categoryIcon}>
+                        {SUBCATEGORY_ICONS[sub.name] || "📦"}
+                      </Text>
+                      <AppText
+                        weight={
+                          selectedSubcategoryId === sub.id
+                            ? "semibold"
+                            : "regular"
+                        }
+                        numberOfLines={1}
+                        style={[
+                          styles.categoryText,
+                          selectedSubcategoryId === sub.id &&
+                            styles.categoryTextSelected,
+                        ]}
+                      >
+                        {sub.name}
+                      </AppText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* ════════ Description ════════ */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Image
+                  source={image.description}
+                  style={{ width: 13, height: 15 }}
+                />
+                <AppText
+                  weight="medium"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
+                  Description *
+                </AppText>
+              </View>
+              <TextInput
+                placeholderTextColor="#D1D5DB"
+                style={styles.textArea}
+                placeholder="Describe your product in detail..."
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+
+            {/* ════════ Location (Thai Province) ════════ */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Image
+                  source={image.location_seller}
+                  style={{ width: 14, height: 17 }}
+                />
+                <AppText
+                  weight="medium"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
+                  Location *
+                </AppText>
+              </View>
+              <TouchableOpacity
+                style={styles.locationButton}
+                onPress={() => {
+                  setProvinceSearch("");
+                  setProvinceModalVisible(true);
+                }}
+              >
+                <AppText
+                  weight="regular"
+                  style={{
+                    fontSize: 14,
+                    color: location ? "#111827" : "#D1D5DB",
+                    flex: 1,
+                  }}
+                  numberOfLines={1}
+                >
+                  {location || "เลือกจังหวัด..."}
+                </AppText>
+                <AppText style={{ fontSize: 16, color: "#9CA3AF" }}>▼</AppText>
               </TouchableOpacity>
             </View>
 
-            {/* Search */}
-            <View style={styles.modalSearchWrapper}>
-              <AppText
-                style={{ fontSize: 14, color: "#9CA3AF", marginRight: 8 }}
+            {/* ════════ Pricing ════════ */}
+            <View style={styles.section}>
+              <View
+                style={{
+                  paddingTop: 16,
+                  paddingHorizontal: 16,
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  borderColor: "#99FF94",
+                  backgroundColor: "#F1FFF3",
+                }}
               >
-                🔍
-              </AppText>
-              <TextInput
-                style={styles.modalSearchInput}
-                placeholder="ค้นหาจังหวัด..."
-                placeholderTextColor="#B0B0B0"
-                value={provinceSearch}
-                onChangeText={setProvinceSearch}
-                autoCorrect={false}
-              />
-              {provinceSearch.length > 0 && (
-                <TouchableOpacity onPress={() => setProvinceSearch("")}>
-                  <AppText style={{ fontSize: 13, color: "#999" }}>✕</AppText>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Province List */}
-            <FlatList
-              data={filteredProvinces}
-              keyExtractor={(item) => item}
-              showsVerticalScrollIndicator={false}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.provinceItem,
-                    location === item && styles.provinceItemSelected,
-                  ]}
-                  onPress={() => {
-                    setLocation(item);
-                    setProvinceModalVisible(false);
-                  }}
-                >
+                <View style={[styles.sectionHeader, { marginBottom: 16 }]}>
+                  <Image
+                    source={image.pricing}
+                    style={{ width: 16, height: 16 }}
+                  />
                   <AppText
-                    weight={location === item ? "semibold" : "regular"}
-                    style={[
-                      styles.provinceText,
-                      location === item && styles.provinceTextSelected,
-                    ]}
+                    weight="medium"
                     numberOfLines={1}
+                    style={styles.sectionTitle}
                   >
-                    {item}
-                  </AppText>
-                  {location === item && (
-                    <AppText style={{ fontSize: 16, color: "#2563EB" }}>
-                      ✓
-                    </AppText>
-                  )}
-                </TouchableOpacity>
-              )}
-              ListEmptyComponent={
-                <View style={{ alignItems: "center", paddingVertical: 40 }}>
-                  <AppText
-                    weight="regular"
-                    style={{ fontSize: 14, color: "#9CA3AF" }}
-                  >
-                    ไม่พบจังหวัดที่ค้นหา
+                    Pricing
                   </AppText>
                 </View>
-              }
+
+                <View style={styles.priceInputContainer}>
+                  <AppText
+                    weight="regular"
+                    numberOfLines={1}
+                    style={styles.priceLabel}
+                  >
+                    Starting Bid *
+                  </AppText>
+                  <View style={styles.priceInputWrapper}>
+                    <Text style={styles.currencySymbol}>฿</Text>
+                    <TextInput
+                      style={styles.priceInput}
+                      placeholder="0"
+                      value={startingBid}
+                      onChangeText={setStartingBid}
+                      keyboardType="numeric"
+                      placeholderTextColor="#D1D5DB"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.priceInputContainer}>
+                  <AppText
+                    weight="regular"
+                    numberOfLines={1}
+                    style={styles.priceLabel}
+                  >
+                    Bid Increment *
+                  </AppText>
+                  <View style={styles.priceInputWrapper}>
+                    <Text style={styles.currencySymbol}>฿</Text>
+                    <TextInput
+                      style={styles.priceInput}
+                      placeholder="0"
+                      value={bidIncrement}
+                      onChangeText={setBidIncrement}
+                      keyboardType="numeric"
+                      placeholderTextColor="#D1D5DB"
+                    />
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Image
+                      source={image.info}
+                      style={{ width: 16, height: 16 }}
+                    />
+                    <Text style={styles.infoText}>
+                      จำนวนเงินขั้นต่ำสุดต่อครั้ง (ถ้าไม่ใส่จะใช้ค่าเริ่มต้น 1)
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.priceInputContainer}>
+                  <AppText
+                    weight="regular"
+                    numberOfLines={1}
+                    style={styles.priceLabel}
+                  >
+                    Buyout Price
+                  </AppText>
+                  <View style={styles.priceInputWrapper}>
+                    <Text style={styles.currencySymbol}>฿</Text>
+                    <TextInput
+                      style={styles.priceInput}
+                      placeholder="0"
+                      placeholderTextColor="#D1D5DB"
+                      value={buyoutPrice}
+                      onChangeText={setBuyoutPrice}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Image
+                      source={image.info}
+                      style={{ width: 16, height: 16 }}
+                    />
+                    <Text style={styles.infoText}>
+                      Buyers can purchase immediately at this price
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* ════════ Auction Start Date & Time ════════ */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Image
+                  source={image.auction_time}
+                  style={{ width: 15.59, height: 17 }}
+                />
+                <AppText
+                  weight="medium"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
+                  Auction Start Date & Time *
+                </AppText>
+              </View>
+              <View style={styles.dateTimeContainer}>
+                {/* Start Date Picker */}
+                <TouchableOpacity
+                  style={styles.dateTimeButton}
+                  onPress={() => {
+                    setTempPickerDate(auctionStartDate || new Date());
+                    setShowStartDatePicker(true);
+                  }}
+                >
+                  <View style={styles.dateTimeInputWrapper}>
+                    <AppText
+                      weight="regular"
+                      style={{
+                        fontSize: 14,
+                        color: auctionStartDate ? "#111827" : "#D1D5DB",
+                        flex: 1,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {auctionStartDate
+                        ? formatDate(auctionStartDate)
+                        : "DD/MM/YYYY"}
+                    </AppText>
+                    <Image
+                      source={image.select_date}
+                      style={{ width: 28, height: 28 }}
+                    />
+                  </View>
+                </TouchableOpacity>
+
+                {/* Start Time Picker */}
+                <TouchableOpacity
+                  style={styles.dateTimeButton}
+                  onPress={() => {
+                    setTempPickerDate(auctionStartTime || new Date());
+                    setShowStartTimePicker(true);
+                  }}
+                >
+                  <View style={styles.dateTimeInputWrapper}>
+                    <AppText
+                      weight="regular"
+                      style={{
+                        fontSize: 14,
+                        color: auctionStartTime ? "#111827" : "#D1D5DB",
+                        flex: 1,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {auctionStartTime
+                        ? formatTime(auctionStartTime)
+                        : "XX:XX AM/PM"}
+                    </AppText>
+                    <Image
+                      source={image.select_time}
+                      style={{ width: 28, height: 28 }}
+                    />
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              {/* Start Summary */}
+              {auctionStartDate && auctionStartTime && (
+                <View style={styles.dateTimeSummary}>
+                  <AppText style={{ fontSize: 13, color: "#6B7280" }}>
+                    Auction starts:{" "}
+                  </AppText>
+                  <AppText
+                    weight="semibold"
+                    style={{ fontSize: 13, color: "#16A34A" }}
+                  >
+                    {formatDate(auctionStartDate)} at{" "}
+                    {formatTime(auctionStartTime)}
+                  </AppText>
+                </View>
+              )}
+            </View>
+
+            {/* ════════ Auction End Date & Time ════════ */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Image
+                  source={image.auction_time}
+                  style={{ width: 15.59, height: 17 }}
+                />
+                <AppText
+                  weight="medium"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
+                  Auction End Date & Time *
+                </AppText>
+              </View>
+              <View style={styles.dateTimeContainer}>
+                {/* Date Picker */}
+                <TouchableOpacity
+                  style={styles.dateTimeButton}
+                  onPress={() => {
+                    setTempPickerDate(auctionDate || new Date());
+                    setShowDatePicker(true);
+                  }}
+                >
+                  <View style={styles.dateTimeInputWrapper}>
+                    <AppText
+                      weight="regular"
+                      style={{
+                        fontSize: 14,
+                        color: auctionDate ? "#111827" : "#D1D5DB",
+                        flex: 1,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {auctionDate ? formatDate(auctionDate) : "DD/MM/YYYY"}
+                    </AppText>
+                    <Image
+                      source={image.select_date}
+                      style={{ width: 28, height: 28 }}
+                    />
+                  </View>
+                </TouchableOpacity>
+
+                {/* Time Picker */}
+                <TouchableOpacity
+                  style={styles.dateTimeButton}
+                  onPress={() => {
+                    setTempPickerDate(auctionTime || new Date());
+                    setShowTimePicker(true);
+                  }}
+                >
+                  <View style={styles.dateTimeInputWrapper}>
+                    <AppText
+                      weight="regular"
+                      style={{
+                        fontSize: 14,
+                        color: auctionTime ? "#111827" : "#D1D5DB",
+                        flex: 1,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {auctionTime ? formatTime(auctionTime) : "XX:XX AM/PM"}
+                    </AppText>
+                    <Image
+                      source={image.select_time}
+                      style={{ width: 28, height: 28 }}
+                    />
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              {/* Summary */}
+              {auctionDate && auctionTime && (
+                <View style={styles.dateTimeSummary}>
+                  <AppText style={{ fontSize: 13, color: "#6B7280" }}>
+                    Auction ends:{" "}
+                  </AppText>
+                  <AppText
+                    weight="semibold"
+                    style={{ fontSize: 13, color: "#2563EB" }}
+                  >
+                    {formatDate(auctionDate)} at {formatTime(auctionTime)}
+                  </AppText>
+                </View>
+              )}
+            </View>
+
+            {/* ════════ Certificate (Optional) ════════ */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="ribbon-outline" size={17} color="#111827" />
+                <AppText
+                  weight="medium"
+                  numberOfLines={1}
+                  style={styles.sectionTitle}
+                >
+                  Certificate of Authenticity
+                </AppText>
+                <View style={styles.optionalBadge}>
+                  <AppText weight="regular" style={styles.optionalBadgeText}>
+                    Optional
+                  </AppText>
+                </View>
+              </View>
+
+              <View style={styles.certInfoRow}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={16}
+                  color="#6B7280"
+                />
+                <AppText weight="regular" style={styles.certInfoText}>
+                  Upload a certificate to prove this product is authentic
+                </AppText>
+              </View>
+
+              {certificateUri ? (
+                <View style={styles.certPreviewContainer}>
+                  <Image
+                    source={{ uri: certificateUri }}
+                    style={styles.certPreviewImage}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.certPreviewActions}>
+                    <TouchableOpacity
+                      style={styles.certChangeBtn}
+                      onPress={handlePickCertificate}
+                    >
+                      <Ionicons
+                        name="swap-horizontal-outline"
+                        size={16}
+                        color="#2563EB"
+                      />
+                      <AppText
+                        weight="medium"
+                        style={{ fontSize: 13, color: "#2563EB" }}
+                      >
+                        Change
+                      </AppText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.certRemoveBtn}
+                      onPress={() => setCertificateUri(null)}
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={16}
+                        color="#EF4444"
+                      />
+                      <AppText
+                        weight="medium"
+                        style={{ fontSize: 13, color: "#EF4444" }}
+                      >
+                        Remove
+                      </AppText>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.certUploadBox}
+                  onPress={handlePickCertificate}
+                >
+                  <Ionicons
+                    name="cloud-upload-outline"
+                    size={32}
+                    color="#9CA3AF"
+                  />
+                  <AppText weight="medium" style={styles.certUploadText}>
+                    Upload Certificate
+                  </AppText>
+                  <AppText weight="regular" style={styles.certUploadHint}>
+                    JPG, PNG supported
+                  </AppText>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* ════════ Create Button ════════ */}
+            <LinearGradient
+              colors={["#00112E", "#003994"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.createButton, submitting && { opacity: 0.7 }]}
+            >
+              <TouchableOpacity
+                onPress={handleCreateAuction}
+                style={styles.createButtonInner}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <AppText
+                    weight="semibold"
+                    numberOfLines={1}
+                    style={styles.createButtonText}
+                  >
+                    Create Auction
+                  </AppText>
+                )}
+              </TouchableOpacity>
+            </LinearGradient>
+
+            <View style={{ height: 40 }} />
+          </ScrollView>
+
+          {/* ════════ Province Modal ════════ */}
+          <Modal
+            visible={provinceModalVisible}
+            animationType="slide"
+            transparent
+            statusBarTranslucent
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                {/* Modal Header */}
+                <View style={styles.modalHeader}>
+                  <AppText weight="semibold" style={styles.modalTitle}>
+                    เลือกจังหวัด
+                  </AppText>
+                  <TouchableOpacity
+                    onPress={() => setProvinceModalVisible(false)}
+                    style={styles.modalCloseBtn}
+                  >
+                    <AppText
+                      weight="medium"
+                      style={{ fontSize: 16, color: "#4285F4" }}
+                    >
+                      ปิด
+                    </AppText>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Search */}
+                <View style={styles.modalSearchWrapper}>
+                  <AppText
+                    style={{ fontSize: 14, color: "#9CA3AF", marginRight: 8 }}
+                  >
+                    🔍
+                  </AppText>
+                  <TextInput
+                    style={styles.modalSearchInput}
+                    placeholder="ค้นหาจังหวัด..."
+                    placeholderTextColor="#B0B0B0"
+                    value={provinceSearch}
+                    onChangeText={setProvinceSearch}
+                    autoCorrect={false}
+                  />
+                  {provinceSearch.length > 0 && (
+                    <TouchableOpacity onPress={() => setProvinceSearch("")}>
+                      <AppText style={{ fontSize: 13, color: "#999" }}>
+                        ✕
+                      </AppText>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Province List */}
+                <FlatList
+                  data={filteredProvinces}
+                  keyExtractor={(item) => item}
+                  showsVerticalScrollIndicator={false}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[
+                        styles.provinceItem,
+                        location === item && styles.provinceItemSelected,
+                      ]}
+                      onPress={() => {
+                        setLocation(item);
+                        setProvinceModalVisible(false);
+                      }}
+                    >
+                      <AppText
+                        weight={location === item ? "semibold" : "regular"}
+                        style={[
+                          styles.provinceText,
+                          location === item && styles.provinceTextSelected,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {item}
+                      </AppText>
+                      {location === item && (
+                        <AppText style={{ fontSize: 16, color: "#2563EB" }}>
+                          ✓
+                        </AppText>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                  ListEmptyComponent={
+                    <View style={{ alignItems: "center", paddingVertical: 40 }}>
+                      <AppText
+                        weight="regular"
+                        style={{ fontSize: 14, color: "#9CA3AF" }}
+                      >
+                        ไม่พบจังหวัดที่ค้นหา
+                      </AppText>
+                    </View>
+                  }
+                />
+              </View>
+            </View>
+          </Modal>
+
+          {/* ════════ Start Date Picker (iOS modal) ════════ */}
+          {showStartDatePicker && Platform.OS === "ios" && (
+            <Modal transparent animationType="slide" statusBarTranslucent>
+              <View style={styles.pickerModalOverlay}>
+                <View style={styles.pickerModalContent}>
+                  <View style={styles.pickerModalHeader}>
+                    <TouchableOpacity
+                      onPress={() => setShowStartDatePicker(false)}
+                    >
+                      <AppText
+                        weight="medium"
+                        style={{ fontSize: 16, color: "#FF3B30" }}
+                      >
+                        Cancel
+                      </AppText>
+                    </TouchableOpacity>
+                    <AppText weight="semibold" style={{ fontSize: 16 }}>
+                      Start Date
+                    </AppText>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setAuctionStartDate(tempPickerDate);
+                        setShowStartDatePicker(false);
+                      }}
+                    >
+                      <AppText
+                        weight="medium"
+                        style={{ fontSize: 16, color: "#4285F4" }}
+                      >
+                        Done
+                      </AppText>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ alignItems: "center" }}>
+                    <DateTimePicker
+                      value={tempPickerDate}
+                      mode="date"
+                      display="spinner"
+                      minimumDate={new Date()}
+                      onChange={handleStartDateChange}
+                      style={{ height: 200, width: "100%" }}
+                    />
+                  </View>
+                </View>
+              </View>
+            </Modal>
+          )}
+
+          {/* Android Start Date Picker */}
+          {showStartDatePicker && Platform.OS === "android" && (
+            <DateTimePicker
+              value={auctionStartDate || new Date()}
+              mode="date"
+              display="default"
+              minimumDate={new Date()}
+              onChange={handleStartDateChange}
             />
-          </View>
-        </View>
-      </Modal>
+          )}
 
-      {/* ════════ Start Date Picker (iOS modal) ════════ */}
-      {showStartDatePicker && Platform.OS === "ios" && (
-        <Modal transparent animationType="slide" statusBarTranslucent>
-          <View style={styles.pickerModalOverlay}>
-            <View style={styles.pickerModalContent}>
-              <View style={styles.pickerModalHeader}>
-                <TouchableOpacity onPress={() => setShowStartDatePicker(false)}>
-                  <AppText
-                    weight="medium"
-                    style={{ fontSize: 16, color: "#FF3B30" }}
-                  >
-                    Cancel
-                  </AppText>
-                </TouchableOpacity>
-                <AppText weight="semibold" style={{ fontSize: 16 }}>
-                  Start Date
-                </AppText>
-                <TouchableOpacity
-                  onPress={() => {
-                    setAuctionStartDate(tempPickerDate);
-                    setShowStartDatePicker(false);
-                  }}
-                >
-                  <AppText
-                    weight="medium"
-                    style={{ fontSize: 16, color: "#4285F4" }}
-                  >
-                    Done
-                  </AppText>
-                </TouchableOpacity>
+          {/* ════════ Start Time Picker (iOS modal) ════════ */}
+          {showStartTimePicker && Platform.OS === "ios" && (
+            <Modal transparent animationType="slide" statusBarTranslucent>
+              <View style={styles.pickerModalOverlay}>
+                <View style={styles.pickerModalContent}>
+                  <View style={styles.pickerModalHeader}>
+                    <TouchableOpacity
+                      onPress={() => setShowStartTimePicker(false)}
+                    >
+                      <AppText
+                        weight="medium"
+                        style={{ fontSize: 16, color: "#FF3B30" }}
+                      >
+                        Cancel
+                      </AppText>
+                    </TouchableOpacity>
+                    <AppText weight="semibold" style={{ fontSize: 16 }}>
+                      Start Time
+                    </AppText>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setAuctionStartTime(tempPickerDate);
+                        setShowStartTimePicker(false);
+                      }}
+                    >
+                      <AppText
+                        weight="medium"
+                        style={{ fontSize: 16, color: "#4285F4" }}
+                      >
+                        Done
+                      </AppText>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ alignItems: "center" }}>
+                    <DateTimePicker
+                      value={tempPickerDate}
+                      mode="time"
+                      display="spinner"
+                      onChange={handleStartTimeChange}
+                      style={{ height: 200, width: "100%" }}
+                    />
+                  </View>
+                </View>
               </View>
-              <View style={{ alignItems: "center" }}>
-                <DateTimePicker
-                  value={tempPickerDate}
-                  mode="date"
-                  display="spinner"
-                  minimumDate={new Date()}
-                  onChange={handleStartDateChange}
-                  style={{ height: 200, width: "100%" }}
-                />
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
+            </Modal>
+          )}
 
-      {/* Android Start Date Picker */}
-      {showStartDatePicker && Platform.OS === "android" && (
-        <DateTimePicker
-          value={auctionStartDate || new Date()}
-          mode="date"
-          display="default"
-          minimumDate={new Date()}
-          onChange={handleStartDateChange}
-        />
-      )}
-
-      {/* ════════ Start Time Picker (iOS modal) ════════ */}
-      {showStartTimePicker && Platform.OS === "ios" && (
-        <Modal transparent animationType="slide" statusBarTranslucent>
-          <View style={styles.pickerModalOverlay}>
-            <View style={styles.pickerModalContent}>
-              <View style={styles.pickerModalHeader}>
-                <TouchableOpacity onPress={() => setShowStartTimePicker(false)}>
-                  <AppText
-                    weight="medium"
-                    style={{ fontSize: 16, color: "#FF3B30" }}
-                  >
-                    Cancel
-                  </AppText>
-                </TouchableOpacity>
-                <AppText weight="semibold" style={{ fontSize: 16 }}>
-                  Start Time
-                </AppText>
-                <TouchableOpacity
-                  onPress={() => {
-                    setAuctionStartTime(tempPickerDate);
-                    setShowStartTimePicker(false);
-                  }}
-                >
-                  <AppText
-                    weight="medium"
-                    style={{ fontSize: 16, color: "#4285F4" }}
-                  >
-                    Done
-                  </AppText>
-                </TouchableOpacity>
-              </View>
-              <View style={{ alignItems: "center" }}>
-                <DateTimePicker
-                  value={tempPickerDate}
-                  mode="time"
-                  display="spinner"
-                  onChange={handleStartTimeChange}
-                  style={{ height: 200, width: "100%" }}
-                />
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-      {/* Android Start Time Picker */}
-      {showStartTimePicker && Platform.OS === "android" && (
-        <DateTimePicker
-          value={auctionStartTime || new Date()}
-          mode="time"
-          display="default"
-          onChange={handleStartTimeChange}
-        />
-      )}
-
-      {/* ════════ Date Picker (iOS modal) ════════ */}
-      {showDatePicker && Platform.OS === "ios" && (
-        <Modal transparent animationType="slide" statusBarTranslucent>
-          <View style={styles.pickerModalOverlay}>
-            <View style={styles.pickerModalContent}>
-              <View style={styles.pickerModalHeader}>
-                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                  <AppText
-                    weight="medium"
-                    style={{ fontSize: 16, color: "#FF3B30" }}
-                  >
-                    Cancel
-                  </AppText>
-                </TouchableOpacity>
-                <AppText weight="semibold" style={{ fontSize: 16 }}>
-                  Select Date
-                </AppText>
-                <TouchableOpacity
-                  onPress={() => {
-                    setAuctionDate(tempPickerDate);
-                    setShowDatePicker(false);
-                  }}
-                >
-                  <AppText
-                    weight="medium"
-                    style={{ fontSize: 16, color: "#4285F4" }}
-                  >
-                    Done
-                  </AppText>
-                </TouchableOpacity>
-              </View>
-              <View style={{ alignItems: "center" }}>
-                <DateTimePicker
-                  value={tempPickerDate}
-                  mode="date"
-                  display="spinner"
-                  minimumDate={new Date()}
-                  onChange={handleDateChange}
-                  style={{ height: 200, width: "100%" }}
-                />
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-      {/* Android Date Picker */}
-      {showDatePicker && Platform.OS === "android" && (
-        <DateTimePicker
-          value={auctionDate || new Date()}
-          mode="date"
-          display="default"
-          minimumDate={new Date()}
-          onChange={handleDateChange}
-        />
-      )}
-
-      {/* ════════ Time Picker (iOS modal) ════════ */}
-      {showTimePicker && Platform.OS === "ios" && (
-        <Modal transparent animationType="slide" statusBarTranslucent>
-          <View style={styles.pickerModalOverlay}>
-            <View style={styles.pickerModalContent}>
-              <View style={styles.pickerModalHeader}>
-                <TouchableOpacity onPress={() => setShowTimePicker(false)}>
-                  <AppText
-                    weight="medium"
-                    style={{ fontSize: 16, color: "#FF3B30" }}
-                  >
-                    Cancel
-                  </AppText>
-                </TouchableOpacity>
-                <AppText weight="semibold" style={{ fontSize: 16 }}>
-                  Select Time
-                </AppText>
-                <TouchableOpacity
-                  onPress={() => {
-                    setAuctionTime(tempPickerDate);
-                    setShowTimePicker(false);
-                  }}
-                >
-                  <AppText
-                    weight="medium"
-                    style={{ fontSize: 16, color: "#4285F4" }}
-                  >
-                    Done
-                  </AppText>
-                </TouchableOpacity>
-              </View>
-              <View style={{ alignItems: "center" }}>
-                <DateTimePicker
-                  value={tempPickerDate}
-                  mode="time"
-                  display="spinner"
-                  onChange={handleTimeChange}
-                  style={{ height: 200, width: "100%" }}
-                />
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-      {/* Android Time Picker */}
-      {showTimePicker && Platform.OS === "android" && (
-        <DateTimePicker
-          value={auctionTime || new Date()}
-          mode="time"
-          display="default"
-          onChange={handleTimeChange}
-        />
-      )}
-
-      {/* Loading Overlay */}
-      {submitting && (
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingBox}>
-            <LottieView
-              source={require("../../assets/animations/loading.json")}
-              autoPlay
-              loop
-              style={{ width: 100, height: 100 }}
+          {/* Android Start Time Picker */}
+          {showStartTimePicker && Platform.OS === "android" && (
+            <DateTimePicker
+              value={auctionStartTime || new Date()}
+              mode="time"
+              display="default"
+              onChange={handleStartTimeChange}
             />
-            <AppText weight="medium" style={styles.loadingOverlayText}>
-              Creating auction...
-            </AppText>
-          </View>
-        </View>
-      )}
-    </SafeAreaView>
+          )}
+
+          {/* ════════ Date Picker (iOS modal) ════════ */}
+          {showDatePicker && Platform.OS === "ios" && (
+            <Modal transparent animationType="slide" statusBarTranslucent>
+              <View style={styles.pickerModalOverlay}>
+                <View style={styles.pickerModalContent}>
+                  <View style={styles.pickerModalHeader}>
+                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                      <AppText
+                        weight="medium"
+                        style={{ fontSize: 16, color: "#FF3B30" }}
+                      >
+                        Cancel
+                      </AppText>
+                    </TouchableOpacity>
+                    <AppText weight="semibold" style={{ fontSize: 16 }}>
+                      Select Date
+                    </AppText>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setAuctionDate(tempPickerDate);
+                        setShowDatePicker(false);
+                      }}
+                    >
+                      <AppText
+                        weight="medium"
+                        style={{ fontSize: 16, color: "#4285F4" }}
+                      >
+                        Done
+                      </AppText>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ alignItems: "center" }}>
+                    <DateTimePicker
+                      value={tempPickerDate}
+                      mode="date"
+                      display="spinner"
+                      minimumDate={new Date()}
+                      onChange={handleDateChange}
+                      style={{ height: 200, width: "100%" }}
+                    />
+                  </View>
+                </View>
+              </View>
+            </Modal>
+          )}
+
+          {/* Android Date Picker */}
+          {showDatePicker && Platform.OS === "android" && (
+            <DateTimePicker
+              value={auctionDate || new Date()}
+              mode="date"
+              display="default"
+              minimumDate={new Date()}
+              onChange={handleDateChange}
+            />
+          )}
+
+          {/* ════════ Time Picker (iOS modal) ════════ */}
+          {showTimePicker && Platform.OS === "ios" && (
+            <Modal transparent animationType="slide" statusBarTranslucent>
+              <View style={styles.pickerModalOverlay}>
+                <View style={styles.pickerModalContent}>
+                  <View style={styles.pickerModalHeader}>
+                    <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                      <AppText
+                        weight="medium"
+                        style={{ fontSize: 16, color: "#FF3B30" }}
+                      >
+                        Cancel
+                      </AppText>
+                    </TouchableOpacity>
+                    <AppText weight="semibold" style={{ fontSize: 16 }}>
+                      Select Time
+                    </AppText>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setAuctionTime(tempPickerDate);
+                        setShowTimePicker(false);
+                      }}
+                    >
+                      <AppText
+                        weight="medium"
+                        style={{ fontSize: 16, color: "#4285F4" }}
+                      >
+                        Done
+                      </AppText>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ alignItems: "center" }}>
+                    <DateTimePicker
+                      value={tempPickerDate}
+                      mode="time"
+                      display="spinner"
+                      onChange={handleTimeChange}
+                      style={{ height: 200, width: "100%" }}
+                    />
+                  </View>
+                </View>
+              </View>
+            </Modal>
+          )}
+
+          {/* Android Time Picker */}
+          {showTimePicker && Platform.OS === "android" && (
+            <DateTimePicker
+              value={auctionTime || new Date()}
+              mode="time"
+              display="default"
+              onChange={handleTimeChange}
+            />
+          )}
+
+          {/* Loading / Result Overlay */}
+          {submitting && (
+            <View style={styles.submittingOverlay}>
+              <LottieView
+                source={require("../../assets/animations/shopping.json")}
+                autoPlay
+                loop={!submitResult}
+                style={{ width: 200, height: 200 }}
+              />
+              {submitResult === "success" ? (
+                <>
+                  <AppText
+                    weight="bold"
+                    style={[styles.submittingTitle, { color: "#4CAF50" }]}
+                  >
+                    สร้างประมูลสำเร็จ!
+                  </AppText>
+                  <AppText weight="regular" style={styles.submittingSubtitle}>
+                    กำลังพาคุณกลับหน้าหลัก...
+                  </AppText>
+                </>
+              ) : submitResult === "error" ? (
+                <>
+                  <AppText
+                    weight="bold"
+                    style={[styles.submittingTitle, { color: "#F44336" }]}
+                  >
+                    เกิดข้อผิดพลาด
+                  </AppText>
+                  <AppText weight="regular" style={styles.submittingSubtitle}>
+                    {submitMessage}
+                  </AppText>
+                </>
+              ) : (
+                <>
+                  <AppText weight="bold" style={styles.submittingTitle}>
+                    Creating Auction
+                  </AppText>
+                  <AppText weight="regular" style={styles.submittingSubtitle}>
+                    กำลังสร้างประมูลของคุณ...
+                  </AppText>
+                </>
+              )}
+            </View>
+          )}
+        </SafeAreaView>
+      </Animated.View>
+    </View>
   );
 };
 
@@ -1776,6 +1925,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#374151",
     marginTop: 4,
+  },
+  introOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
+  introTitle: {
+    fontSize: 26,
+    color: "#003994",
+    marginTop: 8,
+  },
+  introSubtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginTop: 6,
+  },
+  submittingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 999,
+  },
+  submittingTitle: {
+    fontSize: 22,
+    color: "#003994",
+    marginTop: 8,
+  },
+  submittingSubtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginTop: 6,
   },
   // Certificate
   optionalBadge: {

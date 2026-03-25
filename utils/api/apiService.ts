@@ -1,55 +1,57 @@
+import axios from "axios";
 import apiClient, {
-    ApiResponse,
-    ENDPOINTS,
-    PaginatedResponse,
-    handleApiError,
-    tokenManager,
+  ApiResponse,
+  BASE_URL,
+  ENDPOINTS,
+  PaginatedResponse,
+  handleApiError,
+  tokenManager,
 } from "./config";
 import {
-    ActiveBid,
-    AdminIncomingProduct,
-    AdminReplyRequest,
-    AdminReport,
-    AdminStats,
-    AdminUpdateReportStatusRequest,
-    Auction,
-    AuctionDetail,
-    AuctionListType,
-    BidHistoryEntry,
-    BidStats,
-    BuyNowRequest,
-    Category,
-    CategoryProduct,
-    ChangePasswordRequest,
-    CreateAuctionRequest,
-    EvidenceImage,
-    FAQ,
-    ForgotPasswordRequest,
-    HistoryBid,
-    HistoryStats,
-    LoginRequest,
-    LoginResponse,
-    Order,
-    PlaceBidRequest,
-    Product,
-    ProductPaginatedResponse,
-    RegisterRequest,
-    ReportStatus,
-    ResetPasswordRequest,
-    SearchResult,
-    Subcategory,
-    SubmitReportRequest,
-    TopUpRequest,
-    Transaction,
-    TransactionFilter,
-    TrendingTag,
-    UpdateProfileRequest,
-    UploadResponse,
-    User,
-    UserReport,
-    WalletBalance,
-    WithdrawRequest,
-    WonProduct,
+  ActiveBid,
+  AdminIncomingProduct,
+  AdminReplyRequest,
+  AdminReport,
+  AdminStats,
+  AdminUpdateReportStatusRequest,
+  Auction,
+  AuctionDetail,
+  AuctionListType,
+  BidHistoryEntry,
+  BidStats,
+  BuyNowRequest,
+  Category,
+  CategoryProduct,
+  ChangePasswordRequest,
+  CreateAuctionRequest,
+  EvidenceImage,
+  FAQ,
+  ForgotPasswordRequest,
+  HistoryBid,
+  HistoryStats,
+  LoginRequest,
+  LoginResponse,
+  Order,
+  PlaceBidRequest,
+  Product,
+  ProductPaginatedResponse,
+  RegisterRequest,
+  ReportStatus,
+  ResetPasswordRequest,
+  SearchResult,
+  Subcategory,
+  SubmitReportRequest,
+  TopUpRequest,
+  Transaction,
+  TransactionFilter,
+  TrendingTag,
+  UpdateProfileRequest,
+  UploadResponse,
+  User,
+  UserReport,
+  WalletBalance,
+  WithdrawRequest,
+  WonProduct,
 } from "./types";
 
 // ============================================================
@@ -77,7 +79,13 @@ const apiService = {
           data,
         );
 
-        const { user, token } = response.data;
+        const fullData = response.data as any;
+        const { user, token } = fullData;
+
+        // ถ้า backend ส่ง wallet มาแยกจาก user → merge เข้า user
+        if (fullData.wallet && !user.wallet) {
+          user.wallet = fullData.wallet;
+        }
 
         // เก็บ token ถ้า API ส่งมา
         if (token) {
@@ -336,6 +344,132 @@ const apiService = {
       }
     },
 
+    /**
+     * Construct "my bids" from GET /products + GET /products/:id/bids
+     * since dedicated /bids/active and /bids/history endpoints don't exist.
+     */
+    getMyBidsConstructed: async (
+      userId: number,
+    ): Promise<{
+      activeBids: ActiveBid[];
+      historyBids: HistoryBid[];
+      activeStats: BidStats;
+      historyStats: HistoryStats;
+    }> => {
+      try {
+        // 1. Fetch active products + completed products (BuyNow) in parallel
+        const [activeRes, completedRes] = await Promise.all([
+          apiClient.get<ProductPaginatedResponse>(ENDPOINTS.PRODUCT.LIST, {
+            params: { per_page: 100 },
+          }),
+          apiClient
+            .get<ProductPaginatedResponse>(ENDPOINTS.PRODUCT.LIST, {
+              params: { per_page: 100, status: "completed" },
+            })
+            .catch(() => ({ data: { data: [] } as any })),
+        ]);
+        const activeProducts: Product[] = activeRes.data?.data ?? [];
+        const completedProducts: Product[] = completedRes.data?.data ?? [];
+        const products: Product[] = [...activeProducts, ...completedProducts];
+
+        // 2. Filter products that have bids
+        const productsWithBids = products.filter((p) => p.bids_count > 0);
+
+        // 3. Fetch bids for each product in parallel
+        const bidResults = await Promise.all(
+          productsWithBids.map(async (product) => {
+            try {
+              const res = await apiClient.get(
+                ENDPOINTS.PRODUCT.BIDS(product.id),
+              );
+              const data = res.data;
+              const bids: any[] = Array.isArray(data)
+                ? data
+                : data?.data && Array.isArray(data.data)
+                  ? data.data
+                  : [];
+              return { product, bids };
+            } catch {
+              return { product, bids: [] as any[] };
+            }
+          }),
+        );
+
+        // 4. Build ActiveBid[] and HistoryBid[]
+        const activeBids: ActiveBid[] = [];
+        const historyBids: HistoryBid[] = [];
+        const now = new Date();
+
+        for (const { product, bids } of bidResults) {
+          // Filter bids belonging to this user
+          const myBids = bids.filter((b: any) => Number(b.user_id) === userId);
+          if (myBids.length === 0) continue;
+
+          const highestMyBid = Math.max(
+            ...myBids.map((b: any) => parseFloat(b.price)),
+          );
+          const currentPrice = parseFloat(product.current_price || "0");
+          const auctionEnd = new Date(product.auction_end_time);
+          const isEnded =
+            auctionEnd < now ||
+            product.status === "ended" ||
+            product.status === "completed";
+          const isWinning = highestMyBid >= currentPrice;
+
+          const imageUrl =
+            product.picture ||
+            (product.images && product.images.length > 0
+              ? product.images[0].image_url
+              : "") ||
+            "";
+
+          if (isEnded) {
+            historyBids.push({
+              id: String(product.id),
+              auctionId: String(product.id),
+              title: product.name,
+              image: imageUrl,
+              finalPrice: currentPrice,
+              myBid: highestMyBid,
+              endDate: product.auction_end_time,
+              totalBids: product.bids_count,
+              status: isWinning ? "Won" : "Lost",
+            });
+          } else {
+            activeBids.push({
+              id: String(product.id),
+              auctionId: String(product.id),
+              title: product.name,
+              image: imageUrl,
+              currentBid: currentPrice,
+              myBid: highestMyBid,
+              timeLeft: product.auction_end_time,
+              totalBids: product.bids_count,
+              status: isWinning ? "Winning" : "Outbid",
+              bidIncrement: parseFloat(product.bid_increment || "1"),
+            });
+          }
+        }
+
+        return {
+          activeBids,
+          historyBids,
+          activeStats: {
+            totalBids: activeBids.length,
+            outbid: activeBids.filter((b) => b.status === "Outbid").length,
+            winning: activeBids.filter((b) => b.status === "Winning").length,
+          },
+          historyStats: {
+            total: historyBids.length,
+            won: historyBids.filter((b) => b.status === "Won").length,
+            lost: historyBids.filter((b) => b.status === "Lost").length,
+          },
+        };
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
     getBidStats: async (): Promise<BidStats & HistoryStats> => {
       try {
         const response = await apiClient.get<
@@ -461,6 +595,23 @@ const apiService = {
       }
     },
 
+    /** GET /recommendations — AI แนะนำสินค้าเฉพาะ user */
+    getRecommendations: async (limit: number = 10): Promise<Product[]> => {
+      try {
+        const response = await apiClient.get<{
+          source: string;
+          products: Product[];
+        }>(ENDPOINTS.PRODUCT.RECOMMENDATIONS, { params: { limit } });
+        return response.data?.products ?? [];
+      } catch (error) {
+        console.error(
+          "Failed to fetch recommendations:",
+          handleApiError(error),
+        );
+        return [];
+      }
+    },
+
     /** GET /products/:id — ดึงสินค้าชิ้นเดียว */
     getProduct: async (id: number): Promise<Product> => {
       try {
@@ -497,6 +648,95 @@ const apiService = {
           return response.data;
         }
         return (response.data as ProductPaginatedResponse).data || [];
+      } catch (error) {
+        console.warn("GET /my-products failed, will use fallback:", error);
+        return [];
+      }
+    },
+
+    /** ดึงสินค้าของผู้ขายรวมสินค้าที่ขายแล้ว (shipping/completed) */
+    getMyProductsWithShipping: async (
+      userId: number,
+    ): Promise<{ allProducts: Product[]; shippingProducts: Product[] }> => {
+      try {
+        // Fetch from all sources in parallel (with fallbacks for each)
+        const [myProducts, activeRes, pendingRes, completedRes, endedRes] =
+          await Promise.all([
+            apiService.product.getMyProducts(),
+            apiClient
+              .get<ProductPaginatedResponse>(ENDPOINTS.PRODUCT.LIST, {
+                params: { per_page: 100, status: "active" },
+              })
+              .catch(() => ({ data: { data: [] } as any })),
+            apiClient
+              .get<ProductPaginatedResponse>(ENDPOINTS.PRODUCT.LIST, {
+                params: { per_page: 100, status: "pending" },
+              })
+              .catch(() => ({ data: { data: [] } as any })),
+            apiClient
+              .get<ProductPaginatedResponse>(ENDPOINTS.PRODUCT.LIST, {
+                params: { per_page: 100, status: "completed" },
+              })
+              .catch(() => ({ data: { data: [] } as any })),
+            apiClient
+              .get<ProductPaginatedResponse>(ENDPOINTS.PRODUCT.LIST, {
+                params: { per_page: 100, status: "ended" },
+              })
+              .catch(() => ({ data: { data: [] } as any })),
+          ]);
+
+        // Filter products belonging to this seller from each status
+        const activeProducts: Product[] = (activeRes.data?.data ?? []).filter(
+          (p: Product) => p.user_id === userId,
+        );
+        const pendingProducts: Product[] = (pendingRes.data?.data ?? []).filter(
+          (p: Product) => p.user_id === userId,
+        );
+        const completedProducts: Product[] = (
+          completedRes.data?.data ?? []
+        ).filter((p: Product) => p.user_id === userId);
+        const endedProducts: Product[] = (endedRes.data?.data ?? []).filter(
+          (p: Product) => p.user_id === userId,
+        );
+
+        // Build the complete product list, starting with /my-products result
+        const existingIds = new Set<number>();
+        const allProducts: Product[] = [];
+
+        // Add /my-products results first
+        for (const p of myProducts) {
+          if (!existingIds.has(p.id)) {
+            allProducts.push(p);
+            existingIds.add(p.id);
+          }
+        }
+
+        // Merge all fetched products (fallback for missing /my-products)
+        for (const p of [
+          ...activeProducts,
+          ...pendingProducts,
+          ...completedProducts,
+          ...endedProducts,
+        ]) {
+          if (!existingIds.has(p.id)) {
+            allProducts.push(p);
+            existingIds.add(p.id);
+          }
+        }
+
+        // Shipping = completed/ended products with bids (sold)
+        const shippingCandidates = [
+          ...completedProducts,
+          ...endedProducts,
+        ].filter((p) => p.bids_count > 0);
+        const seenShipping = new Set<number>();
+        const shippingProducts = shippingCandidates.filter((p) => {
+          if (seenShipping.has(p.id)) return false;
+          seenShipping.add(p.id);
+          return true;
+        });
+
+        return { allProducts, shippingProducts };
       } catch (error) {
         throw new Error(handleApiError(error));
       }
@@ -860,6 +1100,67 @@ const apiService = {
       }
     },
 
+    // ─── Pending Products (new API) ───
+    getPendingProducts: async (
+      status: string = "pending",
+    ): Promise<Product[]> => {
+      try {
+        const response = await apiClient.get(ENDPOINTS.ADMIN.PENDING_PRODUCTS, {
+          params: { status },
+        });
+        const data = response.data;
+        if (Array.isArray(data)) return data;
+        if (data?.data && Array.isArray(data.data)) return data.data;
+        return [];
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    approveProductById: async (productId: number): Promise<void> => {
+      try {
+        await apiClient.patch(ENDPOINTS.ADMIN.APPROVE_PRODUCT(productId));
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    rejectProductById: async (
+      productId: number,
+      adminNote: string,
+    ): Promise<void> => {
+      try {
+        await apiClient.patch(ENDPOINTS.ADMIN.REJECT_PRODUCT(productId), {
+          admin_note: adminNote,
+        });
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    getCertificateUrl: (certificateId: number): string => {
+      // Returns the full URL for viewing/downloading the certificate file
+      return `${apiClient.defaults.baseURL}${ENDPOINTS.ADMIN.CERTIFICATE_VIEW(certificateId)}`;
+    },
+
+    verifyCertificate: async (
+      certificateId: number,
+      status: "approved" | "rejected",
+      adminNote?: string,
+    ): Promise<void> => {
+      try {
+        await apiClient.patch(
+          ENDPOINTS.ADMIN.CERTIFICATE_VERIFY(certificateId),
+          {
+            status,
+            ...(adminNote ? { admin_note: adminNote } : {}),
+          },
+        );
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
     getReports: async (params?: {
       status?: ReportStatus;
       priority?: string;
@@ -904,6 +1205,56 @@ const apiService = {
           { reply: data.reply },
         );
         return response.data.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    getUsers: async (params?: { page?: number }): Promise<any> => {
+      try {
+        const response = await apiClient.get(ENDPOINTS.ADMIN.USERS, { params });
+        return response.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    getUserDetail: async (userId: number): Promise<any> => {
+      try {
+        const response = await apiClient.get(
+          ENDPOINTS.ADMIN.USER_DETAIL(userId),
+        );
+        return response.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    banUser: async (
+      userId: number,
+      reason: string,
+      durationDays: number,
+    ): Promise<any> => {
+      try {
+        const response = await apiClient.post(
+          ENDPOINTS.ADMIN.USER_BAN(userId),
+          {
+            reason,
+            ban_days: durationDays,
+          },
+        );
+        return response.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    unbanUser: async (userId: number): Promise<any> => {
+      try {
+        const response = await apiClient.post(
+          ENDPOINTS.ADMIN.USER_UNBAN(userId),
+        );
+        return response.data;
       } catch (error) {
         throw new Error(handleApiError(error));
       }
@@ -988,6 +1339,126 @@ const apiService = {
       }
     },
 
+    /**
+     * Construct orders from completed/ended products where user is the winner.
+     * Fallback when GET /orders endpoint doesn't exist.
+     */
+    getMyOrdersConstructed: async (userId: number): Promise<Order[]> => {
+      try {
+        // Fetch completed + ended products
+        const [completedRes, endedRes] = await Promise.all([
+          apiClient
+            .get<ProductPaginatedResponse>(ENDPOINTS.PRODUCT.LIST, {
+              params: { per_page: 100, status: "completed" },
+            })
+            .catch(() => ({ data: { data: [] } as any })),
+          apiClient
+            .get<ProductPaginatedResponse>(ENDPOINTS.PRODUCT.LIST, {
+              params: { per_page: 100, status: "ended" },
+            })
+            .catch(() => ({ data: { data: [] } as any })),
+        ]);
+        const completedProducts: Product[] = completedRes.data?.data ?? [];
+        const endedProducts: Product[] = endedRes.data?.data ?? [];
+
+        // Combine and deduplicate
+        const allProducts = [...completedProducts, ...endedProducts];
+        const seen = new Set<number>();
+        const uniqueProducts = allProducts.filter((p) => {
+          if (seen.has(p.id)) return false;
+          seen.add(p.id);
+          return true;
+        });
+
+        // Only process products that have bids
+        const productsWithBids = uniqueProducts.filter((p) => p.bids_count > 0);
+
+        // Fetch bids for each product
+        const results = await Promise.all(
+          productsWithBids.map(async (product) => {
+            try {
+              const res = await apiClient.get(
+                ENDPOINTS.PRODUCT.BIDS(product.id),
+              );
+              const data = res.data;
+              const bids: any[] = Array.isArray(data)
+                ? data
+                : data?.data && Array.isArray(data.data)
+                  ? data.data
+                  : [];
+              return { product, bids };
+            } catch {
+              return { product, bids: [] as any[] };
+            }
+          }),
+        );
+
+        // Build Order[] for products the user won
+        const orders: Order[] = [];
+        for (const { product, bids } of results) {
+          const myBids = bids.filter((b: any) => Number(b.user_id) === userId);
+          if (myBids.length === 0) continue;
+
+          const highestMyBid = Math.max(
+            ...myBids.map((b: any) => parseFloat(b.price)),
+          );
+          const currentPrice = parseFloat(product.current_price || "0");
+          const isWinner = highestMyBid >= currentPrice;
+          if (!isWinner) continue;
+
+          // Build a deadline 24h from when auction ended
+          const endedAt = product.updated_at || product.auction_end_time;
+          const deadline = new Date(
+            new Date(endedAt).getTime() + 24 * 60 * 60 * 1000,
+          );
+          const isExpired = deadline < new Date();
+
+          orders.push({
+            id: product.id,
+            product_id: product.id,
+            auction_id: product.id,
+            buyer_id: userId,
+            seller_id: product.user_id,
+            final_price: String(currentPrice),
+            status: isExpired ? "expired" : ("pending_confirmation" as any),
+            confirmed_at: null,
+            shipped_at: null,
+            completed_at:
+              product.status === "completed" ? product.updated_at : null,
+            disputed_at: null,
+            cancelled_at: null,
+            expired_at: isExpired ? deadline.toISOString() : null,
+            deadline_at: deadline.toISOString(),
+            dispute_reason: null,
+            dispute_evidence_images: null,
+            created_at: product.updated_at || product.created_at,
+            updated_at: product.updated_at,
+            product: {
+              id: product.id,
+              name: product.name,
+              description: product.description,
+              picture: product.picture,
+              image_url: product.image_url,
+              images: product.images,
+            },
+            seller: product.user
+              ? {
+                  id: product.user.id,
+                  name: product.user.name,
+                  email: product.user.email || "",
+                  phone_number: product.user.phone_number || null,
+                  profile_image: product.user.profile_image || null,
+                }
+              : undefined,
+          } as Order);
+        }
+
+        return orders;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
     getOrderDetail: async (orderId: number): Promise<Order> => {
       try {
         const response = await apiClient.get(ENDPOINTS.ORDER.DETAIL(orderId));
@@ -1060,6 +1531,98 @@ const apiService = {
       }
     },
   },
+};
+
+/**
+ * Fetch public stats (total_users, total_products).
+ * Calls the public /api/public/stats endpoint (no auth required).
+ * Falls back to admin endpoint or cache if public endpoint is unavailable.
+ */
+const STATS_CACHE_KEY = "publicStatsCache";
+
+const cacheStats = async (stats: {
+  total_users: number;
+  total_products: number;
+}) => {
+  try {
+    const AsyncStorage =
+      require("@react-native-async-storage/async-storage").default;
+    await AsyncStorage.setItem(STATS_CACHE_KEY, JSON.stringify(stats));
+  } catch {
+    // ignore
+  }
+};
+
+const getCachedStats = async (): Promise<{
+  total_users: number;
+  total_products: number;
+} | null> => {
+  try {
+    const AsyncStorage =
+      require("@react-native-async-storage/async-storage").default;
+    const cached = await AsyncStorage.getItem(STATS_CACHE_KEY);
+    if (cached) return JSON.parse(cached);
+  } catch {
+    // ignore
+  }
+  return null;
+};
+
+export const getPublicStats = async (): Promise<{
+  total_users: number;
+  total_products: number;
+}> => {
+  // 1) Try public stats endpoint (no auth required)
+  try {
+    const res = await axios.get(`${BASE_URL}${ENDPOINTS.PUBLIC.STATS}`, {
+      timeout: 8000,
+    });
+    const data = res.data?.data ?? res.data;
+    if (
+      typeof data?.total_users === "number" &&
+      typeof data?.total_products === "number"
+    ) {
+      const result = {
+        total_users: data.total_users,
+        total_products: data.total_products,
+      };
+      await cacheStats(result);
+      return result;
+    }
+  } catch {
+    // public endpoint not available — fall through
+  }
+
+  // 2) Try admin dashboard with auth token
+  try {
+    const stats = await apiService.admin.getStats();
+    const result = {
+      total_users: stats.total_users,
+      total_products: stats.total_products,
+    };
+    await cacheStats(result);
+    return result;
+  } catch {
+    // no token or not admin — fall through
+  }
+
+  // 3) Fallback: use cached stats + fresh product count
+  const cached = await getCachedStats();
+  let totalProducts = cached?.total_products ?? 0;
+  try {
+    const productsRes = await apiClient.get<ProductPaginatedResponse>(
+      ENDPOINTS.PRODUCT.LIST,
+      { params: { per_page: 1 } },
+    );
+    totalProducts = productsRes?.data?.total ?? totalProducts;
+  } catch {
+    // ignore
+  }
+
+  return {
+    total_users: cached?.total_users ?? 0,
+    total_products: totalProducts,
+  };
 };
 
 export default apiService;

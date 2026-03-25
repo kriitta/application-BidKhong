@@ -1,4 +1,3 @@
-import { image } from "@/assets/images";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
@@ -6,9 +5,11 @@ import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   Image,
+  Linking,
   Modal,
   ScrollView,
   StyleSheet,
@@ -19,28 +20,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../contexts/AuthContext";
 import { apiService, getFullImageUrl } from "../utils/api";
-import { AdminStats, User } from "../utils/api/types";
+import { AdminStats, Product, User } from "../utils/api/types";
 import { AppText } from "./components/appText";
+import ImageViewerModal from "./components/ImageViewerModal";
 
 const { width } = Dimensions.get("window");
 
 // ─── Types ───────────────────────────────────────────────────
-type IncomingProduct = {
-  id: string;
-  name: string;
-  image: any;
-  seller: string;
-  sellerEmail: string;
-  category: string;
-  startingBid: number;
-  buyNowPrice: number;
-  minIncrement: number;
-  description: string;
-  submittedAt: string;
-  scheduledStart: string;
-  scheduledEnd: string;
-  status: "pending" | "approved" | "rejected";
-};
 
 type ApiReport = {
   id: number;
@@ -75,98 +61,51 @@ type ApiReport = {
   replied_by: any | null;
 };
 
-// ─── Mock Data ───────────────────────────────────────────────
-const MOCK_INCOMING: IncomingProduct[] = [
-  {
-    id: "INC-001",
-    name: "MacBook Pro M4 Max",
-    image: image.macbook,
-    seller: "TechStore Bangkok",
-    sellerEmail: "tech@store.com",
-    category: "Electronics",
-    startingBid: 45000,
-    buyNowPrice: 89000,
-    minIncrement: 500,
-    description:
-      "MacBook Pro M4 Max 16 นิ้ว RAM 48GB SSD 1TB สภาพใหม่ 99% ประกันศูนย์เหลือ 10 เดือน พร้อมกล่องและอุปกรณ์ครบ",
-    submittedAt: "2026-02-15 14:30",
-    scheduledStart: "2026-02-20 10:00",
-    scheduledEnd: "2026-02-27 10:00",
-    status: "pending",
-  },
-  {
-    id: "INC-002",
-    name: "Nike Air Jordan 1 Retro High OG",
-    image: image.shirt,
-    seller: "SneakerHead TH",
-    sellerEmail: "sneaker@head.com",
-    category: "Fashion",
-    startingBid: 3500,
-    buyNowPrice: 8900,
-    minIncrement: 100,
-    description:
-      "Nike Air Jordan 1 Retro High OG 'Chicago' Size US 10 ของแท้ 100% DS ยังไม่แกะกล่อง พร้อมใบเสร็จ",
-    submittedAt: "2026-02-15 16:45",
-    scheduledStart: "2026-02-19 18:00",
-    scheduledEnd: "2026-02-26 18:00",
-    status: "pending",
-  },
-  {
-    id: "INC-003",
-    name: "Labubu The Monsters Blind Box Set",
-    image: image.labubu,
-    seller: "Pop Mart Official",
-    sellerEmail: "popmart@official.com",
-    category: "Collectibles",
-    startingBid: 2000,
-    buyNowPrice: 5500,
-    minIncrement: 100,
-    description:
-      "Labubu The Monsters Series ครบชุด 12 ตัว รวม Secret ของแท้จาก Pop Mart สภาพกล่องสวย ไม่มีตำหนิ",
-    submittedAt: "2026-02-14 09:15",
-    scheduledStart: "2026-02-18 12:00",
-    scheduledEnd: "2026-02-25 12:00",
-    status: "pending",
-  },
-  {
-    id: "INC-004",
-    name: "BMW i8 2020 Hybrid",
-    image: image.i8,
-    seller: "Luxury Cars BKK",
-    sellerEmail: "luxury@cars.com",
-    category: "Vehicles",
-    startingBid: 2500000,
-    buyNowPrice: 4200000,
-    minIncrement: 50000,
-    description:
-      "BMW i8 ปี 2020 Plug-in Hybrid ไมล์ 25,000 กม. สีขาว ภายในดำ Full Option ประวัติศูนย์ครบ เจ้าของขายเอง",
-    submittedAt: "2026-02-16 08:00",
-    scheduledStart: "2026-02-22 10:00",
-    scheduledEnd: "2026-03-01 10:00",
-    status: "pending",
-  },
-  {
-    id: "INC-005",
-    name: "Sony PlayStation 5 Pro",
-    image: image.electronic,
-    seller: "GameZone TH",
-    sellerEmail: "game@zone.com",
-    category: "Electronics",
-    startingBid: 15000,
-    buyNowPrice: 24900,
-    minIncrement: 200,
-    description:
-      "PS5 Pro 2TB พร้อมจอย DualSense 2 ตัว และเกม 5 แผ่น สภาพดีมาก ใช้งาน 3 เดือน ประกันเหลือ 9 เดือน",
-    submittedAt: "2026-02-16 10:20",
-    scheduledStart: "2026-02-21 14:00",
-    scheduledEnd: "2026-02-28 14:00",
-    status: "pending",
-  },
-];
+type AdminUser = {
+  id: number;
+  name: string;
+  email: string;
+  phone_number: string | null;
+  email_verified_at: string | null;
+  role: string;
+  profile_image: string | null;
+  created_at: string;
+  updated_at: string;
+  products_count?: number;
+  orders_count?: number;
+  reports_count?: number;
+  reported_count?: number;
+  wallet?: {
+    id: number;
+    user_id: number;
+    balance_available: string;
+    balance_total?: string;
+    balance_pending?: string;
+    withdraw?: string;
+    deposit?: string;
+  } | null;
+  strikes?: any[];
+  is_banned?: boolean;
+  banned_until?: string | null;
+  ban_reason?: string | null;
+};
 
 // ─── Helpers ─────────────────────────────────────────────────
-const formatPrice = (n: number) =>
-  "฿" + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+const formatPrice = (n: number | string) => {
+  const num = typeof n === "string" ? parseFloat(n) : n;
+  return "฿" + num.toLocaleString("en-US", { maximumFractionDigits: 0 });
+};
+
+const formatDateTime = (dateStr: string) => {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("th-TH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
 const getReportStatusColor = (s: string) => {
   switch (s) {
@@ -255,22 +194,53 @@ const formatReportDate = (dateStr: string) => {
   });
 };
 
+const getRemainingBanDays = (bannedUntil?: string | null): number | null => {
+  if (!bannedUntil) return null;
+  const now = new Date();
+  const until = new Date(bannedUntil);
+  const diff = until.getTime() - now.getTime();
+  if (diff <= 0) return 0;
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+};
+
 // ─── Component ───────────────────────────────────────────────
 const AdminScreen = () => {
   const router = useRouter();
   const { logout: contextLogout } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"incoming" | "reports">(
-    "incoming",
+  const [activeTab, setActiveTab] = useState<"pending" | "reports" | "users">(
+    "pending",
   );
 
-  // Incoming state
-  const [incomingProducts, setIncomingProducts] =
-    useState<IncomingProduct[]>(MOCK_INCOMING);
-  const [selectedProduct, setSelectedProduct] =
-    useState<IncomingProduct | null>(null);
+  // Pending products state
+  const [pendingProducts, setPendingProducts] = useState<Product[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productModalVisible, setProductModalVisible] = useState(false);
+  const [approveLoading, setApproveLoading] = useState(false);
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectLoading, setRejectLoading] = useState(false);
+
+  // Image Viewer state
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [imageViewerUrls, setImageViewerUrls] = useState<string[]>([]);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
+
+  const openImageViewer = (urls: string[], index = 0) => {
+    setImageViewerUrls(urls);
+    setImageViewerIndex(index);
+    setImageViewerVisible(true);
+  };
+
+  // Certificate state
+  const [certModalVisible, setCertModalVisible] = useState(false);
+  const [certVerifyLoading, setCertVerifyLoading] = useState(false);
+  const [certRejectNote, setCertRejectNote] = useState("");
+  const [certAction, setCertAction] = useState<"approve" | "reject" | null>(
+    null,
+  );
 
   // Reports state
   const [reports, setReports] = useState<ApiReport[]>([]);
@@ -282,8 +252,29 @@ const AdminScreen = () => {
   const [statusLoading, setStatusLoading] = useState(false);
   const [adminNote, setAdminNote] = useState("");
 
+  // Users state
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [userModalVisible, setUserModalVisible] = useState(false);
+  const [userDetailLoading, setUserDetailLoading] = useState(false);
+  const [banModalVisible, setBanModalVisible] = useState(false);
+  const [banReason, setBanReason] = useState("");
+  const [banDuration, setBanDuration] = useState("7");
+  const [banLoading, setBanLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
   // Dashboard stats from API
   const [dashboardStats, setDashboardStats] = useState<AdminStats | null>(null);
+
+  const fetchDashboardStats = async () => {
+    try {
+      const stats = await apiService.admin.getStats();
+      setDashboardStats(stats);
+    } catch (e: any) {
+      console.error("Failed to fetch admin stats:", e.message);
+    }
+  };
 
   useEffect(() => {
     const loadUser = async () => {
@@ -296,17 +287,28 @@ const AdminScreen = () => {
       setUser(currentUser);
       setLoading(false);
       // Fetch dashboard stats
-      try {
-        const stats = await apiService.admin.getStats();
-        setDashboardStats(stats);
-      } catch (e: any) {
-        console.error("Failed to fetch admin stats:", e.message);
-      }
+      fetchDashboardStats();
       // Fetch reports
       fetchReports();
+      // Fetch users
+      fetchUsers();
+      // Fetch pending products
+      fetchPendingProducts();
     };
     loadUser();
   }, []);
+
+  const fetchPendingProducts = async () => {
+    try {
+      setPendingLoading(true);
+      const products = await apiService.admin.getPendingProducts("pending");
+      setPendingProducts(products);
+    } catch (e: any) {
+      console.error("Failed to fetch pending products:", e.message);
+    } finally {
+      setPendingLoading(false);
+    }
+  };
 
   const fetchReports = async () => {
     try {
@@ -314,18 +316,187 @@ const AdminScreen = () => {
       const response = await apiService.admin.getReports();
       // Handle both array and paginated
       const data = response as any;
+      let allReports: ApiReport[] = [];
       if (Array.isArray(data)) {
-        setReports(data);
+        allReports = data;
       } else if (data?.data && Array.isArray(data.data)) {
-        setReports(data.data);
-      } else {
-        setReports([]);
+        allReports = data.data;
       }
+      // Filter out resolved/dismissed — only show active reports
+      const activeReports = allReports.filter(
+        (r) => r.status !== "resolved" && r.status !== "dismissed",
+      );
+      setReports(activeReports);
     } catch (e: any) {
       console.error("Failed to fetch reports:", e.message);
     } finally {
       setReportsLoading(false);
     }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      setUsersLoading(true);
+      const response = await apiService.admin.getUsers();
+      const data = response as any;
+      let newUsers: AdminUser[] = [];
+      if (Array.isArray(data)) {
+        newUsers = data;
+      } else if (data?.data && Array.isArray(data.data)) {
+        newUsers = data.data;
+      }
+
+      // API ไม่ส่ง ban fields กลับมา → preserve ban info จาก state เดิม
+      setUsers((prev) => {
+        const banMap = new Map<
+          number,
+          {
+            is_banned: boolean;
+            banned_until: string | null;
+            ban_reason: string | null;
+          }
+        >();
+        prev.forEach((u) => {
+          if (u.is_banned) {
+            banMap.set(u.id, {
+              is_banned: true,
+              banned_until: u.banned_until ?? null,
+              ban_reason: u.ban_reason ?? null,
+            });
+          }
+        });
+        return newUsers.map((u) => {
+          const banInfo = banMap.get(u.id);
+          return banInfo ? { ...u, ...banInfo } : u;
+        });
+      });
+    } catch (e: any) {
+      console.error("Failed to fetch users:", e.message);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const openUserDetail = async (u: AdminUser) => {
+    setSelectedUser(u);
+    setUserModalVisible(true);
+    setUserDetailLoading(true);
+    try {
+      const detail = await apiService.admin.getUserDetail(u.id);
+      // Preserve ban info if API doesn't return it
+      if (u.is_banned && !detail.is_banned) {
+        detail.is_banned = u.is_banned;
+        detail.banned_until = u.banned_until;
+        detail.ban_reason = u.ban_reason;
+      }
+      setSelectedUser(detail);
+    } catch (e: any) {
+      console.error("Failed to fetch user detail:", e.message);
+    } finally {
+      setUserDetailLoading(false);
+    }
+  };
+
+  const handleBanUser = async () => {
+    if (!selectedUser || !banReason.trim()) {
+      Alert.alert("ข้อผิดพลาด", "กรุณากรอกเหตุผลในการแบน");
+      return;
+    }
+    const days = parseInt(banDuration, 10);
+    if (isNaN(days) || days <= 0) {
+      Alert.alert("ข้อผิดพลาด", "กรุณากรอกจำนวนวันที่ถูกต้อง");
+      return;
+    }
+    setBanLoading(true);
+    const userName = selectedUser.name;
+    const userId = selectedUser.id;
+    try {
+      await apiService.admin.banUser(userId, banReason.trim(), days);
+
+      // Calculate banned_until date
+      const bannedUntil = new Date();
+      bannedUntil.setDate(bannedUntil.getDate() + days);
+      const bannedUntilStr = bannedUntil.toISOString();
+
+      // Optimistically update the users list so the UI reflects the ban immediately
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? {
+                ...u,
+                is_banned: true,
+                banned_until: bannedUntilStr,
+                ban_reason: banReason.trim(),
+              }
+            : u,
+        ),
+      );
+
+      // Also update selectedUser so the detail modal shows ban info
+      setSelectedUser((prev) =>
+        prev && prev.id === userId
+          ? {
+              ...prev,
+              is_banned: true,
+              banned_until: bannedUntilStr,
+              ban_reason: banReason.trim(),
+            }
+          : prev,
+      );
+
+      // Close ban modal but keep user detail modal OPEN so user sees the ban status change
+      setBanModalVisible(false);
+      setBanReason("");
+      setBanDuration("7");
+      setBanLoading(false);
+      Alert.alert("สำเร็จ", `แบนผู้ใช้ ${userName} เรียบร้อยแล้ว`);
+    } catch (error: any) {
+      setBanLoading(false);
+      Alert.alert("ผิดพลาด", error.message || "ไม่สามารถแบนผู้ใช้ได้");
+    }
+  };
+
+  const handleUnbanUser = async (u: AdminUser) => {
+    Alert.alert("ยืนยัน", `ปลดแบนผู้ใช้ "${u.name}"?`, [
+      { text: "ยกเลิก" },
+      {
+        text: "ยืนยัน",
+        onPress: async () => {
+          try {
+            await apiService.admin.unbanUser(u.id);
+            Alert.alert("สำเร็จ", `ปลดแบนผู้ใช้ ${u.name} เรียบร้อยแล้ว`);
+            // Optimistically update users list
+            setUsers((prev) =>
+              prev.map((user) =>
+                user.id === u.id
+                  ? {
+                      ...user,
+                      is_banned: false,
+                      banned_until: null,
+                      ban_reason: null,
+                    }
+                  : user,
+              ),
+            );
+            // Update selectedUser so detail modal reflects unban immediately
+            if (selectedUser?.id === u.id) {
+              setSelectedUser((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      is_banned: false,
+                      banned_until: null,
+                      ban_reason: null,
+                    }
+                  : prev,
+              );
+            }
+          } catch (error: any) {
+            Alert.alert("ผิดพลาด", error.message || "ไม่สามารถปลดแบนผู้ใช้ได้");
+          }
+        },
+      },
+    ]);
   };
 
   const handleLogout = async () => {
@@ -342,28 +513,36 @@ const AdminScreen = () => {
     ]);
   };
 
-  const handleDeleteProduct = (product: IncomingProduct) => {
-    Alert.alert(
-      "ลบสินค้า",
-      `คุณต้องการลบ "${product.name}" ออกจากรายการ Incoming หรือไม่?\n\nผู้ขาย: ${product.seller}\nหมวดหมู่: ${product.category}`,
-      [
-        { text: "ยกเลิก" },
-        {
-          text: "ลบสินค้า",
-          style: "destructive",
-          onPress: () => {
-            setIncomingProducts((prev) =>
-              prev.filter((p) => p.id !== product.id),
-            );
-            setProductModalVisible(false);
-            setSelectedProduct(null);
-          },
-        },
-      ],
-    );
+  const handleRejectProduct = async () => {
+    if (!selectedProduct || !rejectReason.trim()) {
+      Alert.alert("ข้อผิดพลาด", "กรุณากรอกเหตุผลในการปฏิเสธ");
+      return;
+    }
+    setRejectLoading(true);
+    try {
+      await apiService.admin.rejectProductById(
+        selectedProduct.id,
+        rejectReason.trim(),
+      );
+      // Optimistic update
+      setPendingProducts((prev) =>
+        prev.filter((p) => p.id !== selectedProduct.id),
+      );
+      setRejectModalVisible(false);
+      setRejectReason("");
+      setProductModalVisible(false);
+      setSelectedProduct(null);
+      Alert.alert("สำเร็จ", "ปฏิเสธสินค้าเรียบร้อยแล้ว");
+      fetchPendingProducts();
+      fetchDashboardStats();
+    } catch (error: any) {
+      Alert.alert("ผิดพลาด", error.message || "ไม่สามารถปฏิเสธสินค้าได้");
+    } finally {
+      setRejectLoading(false);
+    }
   };
 
-  const handleApproveProduct = (product: IncomingProduct) => {
+  const handleApproveProduct = (product: Product) => {
     Alert.alert(
       "อนุมัติสินค้า",
       `อนุมัติ "${product.name}" ให้เข้าสู่ระบบประมูล?`,
@@ -371,17 +550,82 @@ const AdminScreen = () => {
         { text: "ยกเลิก" },
         {
           text: "อนุมัติ",
-          onPress: () => {
-            setIncomingProducts((prev) =>
-              prev.filter((p) => p.id !== product.id),
-            );
-            setProductModalVisible(false);
-            setSelectedProduct(null);
-            Alert.alert("สำเร็จ", "อนุมัติสินค้าเรียบร้อยแล้ว");
+          onPress: async () => {
+            setApproveLoading(true);
+            try {
+              await apiService.admin.approveProductById(product.id);
+              // Optimistic update
+              setPendingProducts((prev) =>
+                prev.filter((p) => p.id !== product.id),
+              );
+              setProductModalVisible(false);
+              setSelectedProduct(null);
+              Alert.alert("สำเร็จ", "อนุมัติสินค้าเรียบร้อยแล้ว");
+              fetchPendingProducts();
+              fetchDashboardStats();
+            } catch (error: any) {
+              Alert.alert(
+                "ผิดพลาด",
+                error.message || "ไม่สามารถอนุมัติสินค้าได้",
+              );
+            } finally {
+              setApproveLoading(false);
+            }
           },
         },
       ],
     );
+  };
+
+  const handleVerifyCertificate = async (status: "approved" | "rejected") => {
+    if (!selectedProduct?.certificate) return;
+    setCertVerifyLoading(true);
+    try {
+      await apiService.admin.verifyCertificate(
+        selectedProduct.certificate.id,
+        status,
+        status === "rejected" ? certRejectNote.trim() : undefined,
+      );
+      // Update local state
+      setSelectedProduct((prev) =>
+        prev?.certificate
+          ? {
+              ...prev,
+              certificate: { ...prev.certificate, status },
+              is_certified: status === "approved",
+            }
+          : prev,
+      );
+      setCertAction(null);
+      setCertRejectNote("");
+      Alert.alert(
+        "สำเร็จ",
+        status === "approved"
+          ? "อนุมัติใบรับรองเรียบร้อยแล้ว"
+          : "ปฏิเสธใบรับรองเรียบร้อยแล้ว",
+      );
+      fetchPendingProducts();
+      fetchDashboardStats();
+    } catch (error: any) {
+      Alert.alert("ผิดพลาด", error.message || "ไม่สามารถดำเนินการใบรับรองได้");
+    } finally {
+      setCertVerifyLoading(false);
+    }
+  };
+
+  const getCertificateFileUrl = (): string | null => {
+    if (!selectedProduct?.certificate) return null;
+    const cert = selectedProduct.certificate;
+    // Try file_path first via storage URL
+    if (cert.file_path) {
+      return getFullImageUrl(cert.file_path);
+    }
+    return null;
+  };
+
+  const isImageFile = (filename: string): boolean => {
+    const ext = filename.toLowerCase().split(".").pop() || "";
+    return ["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(ext);
   };
 
   const handleUpdateReportStatus = (report: ApiReport, newStatus: string) => {
@@ -400,29 +644,37 @@ const AdminScreen = () => {
                 status: newStatus as any,
                 ...(adminNote.trim() ? { admin_note: adminNote.trim() } : {}),
               });
-              // Update local state
-              setReports((prev) =>
-                prev.map((r) =>
-                  r.id === report.id
+              // If resolved/dismissed, remove from list & close modal
+              if (newStatus === "resolved" || newStatus === "dismissed") {
+                setReports((prev) => prev.filter((r) => r.id !== report.id));
+                setAdminNote("");
+                setReportModalVisible(false);
+                Alert.alert("สำเร็จ", "อัปเดตสถานะเรียบร้อยแล้ว");
+              } else {
+                // Update local state for other status changes
+                setReports((prev) =>
+                  prev.map((r) =>
+                    r.id === report.id
+                      ? {
+                          ...r,
+                          status: newStatus as any,
+                          admin_note: adminNote.trim() || r.admin_note,
+                        }
+                      : r,
+                  ),
+                );
+                setSelectedReport((prev) =>
+                  prev?.id === report.id
                     ? {
-                        ...r,
+                        ...prev,
                         status: newStatus as any,
-                        admin_note: adminNote.trim() || r.admin_note,
+                        admin_note: adminNote.trim() || prev.admin_note,
                       }
-                    : r,
-                ),
-              );
-              setSelectedReport((prev) =>
-                prev?.id === report.id
-                  ? {
-                      ...prev,
-                      status: newStatus as any,
-                      admin_note: adminNote.trim() || prev.admin_note,
-                    }
-                  : prev,
-              );
-              setAdminNote("");
-              Alert.alert("สำเร็จ", "อัปเดตสถานะเรียบร้อยแล้ว");
+                    : prev,
+                );
+                setAdminNote("");
+                Alert.alert("สำเร็จ", "อัปเดตสถานะเรียบร้อยแล้ว");
+              }
               fetchReports(); // refresh list
             } catch (error: any) {
               Alert.alert(
@@ -438,7 +690,7 @@ const AdminScreen = () => {
     );
   };
 
-  const openProductDetail = (product: IncomingProduct) => {
+  const openProductDetail = (product: Product) => {
     setSelectedProduct(product);
     setProductModalVisible(true);
   };
@@ -463,10 +715,6 @@ const AdminScreen = () => {
     );
   }
 
-  const openReportsCount = reports.filter(
-    (r) => r.status === "pending" || r.status === "reviewing",
-  ).length;
-
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -490,16 +738,15 @@ const AdminScreen = () => {
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
               <AppText weight="bold" style={styles.statNumber}>
-                {dashboardStats?.pending_certificates ??
-                  incomingProducts.length}
+                {pendingProducts.length}
               </AppText>
               <AppText weight="regular" style={styles.statLabel}>
-                Pending Cert
+                Pending
               </AppText>
             </View>
             <View style={styles.statCard}>
               <AppText weight="bold" style={styles.statNumber}>
-                {dashboardStats?.pending_reports ?? openReportsCount}
+                {reports.length}
               </AppText>
               <AppText weight="regular" style={styles.statLabel}>
                 Reports
@@ -526,17 +773,17 @@ const AdminScreen = () => {
           {/* Tab Switcher */}
           <View style={styles.tabRow}>
             <TouchableOpacity
-              style={[styles.tab, activeTab === "incoming" && styles.tabActive]}
-              onPress={() => setActiveTab("incoming")}
+              style={[styles.tab, activeTab === "pending" && styles.tabActive]}
+              onPress={() => setActiveTab("pending")}
             >
               <AppText
                 weight="semibold"
                 style={[
                   styles.tabText,
-                  activeTab === "incoming" && styles.tabTextActive,
+                  activeTab === "pending" && styles.tabTextActive,
                 ]}
               >
-                Incoming ({incomingProducts.length})
+                Pending ({pendingProducts.length})
               </AppText>
             </TouchableOpacity>
             <TouchableOpacity
@@ -550,7 +797,21 @@ const AdminScreen = () => {
                   activeTab === "reports" && styles.tabTextActive,
                 ]}
               >
-                Reports ({openReportsCount})
+                Reports ({reports.length})
+              </AppText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "users" && styles.tabActive]}
+              onPress={() => setActiveTab("users")}
+            >
+              <AppText
+                weight="semibold"
+                style={[
+                  styles.tabText,
+                  activeTab === "users" && styles.tabTextActive,
+                ]}
+              >
+                Users ({users.length})
               </AppText>
             </TouchableOpacity>
           </View>
@@ -563,103 +824,82 @@ const AdminScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
       >
-        {activeTab === "incoming" ? (
-          /* ─── INCOMING TAB ────────────────────────────── */
+        {activeTab === "pending" ? (
+          /* ─── PENDING TAB ─────────────────────────────── */
           <>
-            {incomingProducts.length === 0 ? (
+            {pendingLoading ? (
+              <View style={{ alignItems: "center", paddingVertical: 40 }}>
+                <LottieView
+                  source={require("../assets/animations/loading.json")}
+                  autoPlay
+                  loop
+                  style={{ width: 80, height: 80 }}
+                />
+              </View>
+            ) : pendingProducts.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons
-                  name="mail-open-outline"
+                  name="checkmark-done-circle-outline"
                   size={52}
                   color="#9CA3AF"
                   style={{ marginBottom: 12 }}
                 />
                 <AppText weight="semibold" style={styles.emptyTitle}>
-                  No Incoming Products
+                  ไม่มีสินค้ารออนุมัติ
                 </AppText>
                 <AppText weight="regular" style={styles.emptySub}>
-                  All incoming products have been managed
+                  สินค้าทั้งหมดได้รับการตรวจสอบแล้ว
                 </AppText>
               </View>
             ) : (
-              incomingProducts.map((product) => (
-                <TouchableOpacity
-                  key={product.id}
-                  style={styles.productCard}
-                  onPress={() => openProductDetail(product)}
-                  activeOpacity={0.7}
-                >
-                  <Image
-                    source={product.image}
-                    style={styles.productCardImage}
-                  />
-                  <View style={styles.productCardInfo}>
-                    <View style={styles.productCardTop}>
-                      <AppText
-                        weight="semibold"
-                        style={styles.productCardName}
-                        numberOfLines={1}
+              pendingProducts.map((product) => {
+                const imgUrl = getFullImageUrl(
+                  product.picture || product.image_url,
+                );
+                return (
+                  <TouchableOpacity
+                    key={product.id}
+                    style={styles.productCard}
+                    onPress={() => openProductDetail(product)}
+                    activeOpacity={0.7}
+                  >
+                    {imgUrl ? (
+                      <Image
+                        source={{ uri: imgUrl }}
+                        style={styles.productCardImage}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.productCardImage,
+                          {
+                            backgroundColor: "#F3F4F6",
+                            justifyContent: "center",
+                            alignItems: "center",
+                          },
+                        ]}
                       >
-                        {product.name}
-                      </AppText>
-                      <View style={styles.pendingBadge}>
-                        <AppText weight="medium" style={styles.pendingText}>
-                          Pending
-                        </AppText>
+                        <Ionicons
+                          name="image-outline"
+                          size={24}
+                          color="#9CA3AF"
+                        />
                       </View>
-                    </View>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
-                    >
-                      <Ionicons name="person" size={13} color="#6B7280" />
-                      <AppText
-                        weight="regular"
-                        style={styles.productCardSeller}
-                        numberOfLines={1}
-                      >
-                        {product.seller}
-                      </AppText>
-                    </View>
-                    <View style={styles.productCardPrices}>
-                      <View style={styles.priceTag}>
-                        <AppText weight="regular" style={styles.priceLabel}>
-                          Start
-                        </AppText>
-                        <AppText weight="semibold" style={styles.priceValue}>
-                          {formatPrice(product.startingBid)}
-                        </AppText>
-                      </View>
-                      <View style={styles.priceTag}>
-                        <AppText weight="regular" style={styles.priceLabel}>
-                          Buy Now
-                        </AppText>
+                    )}
+                    <View style={styles.productCardInfo}>
+                      <View style={styles.productCardTop}>
                         <AppText
                           weight="semibold"
-                          style={[styles.priceValue, { color: "#22C55E" }]}
+                          style={styles.productCardName}
+                          numberOfLines={1}
                         >
-                          {formatPrice(product.buyNowPrice)}
+                          {product.name}
                         </AppText>
-                      </View>
-                    </View>
-                    <View style={styles.productCardBottom}>
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
-                        <Ionicons name="pricetag" size={11} color="#9CA3AF" />
-                        <AppText
-                          weight="regular"
-                          style={styles.productCardMeta}
-                        >
-                          {product.category}
-                        </AppText>
+                        <View style={styles.pendingBadge}>
+                          <AppText weight="medium" style={styles.pendingText}>
+                            Pending
+                          </AppText>
+                        </View>
                       </View>
                       <View
                         style={{
@@ -668,47 +908,106 @@ const AdminScreen = () => {
                           gap: 4,
                         }}
                       >
-                        <Ionicons name="calendar" size={11} color="#9CA3AF" />
+                        <Ionicons name="person" size={13} color="#6B7280" />
                         <AppText
                           weight="regular"
-                          style={styles.productCardMeta}
+                          style={styles.productCardSeller}
+                          numberOfLines={1}
                         >
-                          {product.scheduledStart}
+                          {product.user?.name || "Unknown Seller"}
                         </AppText>
                       </View>
+                      <View style={styles.productCardPrices}>
+                        <View style={styles.priceTag}>
+                          <AppText weight="regular" style={styles.priceLabel}>
+                            Start
+                          </AppText>
+                          <AppText weight="semibold" style={styles.priceValue}>
+                            {formatPrice(product.starting_price)}
+                          </AppText>
+                        </View>
+                        <View style={styles.priceTag}>
+                          <AppText weight="regular" style={styles.priceLabel}>
+                            Buy Now
+                          </AppText>
+                          <AppText
+                            weight="semibold"
+                            style={[styles.priceValue, { color: "#22C55E" }]}
+                          >
+                            {formatPrice(product.buyout_price)}
+                          </AppText>
+                        </View>
+                      </View>
+                      <View style={styles.productCardBottom}>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <Ionicons name="pricetag" size={11} color="#9CA3AF" />
+                          <AppText
+                            weight="regular"
+                            style={styles.productCardMeta}
+                          >
+                            {product.category?.name || "-"}
+                          </AppText>
+                        </View>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <Ionicons name="calendar" size={11} color="#9CA3AF" />
+                          <AppText
+                            weight="regular"
+                            style={styles.productCardMeta}
+                          >
+                            {formatDateTime(product.created_at)}
+                          </AppText>
+                        </View>
+                      </View>
                     </View>
-                  </View>
 
-                  {/* Quick Actions */}
-                  <View style={styles.quickActions}>
-                    <TouchableOpacity
-                      style={styles.quickApprove}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleApproveProduct(product);
-                      }}
-                    >
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={20}
-                        color="#22C55E"
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.quickDelete}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleDeleteProduct(product);
-                      }}
-                    >
-                      <Ionicons name="trash" size={20} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              ))
+                    {/* Quick Actions */}
+                    <View style={styles.quickActions}>
+                      <TouchableOpacity
+                        style={styles.quickApprove}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleApproveProduct(product);
+                        }}
+                      >
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={20}
+                          color="#22C55E"
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.quickDelete}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          setSelectedProduct(product);
+                          setRejectModalVisible(true);
+                        }}
+                      >
+                        <Ionicons
+                          name="close-circle"
+                          size={20}
+                          color="#EF4444"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
             )}
           </>
-        ) : (
+        ) : activeTab === "reports" ? (
           /* ─── REPORTS TAB ─────────────────────────────── */
           <>
             {reports.length === 0 && !reportsLoading ? (
@@ -832,7 +1131,252 @@ const AdminScreen = () => {
               ))
             )}
           </>
-        )}
+        ) : activeTab === "users" ? (
+          /* ─── USERS TAB ──────────────────────────────── */
+          <>
+            {/* Search */}
+            <View style={styles.userSearchRow}>
+              <View style={styles.userSearchInput}>
+                <Ionicons name="search" size={18} color="#9CA3AF" />
+                <TextInput
+                  style={styles.userSearchText}
+                  placeholder="ค้นหาชื่อหรืออีเมล..."
+                  placeholderTextColor="#9CA3AF"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery("")}>
+                    <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {usersLoading ? (
+              <View style={{ alignItems: "center", paddingVertical: 40 }}>
+                <LottieView
+                  source={require("../assets/animations/loading.json")}
+                  autoPlay
+                  loop
+                  style={{ width: 80, height: 80 }}
+                />
+              </View>
+            ) : users.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons
+                  name="people-outline"
+                  size={52}
+                  color="#9CA3AF"
+                  style={{ marginBottom: 12 }}
+                />
+                <AppText weight="semibold" style={styles.emptyTitle}>
+                  ไม่มีผู้ใช้
+                </AppText>
+                <AppText weight="regular" style={styles.emptySub}>
+                  ยังไม่มีผู้ใช้ในระบบ
+                </AppText>
+              </View>
+            ) : (
+              users
+                .filter((u) => {
+                  if (!searchQuery.trim()) return true;
+                  const q = searchQuery.toLowerCase();
+                  return (
+                    u.name.toLowerCase().includes(q) ||
+                    u.email.toLowerCase().includes(q) ||
+                    String(u.id).includes(q)
+                  );
+                })
+                .map((u) => (
+                  <TouchableOpacity
+                    key={u.id}
+                    style={[
+                      styles.userCard,
+                      u.is_banned && {
+                        borderWidth: 1,
+                        borderColor: "#FECACA",
+                        backgroundColor: "#FFFBFB",
+                      },
+                    ]}
+                    onPress={() => openUserDetail(u)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.userCardLeft}>
+                      {u.profile_image ? (
+                        <Image
+                          source={{ uri: getFullImageUrl(u.profile_image)! }}
+                          style={styles.userAvatar}
+                        />
+                      ) : (
+                        <View
+                          style={[
+                            styles.userAvatar,
+                            styles.userAvatarPlaceholder,
+                          ]}
+                        >
+                          <AppText weight="bold" style={styles.userAvatarText}>
+                            {u.name.charAt(0).toUpperCase()}
+                          </AppText>
+                        </View>
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <AppText
+                            weight="semibold"
+                            style={styles.userName}
+                            numberOfLines={1}
+                          >
+                            {u.name}
+                          </AppText>
+                          {u.role === "admin" && (
+                            <View style={styles.adminBadge}>
+                              <AppText
+                                weight="semibold"
+                                style={styles.adminBadgeText}
+                              >
+                                Admin
+                              </AppText>
+                            </View>
+                          )}
+                          {u.is_banned && (
+                            <View style={styles.bannedBadge}>
+                              <AppText
+                                weight="semibold"
+                                style={styles.bannedBadgeText}
+                              >
+                                Banned
+                              </AppText>
+                            </View>
+                          )}
+                        </View>
+                        <AppText
+                          weight="regular"
+                          style={styles.userEmail}
+                          numberOfLines={1}
+                        >
+                          {u.email}
+                        </AppText>
+                        {!u.is_banned && (
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 4,
+                              marginTop: 4,
+                            }}
+                          >
+                            <Ionicons
+                              name="calendar-outline"
+                              size={11}
+                              color="#9CA3AF"
+                            />
+                            <AppText
+                              weight="regular"
+                              style={{ fontSize: 11, color: "#9CA3AF" }}
+                            >
+                              สมัครเมื่อ {formatReportDate(u.created_at)}
+                            </AppText>
+                          </View>
+                        )}
+                        {u.is_banned && (
+                          <View style={{ marginTop: 6 }}>
+                            <View
+                              style={{
+                                backgroundColor: "#FEF2F2",
+                                borderRadius: 8,
+                                paddingHorizontal: 10,
+                                paddingVertical: 6,
+                              }}
+                            >
+                              {u.ban_reason && (
+                                <AppText
+                                  weight="regular"
+                                  style={{
+                                    fontSize: 11,
+                                    color: "#991B1B",
+                                    marginBottom: 2,
+                                  }}
+                                  numberOfLines={1}
+                                >
+                                  เหตุผล: {u.ban_reason}
+                                </AppText>
+                              )}
+                              <View
+                                style={{
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  gap: 4,
+                                }}
+                              >
+                                <Ionicons
+                                  name="time-outline"
+                                  size={11}
+                                  color="#DC2626"
+                                />
+                                <AppText
+                                  weight="semibold"
+                                  style={{
+                                    fontSize: 11,
+                                    color: "#DC2626",
+                                  }}
+                                >
+                                  {(() => {
+                                    const remaining = getRemainingBanDays(
+                                      u.banned_until,
+                                    );
+                                    if (remaining === null) return "แบนถาวร";
+                                    if (remaining === 0)
+                                      return "หมดอายุแบนแล้ว";
+                                    return `เหลือ ${remaining} วัน`;
+                                  })()}
+                                </AppText>
+                              </View>
+                            </View>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                    <View style={{ alignItems: "center", gap: 6 }}>
+                      {u.is_banned ? (
+                        <TouchableOpacity
+                          style={{
+                            backgroundColor: "#22C55E",
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
+                            borderRadius: 8,
+                          }}
+                          onPress={(e) => {
+                            e.stopPropagation?.();
+                            handleUnbanUser(u);
+                          }}
+                        >
+                          <AppText
+                            weight="semibold"
+                            style={{ fontSize: 11, color: "#FFF" }}
+                          >
+                            ปลดแบน
+                          </AppText>
+                        </TouchableOpacity>
+                      ) : (
+                        <Ionicons
+                          name="chevron-forward"
+                          size={18}
+                          color="#D1D5DB"
+                        />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))
+            )}
+          </>
+        ) : null}
       </ScrollView>
 
       {/* ─── Product Detail Modal ─────────────────────── */}
@@ -865,10 +1409,47 @@ const AdminScreen = () => {
               contentContainerStyle={{ paddingBottom: 40 }}
             >
               {/* Product Image */}
-              <Image
-                source={selectedProduct.image}
-                style={styles.modalProductImage}
-              />
+              {(() => {
+                const modalImgUrl = getFullImageUrl(
+                  selectedProduct.picture || selectedProduct.image_url,
+                );
+                // Collect all product images for full-screen viewer
+                const allImgUrls: string[] = [];
+                if (modalImgUrl) allImgUrls.push(modalImgUrl);
+                if (
+                  selectedProduct.images &&
+                  selectedProduct.images.length > 0
+                ) {
+                  selectedProduct.images.forEach((img) => {
+                    const url = getFullImageUrl(img.image_url);
+                    if (url) allImgUrls.push(url);
+                  });
+                }
+                return modalImgUrl ? (
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() => openImageViewer(allImgUrls, 0)}
+                  >
+                    <Image
+                      source={{ uri: modalImgUrl }}
+                      style={styles.modalProductImage}
+                    />
+                  </TouchableOpacity>
+                ) : (
+                  <View
+                    style={[
+                      styles.modalProductImage,
+                      {
+                        backgroundColor: "#F3F4F6",
+                        justifyContent: "center",
+                        alignItems: "center",
+                      },
+                    ]}
+                  >
+                    <Ionicons name="image-outline" size={48} color="#9CA3AF" />
+                  </View>
+                );
+              })()}
 
               {/* Product Info */}
               <View style={styles.modalBody}>
@@ -902,15 +1483,26 @@ const AdminScreen = () => {
 
                 {/* Seller Info */}
                 <View style={styles.sellerCard}>
-                  <View style={styles.sellerAvatar}>
-                    <Ionicons name="person" size={20} color="#3B82F6" />
-                  </View>
+                  {selectedProduct.user?.profile_image ? (
+                    <Image
+                      source={{
+                        uri: getFullImageUrl(
+                          selectedProduct.user.profile_image,
+                        )!,
+                      }}
+                      style={[styles.sellerAvatar, { borderRadius: 22 }]}
+                    />
+                  ) : (
+                    <View style={styles.sellerAvatar}>
+                      <Ionicons name="person" size={20} color="#3B82F6" />
+                    </View>
+                  )}
                   <View style={{ flex: 1 }}>
                     <AppText weight="semibold" style={styles.sellerName}>
-                      {selectedProduct.seller}
+                      {selectedProduct.user?.name || "Unknown Seller"}
                     </AppText>
                     <AppText weight="regular" style={styles.sellerEmail}>
-                      {selectedProduct.sellerEmail}
+                      {selectedProduct.user?.email || "-"}
                     </AppText>
                   </View>
                 </View>
@@ -930,7 +1522,7 @@ const AdminScreen = () => {
                       weight="bold"
                       style={[styles.modalPrice, { color: "#3B82F6" }]}
                     >
-                      {formatPrice(selectedProduct.startingBid)}
+                      {formatPrice(selectedProduct.starting_price)}
                     </AppText>
                   </View>
                   <View
@@ -946,7 +1538,7 @@ const AdminScreen = () => {
                       weight="bold"
                       style={[styles.modalPrice, { color: "#22C55E" }]}
                     >
-                      {formatPrice(selectedProduct.buyNowPrice)}
+                      {formatPrice(selectedProduct.buyout_price)}
                     </AppText>
                   </View>
                   <View
@@ -962,7 +1554,7 @@ const AdminScreen = () => {
                       weight="bold"
                       style={[styles.modalPrice, { color: "#F59E0B" }]}
                     >
-                      {formatPrice(selectedProduct.minIncrement)}
+                      {formatPrice(selectedProduct.bid_increment)}
                     </AppText>
                   </View>
                 </View>
@@ -972,7 +1564,7 @@ const AdminScreen = () => {
                   <View style={styles.labelRow}>
                     <Ionicons name="document-text" size={16} color="#111827" />
                     <AppText weight="semibold" style={styles.detailLabel}>
-                      Product Detail
+                      รายละเอียดสินค้า
                     </AppText>
                   </View>
                   <AppText weight="regular" style={styles.detailText}>
@@ -980,52 +1572,466 @@ const AdminScreen = () => {
                   </AppText>
                 </View>
 
+                {/* Additional Images */}
+                {selectedProduct.images &&
+                  selectedProduct.images.length > 0 && (
+                    <View style={styles.detailSection}>
+                      <View style={styles.labelRow}>
+                        <Ionicons name="images" size={16} color="#111827" />
+                        <AppText weight="semibold" style={styles.detailLabel}>
+                          รูปภาพเพิ่มเติม ({selectedProduct.images.length})
+                        </AppText>
+                      </View>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={{ marginTop: 8 }}
+                      >
+                        {(() => {
+                          const extraUrls = selectedProduct.images
+                            .map((img) => getFullImageUrl(img.image_url))
+                            .filter(Boolean) as string[];
+                          // Prepend main image
+                          const mainUrl = getFullImageUrl(
+                            selectedProduct.picture ||
+                              selectedProduct.image_url,
+                          );
+                          const allUrls = mainUrl
+                            ? [mainUrl, ...extraUrls]
+                            : extraUrls;
+                          return selectedProduct.images.map((img, idx) => {
+                            const extraImgUrl = getFullImageUrl(img.image_url);
+                            return extraImgUrl ? (
+                              <TouchableOpacity
+                                key={idx}
+                                activeOpacity={0.9}
+                                onPress={() =>
+                                  openImageViewer(
+                                    allUrls,
+                                    mainUrl ? idx + 1 : idx,
+                                  )
+                                }
+                              >
+                                <Image
+                                  source={{ uri: extraImgUrl }}
+                                  style={{
+                                    width: 100,
+                                    height: 100,
+                                    borderRadius: 10,
+                                    marginRight: 8,
+                                    backgroundColor: "#F3F4F6",
+                                  }}
+                                />
+                              </TouchableOpacity>
+                            ) : null;
+                          });
+                        })()}
+                      </ScrollView>
+                    </View>
+                  )}
+
+                {/* Certificate */}
+                {selectedProduct.certificate && (
+                  <View
+                    style={[
+                      styles.detailSection,
+                      {
+                        backgroundColor:
+                          selectedProduct.certificate.status === "approved"
+                            ? "#ECFDF5"
+                            : selectedProduct.certificate.status === "rejected"
+                              ? "#FEF2F2"
+                              : "#FEF3C7",
+                        borderRadius: 12,
+                        padding: 14,
+                      },
+                    ]}
+                  >
+                    {/* Header */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <View style={styles.labelRow}>
+                        <Ionicons
+                          name="shield-checkmark"
+                          size={16}
+                          color={
+                            selectedProduct.certificate.status === "approved"
+                              ? "#16A34A"
+                              : selectedProduct.certificate.status ===
+                                  "rejected"
+                                ? "#DC2626"
+                                : "#D97706"
+                          }
+                        />
+                        <AppText
+                          weight="semibold"
+                          style={[
+                            styles.detailLabel,
+                            {
+                              color:
+                                selectedProduct.certificate.status ===
+                                "approved"
+                                  ? "#166534"
+                                  : selectedProduct.certificate.status ===
+                                      "rejected"
+                                    ? "#991B1B"
+                                    : "#92400E",
+                              marginBottom: 0,
+                            },
+                          ]}
+                        >
+                          ใบรับรอง / Certificate
+                        </AppText>
+                      </View>
+                      <View
+                        style={{
+                          backgroundColor:
+                            selectedProduct.certificate.status === "approved"
+                              ? "#16A34A20"
+                              : selectedProduct.certificate.status ===
+                                  "rejected"
+                                ? "#DC262620"
+                                : "#D9770620",
+                          paddingHorizontal: 10,
+                          paddingVertical: 3,
+                          borderRadius: 12,
+                        }}
+                      >
+                        <AppText
+                          weight="semibold"
+                          style={{
+                            fontSize: 11,
+                            color:
+                              selectedProduct.certificate.status === "approved"
+                                ? "#16A34A"
+                                : selectedProduct.certificate.status ===
+                                    "rejected"
+                                  ? "#DC2626"
+                                  : "#D97706",
+                          }}
+                        >
+                          {selectedProduct.certificate.status === "approved"
+                            ? "✅ อนุมัติแล้ว"
+                            : selectedProduct.certificate.status === "rejected"
+                              ? "❌ ปฏิเสธแล้ว"
+                              : "⏳ รอตรวจสอบ"}
+                        </AppText>
+                      </View>
+                    </View>
+
+                    {/* File name */}
+                    <AppText
+                      weight="regular"
+                      style={{
+                        fontSize: 13,
+                        color: "#6B7280",
+                        marginTop: 8,
+                      }}
+                    >
+                      📎{" "}
+                      {selectedProduct.certificate.original_name ||
+                        "มีใบรับรองแนบ"}
+                    </AppText>
+
+                    {/* Certificate Image Inline */}
+                    {(() => {
+                      const certUrl = getCertificateFileUrl();
+                      if (certUrl) {
+                        return (
+                          <TouchableOpacity
+                            activeOpacity={0.9}
+                            onPress={() => openImageViewer([certUrl], 0)}
+                            style={{ marginTop: 10 }}
+                          >
+                            <Image
+                              source={{ uri: certUrl }}
+                              style={{
+                                width: "100%",
+                                height: 220,
+                                borderRadius: 10,
+                                backgroundColor: "#E5E7EB",
+                              }}
+                              resizeMode="contain"
+                            />
+                          </TouchableOpacity>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {/* Approve/Reject Certificate buttons — only show for pending */}
+                    {selectedProduct.certificate.status === "pending" && (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          gap: 8,
+                          marginTop: 10,
+                        }}
+                      >
+                        <TouchableOpacity
+                          style={{
+                            flex: 1,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 4,
+                            backgroundColor: "#22C55E",
+                            borderRadius: 10,
+                            paddingVertical: 10,
+                          }}
+                          onPress={() => {
+                            Alert.alert(
+                              "อนุมัติใบรับรอง",
+                              "ยืนยันอนุมัติใบรับรองนี้? สินค้าจะได้รับ badge Certified ✅",
+                              [
+                                { text: "ยกเลิก" },
+                                {
+                                  text: "อนุมัติ",
+                                  onPress: () =>
+                                    handleVerifyCertificate("approved"),
+                                },
+                              ],
+                            );
+                          }}
+                        >
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={16}
+                            color="#FFF"
+                          />
+                          <AppText
+                            weight="semibold"
+                            style={{ fontSize: 13, color: "#FFF" }}
+                          >
+                            อนุมัติ Cert
+                          </AppText>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{
+                            flex: 1,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 4,
+                            backgroundColor: "#EF4444",
+                            borderRadius: 10,
+                            paddingVertical: 10,
+                          }}
+                          onPress={() => setCertAction("reject")}
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={16}
+                            color="#FFF"
+                          />
+                          <AppText
+                            weight="semibold"
+                            style={{ fontSize: 13, color: "#FFF" }}
+                          >
+                            ปฏิเสธ Cert
+                          </AppText>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {/* Reject Certificate Note Input */}
+                    {certAction === "reject" && (
+                      <View style={{ marginTop: 10 }}>
+                        <TextInput
+                          style={[
+                            styles.replyInput,
+                            {
+                              minHeight: 60,
+                              marginBottom: 6,
+                            },
+                          ]}
+                          value={certRejectNote}
+                          onChangeText={setCertRejectNote}
+                          placeholder="ระบุเหตุผล (ไม่จำเป็น)..."
+                          placeholderTextColor="#9CA3AF"
+                          multiline
+                          maxLength={1000}
+                        />
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            gap: 8,
+                          }}
+                        >
+                          <TouchableOpacity
+                            style={{
+                              flex: 1,
+                              paddingVertical: 10,
+                              borderRadius: 10,
+                              backgroundColor: "#F3F4F6",
+                              alignItems: "center",
+                            }}
+                            onPress={() => {
+                              setCertAction(null);
+                              setCertRejectNote("");
+                            }}
+                          >
+                            <AppText
+                              weight="semibold"
+                              style={{ fontSize: 13, color: "#6B7280" }}
+                            >
+                              ยกเลิก
+                            </AppText>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={{
+                              flex: 1,
+                              paddingVertical: 10,
+                              borderRadius: 10,
+                              backgroundColor: "#EF4444",
+                              alignItems: "center",
+                            }}
+                            onPress={() => handleVerifyCertificate("rejected")}
+                            disabled={certVerifyLoading}
+                          >
+                            <AppText
+                              weight="semibold"
+                              style={{ fontSize: 13, color: "#FFF" }}
+                            >
+                              {certVerifyLoading
+                                ? "กำลังดำเนินการ..."
+                                : "ยืนยันปฏิเสธ"}
+                            </AppText>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Show admin_note if certificate was rejected */}
+                    {selectedProduct.certificate.status === "rejected" &&
+                      selectedProduct.certificate.admin_note && (
+                        <View
+                          style={{
+                            marginTop: 8,
+                            backgroundColor: "#FEE2E2",
+                            borderRadius: 8,
+                            padding: 10,
+                          }}
+                        >
+                          <AppText
+                            weight="semibold"
+                            style={{
+                              fontSize: 12,
+                              color: "#991B1B",
+                              marginBottom: 2,
+                            }}
+                          >
+                            เหตุผลที่ปฏิเสธ:
+                          </AppText>
+                          <AppText
+                            weight="regular"
+                            style={{ fontSize: 12, color: "#7F1D1D" }}
+                          >
+                            {selectedProduct.certificate.admin_note}
+                          </AppText>
+                        </View>
+                      )}
+                  </View>
+                )}
+
                 <View style={styles.detailGrid}>
                   <View style={styles.detailItem}>
                     <View style={styles.labelRow}>
                       <Ionicons name="pricetag" size={12} color="#9CA3AF" />
                       <AppText weight="regular" style={styles.detailItemLabel}>
-                        Category
+                        หมวดหมู่
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
-                      {selectedProduct.category}
+                      {selectedProduct.category?.name || "-"}
+                    </AppText>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <View style={styles.labelRow}>
+                      <Ionicons name="layers" size={12} color="#9CA3AF" />
+                      <AppText weight="regular" style={styles.detailItemLabel}>
+                        หมวดย่อย
+                      </AppText>
+                    </View>
+                    <AppText weight="semibold" style={styles.detailItemValue}>
+                      {selectedProduct.subcategory?.name || "-"}
+                    </AppText>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <View style={styles.labelRow}>
+                      <Ionicons name="location" size={12} color="#9CA3AF" />
+                      <AppText weight="regular" style={styles.detailItemLabel}>
+                        ที่ตั้ง
+                      </AppText>
+                    </View>
+                    <AppText weight="semibold" style={styles.detailItemValue}>
+                      {selectedProduct.location || "-"}
                     </AppText>
                   </View>
                   <View style={styles.detailItem}>
                     <View style={styles.labelRow}>
                       <Ionicons name="calendar" size={12} color="#9CA3AF" />
                       <AppText weight="regular" style={styles.detailItemLabel}>
-                        Submitted At
+                        วันที่ส่ง
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
-                      {selectedProduct.submittedAt}
+                      {formatDateTime(selectedProduct.created_at)}
                     </AppText>
                   </View>
                   <View style={styles.detailItem}>
                     <View style={styles.labelRow}>
                       <Ionicons name="time" size={12} color="#9CA3AF" />
                       <AppText weight="regular" style={styles.detailItemLabel}>
-                        Auction Start
+                        เริ่มประมูล
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
-                      {selectedProduct.scheduledStart}
+                      {formatDateTime(selectedProduct.auction_start_time)}
                     </AppText>
                   </View>
                   <View style={styles.detailItem}>
                     <View style={styles.labelRow}>
                       <Ionicons name="time" size={12} color="#9CA3AF" />
                       <AppText weight="regular" style={styles.detailItemLabel}>
-                        Auction End
+                        สิ้นสุดประมูล
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
-                      {selectedProduct.scheduledEnd}
+                      {formatDateTime(selectedProduct.auction_end_time)}
                     </AppText>
                   </View>
                 </View>
+
+                {/* Bids Count */}
+                {selectedProduct.bids_count > 0 && (
+                  <View
+                    style={[
+                      styles.detailSection,
+                      {
+                        backgroundColor: "#EFF6FF",
+                        borderRadius: 12,
+                        padding: 12,
+                        marginBottom: 20,
+                      },
+                    ]}
+                  >
+                    <View style={styles.labelRow}>
+                      <Ionicons name="stats-chart" size={16} color="#3B82F6" />
+                      <AppText
+                        weight="semibold"
+                        style={[styles.detailLabel, { color: "#1E40AF" }]}
+                      >
+                        จำนวนการเสนอราคา: {selectedProduct.bids_count}
+                      </AppText>
+                    </View>
+                  </View>
+                )}
 
                 {/* Action Buttons */}
                 <View style={styles.modalActions}>
@@ -1050,7 +2056,7 @@ const AdminScreen = () => {
                           color="#FFF"
                         />
                         <AppText weight="semibold" style={styles.actionBtnText}>
-                          Approve Product
+                          อนุมัติสินค้า
                         </AppText>
                       </View>
                     </LinearGradient>
@@ -1058,7 +2064,9 @@ const AdminScreen = () => {
 
                   <TouchableOpacity
                     style={styles.deleteBtn}
-                    onPress={() => handleDeleteProduct(selectedProduct)}
+                    onPress={() => {
+                      setRejectModalVisible(true);
+                    }}
                   >
                     <LinearGradient
                       colors={["#EF4444", "#DC2626"]}
@@ -1071,9 +2079,9 @@ const AdminScreen = () => {
                           gap: 6,
                         }}
                       >
-                        <Ionicons name="trash" size={18} color="#FFF" />
+                        <Ionicons name="close-circle" size={18} color="#FFF" />
                         <AppText weight="semibold" style={styles.actionBtnText}>
-                          Delete Product
+                          ปฏิเสธสินค้า
                         </AppText>
                       </View>
                     </LinearGradient>
@@ -1081,8 +2089,380 @@ const AdminScreen = () => {
                 </View>
               </View>
             </ScrollView>
+
+            {/* Image Viewer inside Product Detail Modal */}
+            <ImageViewerModal
+              visible={imageViewerVisible}
+              images={imageViewerUrls}
+              initialIndex={imageViewerIndex}
+              onClose={() => setImageViewerVisible(false)}
+            />
+
+            {/* Reject Reason Modal (inside Product Detail) */}
+            <Modal
+              visible={rejectModalVisible}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setRejectModalVisible(false)}
+            >
+              <View style={styles.banModalOverlay}>
+                <View style={styles.banModalContent}>
+                  <AppText
+                    weight="bold"
+                    style={{ fontSize: 18, color: "#111827", marginBottom: 4 }}
+                  >
+                    ปฏิเสธสินค้า
+                  </AppText>
+                  <AppText
+                    weight="regular"
+                    style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}
+                  >
+                    กรุณาระบุเหตุผลในการปฏิเสธสินค้า "{selectedProduct?.name}"
+                  </AppText>
+
+                  <AppText
+                    weight="semibold"
+                    style={{ fontSize: 13, color: "#374151", marginBottom: 6 }}
+                  >
+                    เหตุผล (จำเป็น)
+                  </AppText>
+                  <TextInput
+                    style={styles.replyInput}
+                    value={rejectReason}
+                    onChangeText={setRejectReason}
+                    placeholder="ระบุเหตุผลในการปฏิเสธ..."
+                    placeholderTextColor="#9CA3AF"
+                    multiline
+                    maxLength={1000}
+                  />
+                  <AppText
+                    weight="regular"
+                    style={{
+                      fontSize: 11,
+                      color: "#9CA3AF",
+                      textAlign: "right",
+                      marginBottom: 12,
+                    }}
+                  >
+                    {rejectReason.length}/1000
+                  </AppText>
+
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        paddingVertical: 12,
+                        borderRadius: 12,
+                        backgroundColor: "#F3F4F6",
+                        alignItems: "center",
+                      }}
+                      onPress={() => {
+                        setRejectModalVisible(false);
+                        setRejectReason("");
+                      }}
+                    >
+                      <AppText
+                        weight="semibold"
+                        style={{ fontSize: 14, color: "#6B7280" }}
+                      >
+                        ยกเลิก
+                      </AppText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        paddingVertical: 12,
+                        borderRadius: 12,
+                        backgroundColor: rejectReason.trim()
+                          ? "#EF4444"
+                          : "#FCA5A5",
+                        alignItems: "center",
+                      }}
+                      onPress={handleRejectProduct}
+                      disabled={rejectLoading || !rejectReason.trim()}
+                    >
+                      <AppText
+                        weight="semibold"
+                        style={{ fontSize: 14, color: "#FFF" }}
+                      >
+                        {rejectLoading ? "กำลังดำเนินการ..." : "ปฏิเสธ"}
+                      </AppText>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </Modal>
           </View>
         )}
+      </Modal>
+
+      {/* ─── Certificate Viewer Modal ─────────────────── */}
+      <Modal
+        visible={certModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setCertModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <SafeAreaView edges={["top"]} style={{ backgroundColor: "#FFF" }}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                onPress={() => setCertModalVisible(false)}
+                style={styles.modalCloseBtn}
+              >
+                <AppText weight="semibold" style={styles.modalCloseText}>
+                  ✕
+                </AppText>
+              </TouchableOpacity>
+              <AppText weight="bold" style={styles.modalTitle}>
+                ใบรับรอง
+              </AppText>
+              <TouchableOpacity
+                onPress={() => {
+                  const url = getCertificateFileUrl();
+                  if (url) Linking.openURL(url);
+                }}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: "#EFF6FF",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Ionicons name="download-outline" size={18} color="#3B82F6" />
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+
+          <View style={{ flex: 1, backgroundColor: "#F9FAFB" }}>
+            {(() => {
+              const certUrl = getCertificateFileUrl();
+              const fileName =
+                selectedProduct?.certificate?.original_name || "";
+              if (!certUrl) {
+                return (
+                  <View
+                    style={{
+                      flex: 1,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      padding: 20,
+                    }}
+                  >
+                    <Ionicons
+                      name="document-outline"
+                      size={64}
+                      color="#9CA3AF"
+                    />
+                    <AppText
+                      weight="semibold"
+                      style={{
+                        fontSize: 16,
+                        color: "#6B7280",
+                        marginTop: 12,
+                      }}
+                    >
+                      ไม่สามารถโหลดใบรับรองได้
+                    </AppText>
+                  </View>
+                );
+              }
+
+              if (isImageFile(fileName)) {
+                return (
+                  <ScrollView
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{
+                      alignItems: "center",
+                      padding: 16,
+                    }}
+                    maximumZoomScale={3}
+                    minimumZoomScale={1}
+                  >
+                    <Image
+                      source={{ uri: certUrl }}
+                      style={{
+                        width: width - 32,
+                        height: (width - 32) * 1.4,
+                        borderRadius: 12,
+                        backgroundColor: "#E5E7EB",
+                      }}
+                      resizeMode="contain"
+                    />
+                    <AppText
+                      weight="regular"
+                      style={{
+                        fontSize: 12,
+                        color: "#9CA3AF",
+                        marginTop: 12,
+                        textAlign: "center",
+                      }}
+                    >
+                      {fileName}
+                    </AppText>
+                  </ScrollView>
+                );
+              }
+
+              // PDF or other file — show info + open externally
+              return (
+                <View
+                  style={{
+                    flex: 1,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    padding: 20,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 80,
+                      height: 80,
+                      borderRadius: 20,
+                      backgroundColor: "#FEE2E2",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginBottom: 16,
+                    }}
+                  >
+                    <Ionicons name="document-text" size={40} color="#EF4444" />
+                  </View>
+                  <AppText
+                    weight="semibold"
+                    style={{
+                      fontSize: 16,
+                      color: "#111827",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {fileName || "Certificate File"}
+                  </AppText>
+                  <AppText
+                    weight="regular"
+                    style={{
+                      fontSize: 13,
+                      color: "#6B7280",
+                      textAlign: "center",
+                      marginBottom: 20,
+                    }}
+                  >
+                    ไฟล์นี้เป็น PDF ไม่สามารถแสดงในแอปได้{"\n"}
+                    กดปุ่มด้านล่างเพื่อเปิดดู
+                  </AppText>
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                      backgroundColor: "#3B82F6",
+                      paddingHorizontal: 20,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                    }}
+                    onPress={() => Linking.openURL(certUrl)}
+                  >
+                    <Ionicons name="open-outline" size={18} color="#FFF" />
+                    <AppText
+                      weight="semibold"
+                      style={{ fontSize: 14, color: "#FFF" }}
+                    >
+                      เปิดไฟล์
+                    </AppText>
+                  </TouchableOpacity>
+                </View>
+              );
+            })()}
+
+            {/* Bottom action bar for pending certs */}
+            {selectedProduct?.certificate?.status === "pending" && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 10,
+                  padding: 16,
+                  paddingBottom: 30,
+                  backgroundColor: "#FFF",
+                  borderTopWidth: 1,
+                  borderTopColor: "#F3F4F6",
+                }}
+              >
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    backgroundColor: "#22C55E",
+                    borderRadius: 12,
+                    paddingVertical: 14,
+                  }}
+                  disabled={certVerifyLoading}
+                  onPress={() => {
+                    Alert.alert(
+                      "อนุมัติใบรับรอง",
+                      "ยืนยันอนุมัติใบรับรองนี้?",
+                      [
+                        { text: "ยกเลิก" },
+                        {
+                          text: "อนุมัติ",
+                          onPress: () => {
+                            handleVerifyCertificate("approved");
+                            setCertModalVisible(false);
+                          },
+                        },
+                      ],
+                    );
+                  }}
+                >
+                  {certVerifyLoading ? (
+                    <ActivityIndicator color="#FFF" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={18}
+                        color="#FFF"
+                      />
+                      <AppText
+                        weight="semibold"
+                        style={{ fontSize: 15, color: "#FFF" }}
+                      >
+                        อนุมัติใบรับรอง
+                      </AppText>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    backgroundColor: "#EF4444",
+                    borderRadius: 12,
+                    paddingVertical: 14,
+                  }}
+                  onPress={() => {
+                    setCertModalVisible(false);
+                    setCertAction("reject");
+                  }}
+                >
+                  <Ionicons name="close-circle" size={18} color="#FFF" />
+                  <AppText
+                    weight="semibold"
+                    style={{ fontSize: 15, color: "#FFF" }}
+                  >
+                    ปฏิเสธใบรับรอง
+                  </AppText>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
       </Modal>
 
       {/* ─── Report Detail Modal ──────────────────────── */}
@@ -1232,20 +2612,34 @@ const AdminScreen = () => {
                         showsHorizontalScrollIndicator={false}
                         style={{ marginTop: 8 }}
                       >
-                        {selectedReport.evidence_images.map((img, idx) => (
-                          <Image
-                            key={idx}
-                            source={{ uri: getFullImageUrl(img)! }}
-                            style={{
-                              width: 100,
-                              height: 100,
-                              borderRadius: 8,
-                              marginRight: 8,
-                              backgroundColor: "#F3F4F6",
-                            }}
-                            resizeMode="cover"
-                          />
-                        ))}
+                        {(() => {
+                          const evidenceUrls = selectedReport.evidence_images
+                            .map((img) => getFullImageUrl(img))
+                            .filter(Boolean) as string[];
+                          return selectedReport.evidence_images.map(
+                            (img, idx) => (
+                              <TouchableOpacity
+                                key={idx}
+                                activeOpacity={0.9}
+                                onPress={() =>
+                                  openImageViewer(evidenceUrls, idx)
+                                }
+                              >
+                                <Image
+                                  source={{ uri: getFullImageUrl(img)! }}
+                                  style={{
+                                    width: 100,
+                                    height: 100,
+                                    borderRadius: 8,
+                                    marginRight: 8,
+                                    backgroundColor: "#F3F4F6",
+                                  }}
+                                  resizeMode="cover"
+                                />
+                              </TouchableOpacity>
+                            ),
+                          );
+                        })()}
                       </ScrollView>
                     </View>
                   )}
@@ -1460,6 +2854,601 @@ const AdminScreen = () => {
                 </View>
               </View>
             </ScrollView>
+
+            {/* Image Viewer inside Report Detail Modal */}
+            <ImageViewerModal
+              visible={imageViewerVisible}
+              images={imageViewerUrls}
+              initialIndex={imageViewerIndex}
+              onClose={() => setImageViewerVisible(false)}
+            />
+          </View>
+        )}
+      </Modal>
+
+      {/* ─── User Detail Modal ────────────────────────── */}
+      <Modal
+        visible={userModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        {selectedUser && (
+          <View style={styles.modalContainer}>
+            <SafeAreaView edges={["top"]} style={{ backgroundColor: "#FFF" }}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setUserModalVisible(false);
+                    fetchUsers(); // Sync with server when closing detail modal
+                  }}
+                  style={styles.modalCloseBtn}
+                >
+                  <AppText weight="semibold" style={styles.modalCloseText}>
+                    ✕
+                  </AppText>
+                </TouchableOpacity>
+                <AppText weight="bold" style={styles.modalTitle}>
+                  User Detail
+                </AppText>
+                <View style={{ width: 36 }} />
+              </View>
+            </SafeAreaView>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 40 }}
+            >
+              <View style={styles.modalBody}>
+                {/* User Avatar & Name */}
+                <View style={{ alignItems: "center", marginBottom: 20 }}>
+                  {selectedUser.profile_image ? (
+                    <Image
+                      source={{
+                        uri: getFullImageUrl(selectedUser.profile_image)!,
+                      }}
+                      style={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: 40,
+                        marginBottom: 12,
+                        backgroundColor: "#F3F4F6",
+                      }}
+                    />
+                  ) : (
+                    <View
+                      style={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: 40,
+                        backgroundColor: "#E8F0FF",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        marginBottom: 12,
+                      }}
+                    >
+                      <AppText
+                        weight="bold"
+                        style={{ fontSize: 28, color: "#3B82F6" }}
+                      >
+                        {selectedUser.name.charAt(0).toUpperCase()}
+                      </AppText>
+                    </View>
+                  )}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <AppText
+                      weight="bold"
+                      style={{ fontSize: 20, color: "#111827" }}
+                    >
+                      {selectedUser.name}
+                    </AppText>
+                    {selectedUser.role === "admin" && (
+                      <View style={styles.adminBadge}>
+                        <AppText
+                          weight="semibold"
+                          style={styles.adminBadgeText}
+                        >
+                          Admin
+                        </AppText>
+                      </View>
+                    )}
+                    {selectedUser.is_banned && (
+                      <View style={styles.bannedBadge}>
+                        <AppText
+                          weight="semibold"
+                          style={styles.bannedBadgeText}
+                        >
+                          Banned
+                        </AppText>
+                      </View>
+                    )}
+                  </View>
+                  <AppText
+                    weight="regular"
+                    style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}
+                  >
+                    ID: {selectedUser.id}
+                  </AppText>
+                </View>
+
+                {/* Contact Info */}
+                <View style={styles.detailSection}>
+                  <View style={styles.labelRow}>
+                    <Ionicons name="person-circle" size={16} color="#111827" />
+                    <AppText weight="semibold" style={styles.detailLabel}>
+                      ข้อมูลติดต่อ
+                    </AppText>
+                  </View>
+                  <View style={styles.detailGrid}>
+                    <View style={styles.detailItem}>
+                      <View style={styles.labelRow}>
+                        <Ionicons name="mail" size={12} color="#9CA3AF" />
+                        <AppText
+                          weight="regular"
+                          style={styles.detailItemLabel}
+                        >
+                          อีเมล
+                        </AppText>
+                      </View>
+                      <AppText
+                        weight="semibold"
+                        style={styles.detailItemValue}
+                        numberOfLines={1}
+                      >
+                        {selectedUser.email}
+                      </AppText>
+                    </View>
+                    <View style={styles.detailItem}>
+                      <View style={styles.labelRow}>
+                        <Ionicons name="call" size={12} color="#9CA3AF" />
+                        <AppText
+                          weight="regular"
+                          style={styles.detailItemLabel}
+                        >
+                          เบอร์โทร
+                        </AppText>
+                      </View>
+                      <AppText weight="semibold" style={styles.detailItemValue}>
+                        {selectedUser.phone_number || "-"}
+                      </AppText>
+                    </View>
+                    <View style={styles.detailItem}>
+                      <View style={styles.labelRow}>
+                        <Ionicons
+                          name="shield-checkmark"
+                          size={12}
+                          color="#9CA3AF"
+                        />
+                        <AppText
+                          weight="regular"
+                          style={styles.detailItemLabel}
+                        >
+                          บทบาท
+                        </AppText>
+                      </View>
+                      <AppText weight="semibold" style={styles.detailItemValue}>
+                        {selectedUser.role}
+                      </AppText>
+                    </View>
+                    <View style={styles.detailItem}>
+                      <View style={styles.labelRow}>
+                        <Ionicons name="calendar" size={12} color="#9CA3AF" />
+                        <AppText
+                          weight="regular"
+                          style={styles.detailItemLabel}
+                        >
+                          สมัครเมื่อ
+                        </AppText>
+                      </View>
+                      <AppText weight="semibold" style={styles.detailItemValue}>
+                        {formatReportDate(selectedUser.created_at)}
+                      </AppText>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Stats */}
+                {selectedUser.products_count !== undefined && (
+                  <View style={styles.detailSection}>
+                    <View style={styles.labelRow}>
+                      <Ionicons name="stats-chart" size={16} color="#111827" />
+                      <AppText weight="semibold" style={styles.detailLabel}>
+                        สถิติ
+                      </AppText>
+                    </View>
+                    <View style={styles.detailGrid}>
+                      <View style={styles.detailItem}>
+                        <AppText
+                          weight="regular"
+                          style={styles.detailItemLabel}
+                        >
+                          สินค้า
+                        </AppText>
+                        <AppText
+                          weight="bold"
+                          style={[
+                            styles.detailItemValue,
+                            { fontSize: 18, color: "#3B82F6" },
+                          ]}
+                        >
+                          {selectedUser.products_count ?? 0}
+                        </AppText>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <AppText
+                          weight="regular"
+                          style={styles.detailItemLabel}
+                        >
+                          ออเดอร์
+                        </AppText>
+                        <AppText
+                          weight="bold"
+                          style={[
+                            styles.detailItemValue,
+                            { fontSize: 18, color: "#22C55E" },
+                          ]}
+                        >
+                          {selectedUser.orders_count ?? 0}
+                        </AppText>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <AppText
+                          weight="regular"
+                          style={styles.detailItemLabel}
+                        >
+                          รายงาน
+                        </AppText>
+                        <AppText
+                          weight="bold"
+                          style={[
+                            styles.detailItemValue,
+                            { fontSize: 18, color: "#F59E0B" },
+                          ]}
+                        >
+                          {selectedUser.reports_count ?? 0}
+                        </AppText>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <AppText
+                          weight="regular"
+                          style={styles.detailItemLabel}
+                        >
+                          ถูกรายงาน
+                        </AppText>
+                        <AppText
+                          weight="bold"
+                          style={[
+                            styles.detailItemValue,
+                            { fontSize: 18, color: "#EF4444" },
+                          ]}
+                        >
+                          {selectedUser.reported_count ?? 0}
+                        </AppText>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* Wallet */}
+                {selectedUser.wallet && (
+                  <View style={styles.detailSection}>
+                    <View style={styles.labelRow}>
+                      <Ionicons name="wallet" size={16} color="#111827" />
+                      <AppText weight="semibold" style={styles.detailLabel}>
+                        กระเป๋าเงิน
+                      </AppText>
+                    </View>
+                    <View
+                      style={[
+                        styles.sellerCard,
+                        { backgroundColor: "#F0FDF4" },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.sellerAvatar,
+                          { backgroundColor: "#DCFCE7" },
+                        ]}
+                      >
+                        <Ionicons name="cash" size={20} color="#22C55E" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <AppText
+                          weight="regular"
+                          style={{ fontSize: 11, color: "#9CA3AF" }}
+                        >
+                          ยอดคงเหลือ
+                        </AppText>
+                        <AppText
+                          weight="bold"
+                          style={{ fontSize: 18, color: "#22C55E" }}
+                        >
+                          ฿
+                          {parseFloat(
+                            selectedUser.wallet.balance_available,
+                          ).toLocaleString()}
+                        </AppText>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* Ban Info (if banned) */}
+                {selectedUser.is_banned && (
+                  <View
+                    style={[
+                      styles.detailSection,
+                      {
+                        backgroundColor: "#FEF2F2",
+                        borderRadius: 16,
+                        padding: 16,
+                        borderWidth: 1,
+                        borderColor: "#FECACA",
+                      },
+                    ]}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: 12,
+                      }}
+                    >
+                      <View style={[styles.labelRow, { marginBottom: 0 }]}>
+                        <Ionicons name="ban" size={18} color="#EF4444" />
+                        <AppText
+                          weight="bold"
+                          style={{
+                            fontSize: 15,
+                            color: "#EF4444",
+                            marginBottom: 0,
+                          }}
+                        >
+                          ถูกระงับการใช้งาน
+                        </AppText>
+                      </View>
+                      {(() => {
+                        const remaining = getRemainingBanDays(
+                          selectedUser.banned_until,
+                        );
+                        return (
+                          <View
+                            style={{
+                              backgroundColor: "#DC2626",
+                              paddingHorizontal: 10,
+                              paddingVertical: 4,
+                              borderRadius: 12,
+                            }}
+                          >
+                            <AppText
+                              weight="bold"
+                              style={{ fontSize: 11, color: "#FFF" }}
+                            >
+                              {remaining === null
+                                ? "ถาวร"
+                                : remaining === 0
+                                  ? "หมดอายุ"
+                                  : `เหลือ ${remaining} วัน`}
+                            </AppText>
+                          </View>
+                        );
+                      })()}
+                    </View>
+
+                    {selectedUser.ban_reason && (
+                      <View
+                        style={{
+                          backgroundColor: "#FFF",
+                          borderRadius: 10,
+                          padding: 12,
+                          marginBottom: 10,
+                        }}
+                      >
+                        <AppText
+                          weight="semibold"
+                          style={{
+                            fontSize: 11,
+                            color: "#9CA3AF",
+                            marginBottom: 4,
+                          }}
+                        >
+                          เหตุผลในการแบน
+                        </AppText>
+                        <AppText
+                          weight="regular"
+                          style={{
+                            fontSize: 13,
+                            color: "#374151",
+                            lineHeight: 20,
+                          }}
+                        >
+                          {selectedUser.ban_reason}
+                        </AppText>
+                      </View>
+                    )}
+
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        gap: 12,
+                      }}
+                    >
+                      {selectedUser.banned_until && (
+                        <View style={{ flex: 1 }}>
+                          <AppText
+                            weight="semibold"
+                            style={{
+                              fontSize: 11,
+                              color: "#9CA3AF",
+                              marginBottom: 2,
+                            }}
+                          >
+                            แบนถึงวันที่
+                          </AppText>
+                          <AppText
+                            weight="semibold"
+                            style={{ fontSize: 13, color: "#991B1B" }}
+                          >
+                            {formatReportDate(selectedUser.banned_until)}
+                          </AppText>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                )}
+
+                {/* Actions */}
+                <View style={styles.modalActions}>
+                  {selectedUser.is_banned ? (
+                    <TouchableOpacity
+                      style={styles.approveBtn}
+                      onPress={() => handleUnbanUser(selectedUser)}
+                    >
+                      <LinearGradient
+                        colors={["#22C55E", "#16A34A"]}
+                        style={styles.actionGradient}
+                      >
+                        <AppText weight="semibold" style={styles.actionBtnText}>
+                          ปลดแบนผู้ใช้
+                        </AppText>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  ) : selectedUser.role !== "admin" ? (
+                    <TouchableOpacity
+                      style={styles.deleteBtn}
+                      onPress={() => {
+                        setBanReason("");
+                        setBanDuration("7");
+                        setBanModalVisible(true);
+                      }}
+                    >
+                      <LinearGradient
+                        colors={["#EF4444", "#DC2626"]}
+                        style={styles.actionGradient}
+                      >
+                        <AppText weight="semibold" style={styles.actionBtnText}>
+                          แบนผู้ใช้
+                        </AppText>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              </View>
+            </ScrollView>
+
+            {/* ─── Ban User Modal (inside User Detail Modal) ─── */}
+            <Modal visible={banModalVisible} animationType="fade" transparent>
+              <View style={styles.banModalOverlay}>
+                <View style={styles.banModalContent}>
+                  <AppText
+                    weight="bold"
+                    style={{ fontSize: 18, color: "#111827", marginBottom: 4 }}
+                  >
+                    แบนผู้ใช้
+                  </AppText>
+                  <AppText
+                    weight="regular"
+                    style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}
+                  >
+                    {selectedUser?.name} (ID: {selectedUser?.id})
+                  </AppText>
+
+                  <AppText
+                    weight="medium"
+                    style={{ fontSize: 13, color: "#374151", marginBottom: 6 }}
+                  >
+                    เหตุผลในการแบน *
+                  </AppText>
+                  <TextInput
+                    style={[styles.replyInput, { minHeight: 80 }]}
+                    placeholder="กรอกเหตุผลในการแบน..."
+                    placeholderTextColor="#9CA3AF"
+                    multiline
+                    value={banReason}
+                    onChangeText={setBanReason}
+                  />
+
+                  <AppText
+                    weight="medium"
+                    style={{ fontSize: 13, color: "#374151", marginBottom: 6 }}
+                  >
+                    จำนวนวัน
+                  </AppText>
+                  <View
+                    style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}
+                  >
+                    {["7", "14", "30", "90", "365"].map((d) => (
+                      <TouchableOpacity
+                        key={d}
+                        style={{
+                          paddingHorizontal: 14,
+                          paddingVertical: 8,
+                          borderRadius: 20,
+                          backgroundColor:
+                            banDuration === d ? "#EF4444" : "#F3F4F6",
+                        }}
+                        onPress={() => setBanDuration(d)}
+                      >
+                        <AppText
+                          weight="semibold"
+                          style={{
+                            fontSize: 12,
+                            color: banDuration === d ? "#FFF" : "#6B7280",
+                          }}
+                        >
+                          {d} วัน
+                        </AppText>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        paddingVertical: 12,
+                        borderRadius: 12,
+                        backgroundColor: "#F3F4F6",
+                        alignItems: "center",
+                      }}
+                      onPress={() => setBanModalVisible(false)}
+                    >
+                      <AppText
+                        weight="semibold"
+                        style={{ fontSize: 14, color: "#6B7280" }}
+                      >
+                        ยกเลิก
+                      </AppText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        paddingVertical: 12,
+                        borderRadius: 12,
+                        backgroundColor: "#EF4444",
+                        alignItems: "center",
+                        opacity: banLoading || !banReason.trim() ? 0.5 : 1,
+                      }}
+                      disabled={banLoading || !banReason.trim()}
+                      onPress={handleBanUser}
+                    >
+                      <AppText
+                        weight="semibold"
+                        style={{ fontSize: 14, color: "#FFF" }}
+                      >
+                        {banLoading ? "กำลังดำเนินการ..." : "ยืนยันแบน"}
+                      </AppText>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </Modal>
           </View>
         )}
       </Modal>
@@ -2012,6 +4001,111 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
+  },
+
+  // User Card
+  userSearchRow: {
+    marginBottom: 12,
+  },
+  userSearchInput: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  userSearchText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#111827",
+  },
+  userCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFF",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  userCardLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 12,
+  },
+  userAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#F3F4F6",
+  },
+  userAvatarPlaceholder: {
+    backgroundColor: "#E8F0FF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  userAvatarText: {
+    fontSize: 18,
+    color: "#3B82F6",
+  },
+  userName: {
+    fontSize: 15,
+    color: "#111827",
+    flexShrink: 1,
+  },
+  userEmail: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    marginTop: 1,
+  },
+  adminBadge: {
+    backgroundColor: "#DBEAFE",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  adminBadgeText: {
+    fontSize: 10,
+    color: "#2563EB",
+  },
+  bannedBadge: {
+    backgroundColor: "#FEE2E2",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  bannedBadgeText: {
+    fontSize: 10,
+    color: "#DC2626",
+  },
+
+  // Ban Modal
+  banModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  banModalContent: {
+    backgroundColor: "#FFF",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    maxWidth: 400,
   },
 });
 

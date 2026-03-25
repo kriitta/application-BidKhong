@@ -13,6 +13,7 @@ interface AuthContextType {
   enterAsGuest: () => void;
   loginSuccess: (user: User) => void;
   updateUser: (user: User) => void;
+  updateWallet: (walletData: Partial<User["wallet"]>) => void;
   refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   enterAsGuest: () => {},
   loginSuccess: () => {},
   updateUser: () => {},
+  updateWallet: () => {},
   refreshUser: async () => {},
   logout: async () => {},
 });
@@ -59,6 +61,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem("userData", JSON.stringify(updatedUser));
   }, []);
 
+  const updateWallet = useCallback((walletData: any) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updatedWallet = { ...prev.wallet, ...walletData };
+      const updatedUser = { ...prev, wallet: updatedWallet };
+      AsyncStorage.setItem("userData", JSON.stringify(updatedUser));
+      return updatedUser as User;
+    });
+  }, []);
+
   const refreshUser = useCallback(async () => {
     try {
       const { apiService } = require("../utils/api");
@@ -67,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserRole(freshUser.role);
       await AsyncStorage.setItem("userData", JSON.stringify(freshUser));
     } catch {
-      // fallback จาก AsyncStorage
+      // getMe ไม่มีใน backend → ใช้ cached data จาก AsyncStorage
       const userData = await AsyncStorage.getItem("userData");
       if (userData) {
         const cachedUser: User = JSON.parse(userData);
@@ -104,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         enterAsGuest,
         loginSuccess,
         updateUser,
+        updateWallet,
         refreshUser,
         logout,
       }}

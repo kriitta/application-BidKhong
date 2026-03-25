@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Image,
   ImageBackground,
@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../assets/images";
 import { useAuth } from "../contexts/AuthContext";
+import { getPublicStats } from "../utils/api";
 import { AppText } from "./components/appText";
 import { AuthModal } from "./components/AuthModal";
 
@@ -20,6 +21,17 @@ const WelcomePage = () => {
   const router = useRouter();
   const { enterAsGuest } = useAuth();
   const [authModalVisible, setAuthModalVisible] = useState(false);
+  const [totalUsers, setTotalUsers] = useState<number | null>(null);
+  const [totalProducts, setTotalProducts] = useState<number | null>(null);
+
+  useEffect(() => {
+    getPublicStats()
+      .then((stats) => {
+        setTotalUsers(stats.total_users);
+        setTotalProducts(stats.total_products);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <View style={styles.wrapper}>
@@ -71,7 +83,7 @@ const WelcomePage = () => {
                   style={styles.statNumber}
                   numberOfLines={1}
                 >
-                  122
+                  {totalUsers ?? "—"}
                 </AppText>
                 <AppText
                   weight="medium"
@@ -93,7 +105,7 @@ const WelcomePage = () => {
                   style={styles.statNumber}
                   numberOfLines={1}
                 >
-                  51
+                  {totalProducts ?? "—"}
                 </AppText>
                 <AppText
                   weight="medium"

@@ -38,16 +38,27 @@ const ViewAllPage = () => {
       ending: "Ending Soon",
       default: "All Product",
       incoming: "Incoming",
+      recommended: "Recommended",
     }[typeStr] || "All Auctions";
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const res = await apiService.product.getProducts({ per_page: 100 });
-        const all = res.data ?? [];
-        // filter ด้วย tag ฝั่ง frontend
-        setProducts(all.filter((p) => p.tag === typeStr));
+        if (typeStr === "recommended") {
+          const recs = await apiService.product.getRecommendations(50);
+          // Filter only active (non-ended) products
+          const now = new Date();
+          setProducts(
+            recs.filter(
+              (p) => new Date(p.auction_end_time).getTime() > now.getTime(),
+            ),
+          );
+        } else {
+          const res = await apiService.product.getProducts({ per_page: 100 });
+          const all = res.data ?? [];
+          setProducts(all.filter((p) => p.tag === typeStr));
+        }
       } catch (error: any) {
         console.error("Failed to fetch products:", error.message);
       } finally {
@@ -242,6 +253,28 @@ const ViewAllPage = () => {
                         source={image.ending_badge}
                         style={{ width: 18, height: 18 }}
                       />
+                    </View>
+                  )}
+                  {typeStr === "recommended" && (
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: 8,
+                        left: 8,
+                        zIndex: 2,
+                        backgroundColor: "#7C3AED",
+                        borderRadius: 6,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                      }}
+                    >
+                      <AppText
+                        weight="semibold"
+                        numberOfLines={1}
+                        style={{ fontSize: 9, color: "#FFF" }}
+                      >
+                        AI Pick
+                      </AppText>
                     </View>
                   )}
 

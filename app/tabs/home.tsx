@@ -84,6 +84,16 @@ const HomePage = () => {
   const [endingSoon, setEndingSoon] = useState<Product[]>([]);
   const [allProductDefault, setAllProductDefault] = useState<Product[]>([]);
   const [incoming, setIncoming] = useState<Product[]>([]);
+  const [recommendations, setRecommendations] = useState<Product[]>([]);
+
+  // Filter recommendations to only show active (non-ended) products
+  const activeRecommendations = useMemo(() => {
+    const now = new Date();
+    return recommendations.filter((p) => {
+      const endTime = new Date(p.auction_end_time);
+      return endTime.getTime() > now.getTime();
+    });
+  }, [recommendations]);
 
   // ─── Real-time countdown tick (re-render every second) ───
   const [, setTick] = useState(0);
@@ -98,10 +108,15 @@ const HomePage = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [categoriesData, productsRes] = await Promise.allSettled([
-          apiService.category.getCategories(),
-          apiService.product.getProducts({ per_page: 100 }),
-        ]);
+        const [categoriesData, productsRes, recsRes] = await Promise.allSettled(
+          [
+            apiService.category.getCategories(),
+            apiService.product.getProducts({ per_page: 100 }),
+            isLoggedIn && !isGuest
+              ? apiService.product.getRecommendations(10)
+              : Promise.resolve([]),
+          ],
+        );
 
         if (categoriesData.status === "fulfilled") {
           setCategories(categoriesData.value);
@@ -123,6 +138,11 @@ const HomePage = () => {
             "Failed to fetch products:",
             productsRes.reason?.message,
           );
+        }
+
+        if (recsRes.status === "fulfilled") {
+          const recsData = recsRes.value;
+          setRecommendations(Array.isArray(recsData) ? recsData : []);
         }
       } finally {
         markHomeReady();
@@ -989,6 +1009,130 @@ const HomePage = () => {
                 ))}
               </View>
             </View>
+
+            {/* 🤖 Recommended For You */}
+            {isLoggedIn && !isGuest && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Image
+                      source={image.recommend}
+                      style={{ width: 30, height: 30, marginRight: 4 }}
+                    />
+                    <AppText
+                      weight="semibold"
+                      numberOfLines={1}
+                      style={styles.sectionTitle}
+                    >
+                      Recommended
+                    </AppText>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push("/screens/view-all?type=recommended")
+                    }
+                  >
+                    <AppText
+                      weight="regular"
+                      numberOfLines={1}
+                      style={styles.viewAll}
+                    >
+                      View All →
+                    </AppText>
+                  </TouchableOpacity>
+                </View>
+                {activeRecommendations.length === 0 ? (
+                  <View style={styles.sectionEmpty}>
+                    <LottieView
+                      source={require("../../assets/animations/empty.json")}
+                      autoPlay
+                      loop
+                      style={styles.sectionEmptyLottie}
+                    />
+                    <AppText weight="medium" style={styles.sectionEmptyText}>
+                      No recommendations yet
+                    </AppText>
+                  </View>
+                ) : (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.horizontalScroll}
+                  >
+                    {activeRecommendations.slice(0, 5).map((item) => (
+                      <TouchableOpacity
+                        key={`rec-${item.id}`}
+                        style={styles.auctionCard}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/screens/product-detail",
+                            params: {
+                              productId: item.id.toString(),
+                            },
+                          })
+                        }
+                      >
+                        <View
+                          style={{
+                            position: "absolute",
+                            top: 8,
+                            left: 8,
+                            zIndex: 2,
+                            backgroundColor: "#7C3AED",
+                            borderRadius: 6,
+                            paddingHorizontal: 6,
+                            paddingVertical: 2,
+                          }}
+                        >
+                          <AppText
+                            weight="semibold"
+                            numberOfLines={1}
+                            style={{ fontSize: 9, color: "#FFF" }}
+                          >
+                            AI Pick
+                          </AppText>
+                        </View>
+                        <View
+                          style={[
+                            styles.timeBadge,
+                            {
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 6,
+                            },
+                          ]}
+                        >
+                          <Image
+                            source={image.incoming_time}
+                            style={{ width: 12, height: 12 }}
+                          />
+                          <AppText
+                            weight="medium"
+                            numberOfLines={1}
+                            style={styles.timeText}
+                          >
+                            {item.tag === "incoming"
+                              ? formatTimeRemaining(item.auction_start_time)
+                              : formatTimeRemaining(item.auction_end_time)}
+                          </AppText>
+                        </View>
+                        <Image
+                          source={getProductImage(item)}
+                          style={[styles.auctionImage, { marginBottom: 8 }]}
+                        />
+                        <AppText
+                          weight="medium"
+                          style={styles.auctionName}
+                          numberOfLines={1}
+                        >
+                          {item.name}
+                        </AppText>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            )}
 
             {/* Hot Auctions */}
             <View style={styles.section}>

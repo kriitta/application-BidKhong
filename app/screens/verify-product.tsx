@@ -21,6 +21,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "../../contexts/AuthContext";
 import { AppText } from "../components/appText";
 import { AppTextInput } from "../components/appTextInput";
 
@@ -275,6 +276,7 @@ const formatDate = (dateStr: string | null): string => {
 
 const VerifyProductPage = () => {
   const router = useRouter();
+  const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -291,18 +293,65 @@ const VerifyProductPage = () => {
   >([]);
   const [disputeOrderId, setDisputeOrderId] = useState<number | null>(null);
 
+  // Track whether current orders are constructed (fake IDs) vs real
+  const isConstructedRef = useRef(false);
+
+  // ─── Resolve real order ID ─────────────────────────────────
+  // When using constructed orders, the `id` is actually the product_id.
+  // We need to find the real order ID from the backend.
+  const resolveRealOrderId = useCallback(
+    async (orderId: number, productId: number): Promise<number> => {
+      // If we already have real orders, use the ID directly
+      if (!isConstructedRef.current) {
+        return orderId;
+      }
+
+      // Constructed orders: id === product_id. Fetch real orders to find the match.
+      try {
+        const realOrders = await apiService.order.getMyOrders();
+        if (Array.isArray(realOrders) && realOrders.length > 0) {
+          const match = realOrders.find((o) => o.product_id === productId);
+          if (match) {
+            isConstructedRef.current = false;
+            setOrders(realOrders);
+            return match.id;
+          }
+        }
+      } catch {
+        // GET /users/me/orders failed
+      }
+
+      // Last resort: use what we have
+      return orderId;
+    },
+    [],
+  );
+
   // ─── Fetch Orders ──────────────────────────────────────────
   const fetchOrders = useCallback(async () => {
     try {
+      // Try the real orders endpoint first
       const data = await apiService.order.getMyOrders();
+      isConstructedRef.current = false;
       setOrders(Array.isArray(data) ? data : []);
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to load orders");
+    } catch {
+      // Fallback: construct orders from won products
+      if (user?.id) {
+        try {
+          const constructed = await apiService.order.getMyOrdersConstructed(
+            user.id,
+          );
+          isConstructedRef.current = true;
+          setOrders(constructed);
+        } catch (e2: any) {
+          console.error("Failed to construct orders:", e2.message);
+        }
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchOrders();
@@ -334,18 +383,59 @@ const VerifyProductPage = () => {
   const openOrderDetail = async (order: Order) => {
     setSelectedOrder(order);
     setModalVisible(true);
+
+    let enrichedOrder = order;
+
+    // 1) Try the real order detail endpoint
     try {
       const detail = await apiService.order.getOrderDetail(order.id);
-      setSelectedOrder(detail);
-      // Also update in list
-      setOrders((prev) => prev.map((o) => (o.id === detail.id ? detail : o)));
+      enrichedOrder = detail;
     } catch {
-      // keep showing the list-level data
+      // order endpoint likely 404 — continue with list-level data
     }
+
+    // 2) Always fetch full product detail to get seller info (email, profile_image)
+    try {
+      const productId =
+        enrichedOrder.product_id ||
+        enrichedOrder.product?.id ||
+        order.product_id ||
+        order.product?.id;
+      if (productId) {
+        const fullProduct = await apiService.product.getProduct(productId);
+        if (fullProduct?.user) {
+          enrichedOrder = {
+            ...enrichedOrder,
+            seller: {
+              ...(enrichedOrder.seller || ({} as any)),
+              id: fullProduct.user.id,
+              name: fullProduct.user.name,
+              email:
+                fullProduct.user.email || enrichedOrder.seller?.email || "",
+              phone_number:
+                fullProduct.user.phone_number ||
+                enrichedOrder.seller?.phone_number ||
+                null,
+              profile_image:
+                fullProduct.user.profile_image ||
+                enrichedOrder.seller?.profile_image ||
+                null,
+            },
+          };
+        }
+      }
+    } catch {
+      // product detail also failed — keep what we have
+    }
+
+    setSelectedOrder(enrichedOrder);
+    setOrders((prev) =>
+      prev.map((o) => (o.id === enrichedOrder.id ? enrichedOrder : o)),
+    );
   };
 
   // ─── Confirm Order (Buyer) ─────────────────────────────────
-  const handleConfirm = (orderId: number) => {
+  const handleConfirm = (orderId: number, productId: number) => {
     Alert.alert(
       "ยืนยันการติดต่อ",
       "คุณได้ติดต่อกับผู้ขายเรื่องการจัดส่งสินค้าเรียบร้อยแล้วใช่ไหม?",
@@ -356,16 +446,47 @@ const VerifyProductPage = () => {
           onPress: async () => {
             setActionLoading(true);
             try {
-              const updated = await apiService.order.confirmOrder(orderId);
-              setOrders((prev) =>
-                prev.map((o) => (o.id === orderId ? updated : o)),
-              );
-              setSelectedOrder((prev) =>
-                prev && prev.id === orderId ? updated : prev,
-              );
+              const realId = await resolveRealOrderId(orderId, productId);
+              const updated = await apiService.order.confirmOrder(realId);
+              // Refresh orders to get real IDs after a successful action
+              try {
+                const freshOrders = await apiService.order.getMyOrders();
+                if (Array.isArray(freshOrders) && freshOrders.length > 0) {
+                  isConstructedRef.current = false;
+                  setOrders(freshOrders);
+                  const freshSelected = freshOrders.find(
+                    (o) => o.product_id === productId,
+                  );
+                  setSelectedOrder(freshSelected ?? updated);
+                } else {
+                  setOrders((prev) =>
+                    prev.map((o) => (o.id === orderId ? updated : o)),
+                  );
+                  setSelectedOrder((prev) =>
+                    prev && prev.id === orderId ? updated : prev,
+                  );
+                }
+              } catch {
+                setOrders((prev) =>
+                  prev.map((o) => (o.id === orderId ? updated : o)),
+                );
+                setSelectedOrder((prev) =>
+                  prev && prev.id === orderId ? updated : prev,
+                );
+              }
               Alert.alert("สำเร็จ", "ยืนยันการติดต่อเรียบร้อยแล้ว");
             } catch (error: any) {
-              Alert.alert("Error", error.message || "Failed to confirm order");
+              const msg = error.message || "";
+              const is404 =
+                msg.includes("not found") ||
+                msg.includes("404") ||
+                msg.includes("Not Found");
+              Alert.alert(
+                "เกิดข้อผิดพลาด",
+                is404
+                  ? "ระบบคำสั่งซื้อยังไม่พร้อมใช้งาน กรุณาติดต่อผู้ดูแลระบบ"
+                  : msg || "ไม่สามารถยืนยันคำสั่งซื้อได้ กรุณาลองใหม่อีกครั้ง",
+              );
             } finally {
               setActionLoading(false);
             }
@@ -381,6 +502,7 @@ const VerifyProductPage = () => {
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewOrderId, setReviewOrderId] = useState<number | null>(null);
+  const [reviewProductId, setReviewProductId] = useState<number | null>(null);
   const [starAnimations] = useState(() =>
     Array.from({ length: 5 }, () => new Animated.Value(1)),
   );
@@ -405,8 +527,9 @@ const VerifyProductPage = () => {
     animateStar(star - 1);
   };
 
-  const handleReceived = (orderId: number) => {
+  const handleReceived = (orderId: number, productId: number) => {
     setReviewOrderId(orderId);
+    setReviewProductId(productId);
     setReviewRating(0);
     setReviewComment("");
     setModalVisible(false);
@@ -420,23 +543,54 @@ const VerifyProductPage = () => {
       Alert.alert("กรุณาให้คะแนน", "กรุณากดดาวเพื่อให้คะแนนผู้ขาย");
       return;
     }
-    if (reviewOrderId !== null) {
+    if (reviewOrderId !== null && reviewProductId !== null) {
       setActionLoading(true);
       try {
-        const updated = await apiService.order.receiveOrder(reviewOrderId);
-        setOrders((prev) =>
-          prev.map((o) => (o.id === reviewOrderId ? updated : o)),
-        );
-        setSelectedOrder((prev) =>
-          prev && prev.id === reviewOrderId ? updated : prev,
-        );
+        const realId = await resolveRealOrderId(reviewOrderId, reviewProductId);
+        const updated = await apiService.order.receiveOrder(realId);
+        // Refresh orders with real data
+        try {
+          const freshOrders = await apiService.order.getMyOrders();
+          if (Array.isArray(freshOrders) && freshOrders.length > 0) {
+            isConstructedRef.current = false;
+            setOrders(freshOrders);
+            const freshSelected = freshOrders.find(
+              (o) => o.product_id === reviewProductId,
+            );
+            setSelectedOrder(freshSelected ?? updated);
+          } else {
+            setOrders((prev) =>
+              prev.map((o) => (o.id === reviewOrderId ? updated : o)),
+            );
+            setSelectedOrder((prev) =>
+              prev && prev.id === reviewOrderId ? updated : prev,
+            );
+          }
+        } catch {
+          setOrders((prev) =>
+            prev.map((o) => (o.id === reviewOrderId ? updated : o)),
+          );
+          setSelectedOrder((prev) =>
+            prev && prev.id === reviewOrderId ? updated : prev,
+          );
+        }
         setShowReviewModal(false);
         Alert.alert(
           "ขอบคุณสำหรับรีวิว! 🎉",
           `คุณให้คะแนนผู้ขาย ${reviewRating} ดาว`,
         );
       } catch (error: any) {
-        Alert.alert("Error", error.message || "Failed to confirm receipt");
+        const msg = error.message || "";
+        const is404 =
+          msg.includes("not found") ||
+          msg.includes("404") ||
+          msg.includes("Not Found");
+        Alert.alert(
+          "เกิดข้อผิดพลาด",
+          is404
+            ? "ระบบคำสั่งซื้อยังไม่พร้อมใช้งาน กรุณาติดต่อผู้ดูแลระบบ"
+            : msg || "ไม่สามารถยืนยันการรับสินค้าได้ กรุณาลองใหม่อีกครั้ง",
+        );
       } finally {
         setActionLoading(false);
       }
@@ -444,8 +598,11 @@ const VerifyProductPage = () => {
   };
 
   // ─── Dispute Order ─────────────────────────────────────────
-  const openDisputeModal = (orderId: number) => {
+  const [disputeProductId, setDisputeProductId] = useState<number | null>(null);
+
+  const openDisputeModal = (orderId: number, productId: number) => {
     setDisputeOrderId(orderId);
+    setDisputeProductId(productId);
     setDisputeReason("");
     setDisputeImages([]);
     setModalVisible(false);
@@ -480,24 +637,58 @@ const VerifyProductPage = () => {
       Alert.alert("กรุณากรอกเหตุผล", "กรุณาอธิบายปัญหาที่พบ");
       return;
     }
-    if (disputeOrderId !== null) {
+    if (disputeOrderId !== null && disputeProductId !== null) {
       setActionLoading(true);
       try {
-        const updated = await apiService.order.disputeOrder(
+        const realId = await resolveRealOrderId(
           disputeOrderId,
+          disputeProductId,
+        );
+        const updated = await apiService.order.disputeOrder(
+          realId,
           disputeReason,
           disputeImages.length > 0 ? disputeImages : undefined,
         );
-        setOrders((prev) =>
-          prev.map((o) => (o.id === disputeOrderId ? updated : o)),
-        );
-        setSelectedOrder((prev) =>
-          prev && prev.id === disputeOrderId ? updated : prev,
-        );
+        // Refresh orders with real data
+        try {
+          const freshOrders = await apiService.order.getMyOrders();
+          if (Array.isArray(freshOrders) && freshOrders.length > 0) {
+            isConstructedRef.current = false;
+            setOrders(freshOrders);
+            const freshSelected = freshOrders.find(
+              (o) => o.product_id === disputeProductId,
+            );
+            setSelectedOrder(freshSelected ?? updated);
+          } else {
+            setOrders((prev) =>
+              prev.map((o) => (o.id === disputeOrderId ? updated : o)),
+            );
+            setSelectedOrder((prev) =>
+              prev && prev.id === disputeOrderId ? updated : prev,
+            );
+          }
+        } catch {
+          setOrders((prev) =>
+            prev.map((o) => (o.id === disputeOrderId ? updated : o)),
+          );
+          setSelectedOrder((prev) =>
+            prev && prev.id === disputeOrderId ? updated : prev,
+          );
+        }
         setShowDisputeModal(false);
         Alert.alert("ส่งเรื่องเรียบร้อย", "ทีมงานจะตรวจสอบและติดต่อกลับ");
       } catch (error: any) {
-        Alert.alert("Error", error.message || "Failed to submit dispute");
+        const msg = error.message || "";
+        const is404 =
+          msg.includes("not found") ||
+          msg.includes("404") ||
+          msg.includes("Not Found");
+        Alert.alert(
+          "เกิดข้อผิดพลาด",
+          is404
+            ? "ระบบคำสั่งซื้อยังไม่พร้อมใช้งาน กรุณาติดต่อผู้ดูแลระบบ"
+            : msg || "ไม่สามารถส่งเรื่องร้องเรียนได้ กรุณาลองใหม่อีกครั้ง",
+        );
       } finally {
         setActionLoading(false);
       }
@@ -1086,24 +1277,26 @@ const VerifyProductPage = () => {
                           </AppText>
                         </View>
                       )}
-                      <View style={styles.sellerContactRow}>
-                        <Image
-                          source={image.mail}
-                          style={{
-                            width: 16,
-                            height: 12,
-                            tintColor: "#6B7280",
-                            marginRight: 8,
-                          }}
-                        />
-                        <AppText
-                          weight="regular"
-                          style={styles.sellerContact}
-                          numberOfLines={1}
-                        >
-                          {selectedOrder.seller.email}
-                        </AppText>
-                      </View>
+                      {selectedOrder.seller.email ? (
+                        <View style={styles.sellerContactRow}>
+                          <Image
+                            source={image.mail}
+                            style={{
+                              width: 16,
+                              height: 12,
+                              tintColor: "#6B7280",
+                              marginRight: 8,
+                            }}
+                          />
+                          <AppText
+                            weight="regular"
+                            style={styles.sellerContact}
+                            numberOfLines={1}
+                          >
+                            {selectedOrder.seller.email}
+                          </AppText>
+                        </View>
+                      ) : null}
                     </View>
                   </View>
                 </View>
@@ -1133,7 +1326,9 @@ const VerifyProductPage = () => {
                   </View>
                   <TouchableOpacity
                     activeOpacity={0.8}
-                    onPress={() => handleConfirm(selectedOrder.id)}
+                    onPress={() =>
+                      handleConfirm(selectedOrder.id, selectedOrder.product_id)
+                    }
                     disabled={actionLoading}
                   >
                     <LinearGradient
@@ -1188,7 +1383,12 @@ const VerifyProductPage = () => {
                     <>
                       <TouchableOpacity
                         activeOpacity={0.8}
-                        onPress={() => handleReceived(selectedOrder.id)}
+                        onPress={() =>
+                          handleReceived(
+                            selectedOrder.id,
+                            selectedOrder.product_id,
+                          )
+                        }
                         disabled={actionLoading}
                       >
                         <LinearGradient
@@ -1212,7 +1412,12 @@ const VerifyProductPage = () => {
                       </TouchableOpacity>
                       <TouchableOpacity
                         activeOpacity={0.8}
-                        onPress={() => openDisputeModal(selectedOrder.id)}
+                        onPress={() =>
+                          openDisputeModal(
+                            selectedOrder.id,
+                            selectedOrder.product_id,
+                          )
+                        }
                         disabled={actionLoading}
                       >
                         <LinearGradient

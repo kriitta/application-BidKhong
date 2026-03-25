@@ -25,6 +25,7 @@ import { apiService, getFullImageUrl } from "../../utils/api";
 import { Product, ProductBid } from "../../utils/api/types";
 import { AppText } from "../components/appText";
 import { AuthModal } from "../components/AuthModal";
+import ImageViewerModal from "../components/ImageViewerModal";
 
 const { width } = Dimensions.get("window");
 
@@ -37,6 +38,8 @@ const ProductDetailPage = () => {
   const insets = useSafeAreaInsets();
   const { isGuest } = useAuth();
   const [authModalVisible, setAuthModalVisible] = useState(false);
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [bidHistory, setBidHistory] = useState<ProductBid[]>([]);
@@ -132,6 +135,11 @@ const ProductDetailPage = () => {
   const isHot = product?.tag === "hot";
   const isEnding = product?.tag === "ending";
   const isDefault = product?.tag === "default";
+  const isAuctionEnded = product
+    ? product.status === "completed" ||
+      product.status === "ended" ||
+      new Date(product.auction_end_time) < new Date()
+    : false;
   const currentBid = product ? parseFloat(product.current_price) : 0;
   const buyNowPrice = product ? parseFloat(product.buyout_price) : 0;
   const startingPrice = product ? parseFloat(product.starting_price) : 0;
@@ -289,18 +297,21 @@ const ProductDetailPage = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      {/* Fixed Header with Back Button */}
+      <View style={[styles.headerContainer, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Image source={image.back} style={{ width: 32, height: 32 }} />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Header with Back Button */}
-        <View style={styles.headerContainer}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Image source={image.back} style={{ width: 32, height: 32 }} />
-          </TouchableOpacity>
-        </View>
-
         {/* Product Image Carousel */}
         <View style={styles.imageCarouselContainer}>
           <ScrollView
@@ -318,13 +329,27 @@ const ProductDetailPage = () => {
             scrollEnabled={productImages.length > 1}
           >
             {productImages.map((img, idx) => (
-              <View key={idx} style={[styles.imageContainer, { width }]}>
+              <TouchableOpacity
+                key={idx}
+                activeOpacity={0.9}
+                onPress={() => {
+                  // Build string URLs for the viewer
+                  const urls = productImages
+                    .map((i) => (typeof i === "object" && i.uri ? i.uri : null))
+                    .filter(Boolean) as string[];
+                  if (urls.length > 0) {
+                    setImageViewerIndex(idx);
+                    setImageViewerVisible(true);
+                  }
+                }}
+                style={[styles.imageContainer, { width }]}
+              >
                 <Image
                   source={img}
                   style={styles.productImage}
                   resizeMode="contain"
                 />
-              </View>
+              </TouchableOpacity>
             ))}
           </ScrollView>
 
@@ -773,8 +798,58 @@ const ProductDetailPage = () => {
           </View>
         )}
 
-        {/* Bidding Section — hidden for incoming */}
-        {!isIncoming && (
+        {/* Auction Ended Banner */}
+        {isAuctionEnded && (
+          <View
+            style={{
+              marginHorizontal: 16,
+              marginTop: 12,
+              marginBottom: 24,
+              backgroundColor: "#FEF2F2",
+              borderWidth: 1,
+              borderColor: "#FECACA",
+              borderRadius: 12,
+              padding: 14,
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: "#FEE2E2",
+                justifyContent: "center",
+                alignItems: "center",
+                marginRight: 12,
+              }}
+            >
+              <AppText style={{ fontSize: 18 }}>🔒</AppText>
+            </View>
+            <View style={{ flex: 1 }}>
+              <AppText
+                weight="semibold"
+                style={{ fontSize: 14, color: "#DC2626" }}
+                numberOfLines={1}
+              >
+                {product?.status === "completed"
+                  ? "Sold — Bought Now"
+                  : "Auction Ended"}
+              </AppText>
+              <AppText
+                weight="regular"
+                style={{ fontSize: 12, color: "#991B1B", marginTop: 2 }}
+                numberOfLines={1}
+              >
+                This auction is no longer accepting bids.
+              </AppText>
+            </View>
+          </View>
+        )}
+
+        {/* Bidding Section — hidden for incoming & ended */}
+        {!isIncoming && !isAuctionEnded && (
           <View style={styles.biddingSection}>
             <View style={styles.biddingInputContainer}>
               <View style={styles.bidInputWrapper}>
@@ -1081,8 +1156,8 @@ const ProductDetailPage = () => {
         )}
       </ScrollView>
 
-      {/* Bottom Action Buttons — hidden for incoming */}
-      {!isIncoming && (
+      {/* Bottom Action Buttons — hidden for incoming & ended */}
+      {!isIncoming && !isAuctionEnded && (
         <View
           style={[
             styles.bottomButtonsContainer,
@@ -1150,7 +1225,19 @@ const ProductDetailPage = () => {
         visible={authModalVisible}
         onClose={() => setAuthModalVisible(false)}
       />
-    </SafeAreaView>
+
+      {/* Full Screen Image Viewer */}
+      <ImageViewerModal
+        visible={imageViewerVisible}
+        images={
+          productImages
+            .map((i) => (typeof i === "object" && i.uri ? i.uri : null))
+            .filter(Boolean) as string[]
+        }
+        initialIndex={imageViewerIndex}
+        onClose={() => setImageViewerVisible(false)}
+      />
+    </View>
   );
 };
 

@@ -109,6 +109,7 @@ export const image = {
     logout: require("./logout.png"),
     all_product: require("./all_product.png"),
     location_seller: require("./location_seller.png"),
+    recommend: require("./recommend.png"),
     
     
 };

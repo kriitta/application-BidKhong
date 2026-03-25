@@ -1,7 +1,7 @@
 import { image } from "@/assets/images";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { getPublicStats } from "../../utils/api";
 import { AppText } from "../components/appText";
 
 const { width } = Dimensions.get("window");
@@ -177,6 +178,17 @@ const AboutAppPage = () => {
   const router = useRouter();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [totalUsers, setTotalUsers] = useState<number | null>(null);
+  const [totalProducts, setTotalProducts] = useState<number | null>(null);
+
+  useEffect(() => {
+    getPublicStats()
+      .then((stats) => {
+        setTotalUsers(stats.total_users);
+        setTotalProducts(stats.total_products);
+      })
+      .catch(() => {});
+  }, []);
 
   const toggleFaq = (index: number) => {
     setExpandedFaq(expandedFaq === index ? null : index);
@@ -244,7 +256,7 @@ const AboutAppPage = () => {
                 style={styles.statNumber}
                 numberOfLines={1}
               >
-                10K+
+                {totalUsers ?? "—"}
               </AppText>
               <AppText
                 weight="regular"
@@ -262,7 +274,7 @@ const AboutAppPage = () => {
                 style={styles.statNumber}
                 numberOfLines={1}
               >
-                5K+
+                {totalProducts ?? "—"}
               </AppText>
               <AppText
                 weight="regular"

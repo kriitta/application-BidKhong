@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
+import { useAuth } from "../../contexts/AuthContext";
 import { apiService, getFullImageUrl } from "../../utils/api";
 import {
   ActiveBid,
@@ -28,6 +29,7 @@ import { AppTextInput } from "../components/appTextInput";
 const MyBidPage = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user } = useAuth();
   const [selectedFilter, setSelectedFilter] = useState("All Bids");
   const [showHistory, setShowHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,22 +65,23 @@ const MyBidPage = () => {
 
   // ─── Fetch data ───
   const fetchData = useCallback(async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
     try {
-      const [activeResult, historyResult] = await Promise.all([
-        apiService.bid.getActiveBids(),
-        apiService.bid.getHistoryBids(),
-      ]);
-      setActiveBids(activeResult.bids);
-      setActiveStats(activeResult.stats);
-      setHistoryBids(historyResult.bids);
-      setHistoryStats(historyResult.stats);
+      const result = await apiService.bid.getMyBidsConstructed(user.id);
+      setActiveBids(result.activeBids);
+      setActiveStats(result.activeStats);
+      setHistoryBids(result.historyBids);
+      setHistoryStats(result.historyStats);
     } catch (error: any) {
       console.error("Failed to load bids:", error.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchData();
@@ -124,7 +127,8 @@ const MyBidPage = () => {
   // ─── Bid Modal actions ───
   const openBidModal = (item: ActiveBid) => {
     setBidModalItem(item);
-    const minBid = item.currentBid + 1; // default increment
+    const increment = item.bidIncrement || 1;
+    const minBid = item.currentBid + increment;
     setBidAmount(String(minBid));
     setBidModalVisible(true);
   };
@@ -372,7 +376,12 @@ const MyBidPage = () => {
                   : image.bidding;
 
                 return (
-                  <View key={bid.id} style={styles.bidCard}>
+                  <TouchableOpacity
+                    key={bid.id}
+                    activeOpacity={0.8}
+                    onPress={() => goToProductDetail(bid.auctionId)}
+                    style={styles.bidCard}
+                  >
                     {/* Status Badge */}
                     <View
                       style={[
@@ -403,15 +412,10 @@ const MyBidPage = () => {
                     </View>
 
                     {/* Product Image */}
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => goToProductDetail(bid.auctionId)}
-                    >
-                      <Image
-                        source={getImageSource(bid.image)}
-                        style={styles.productImage}
-                      />
-                    </TouchableOpacity>
+                    <Image
+                      source={getImageSource(bid.image)}
+                      style={styles.productImage}
+                    />
 
                     {/* Product Title */}
                     <AppText
@@ -485,7 +489,10 @@ const MyBidPage = () => {
                           elevation: 4,
                         },
                       ]}
-                      onPress={() => openBidModal(bid)}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        openBidModal(bid);
+                      }}
                     >
                       <AppText
                         weight="semibold"
@@ -495,7 +502,7 @@ const MyBidPage = () => {
                         {buttonText}
                       </AppText>
                     </TouchableOpacity>
-                  </View>
+                  </TouchableOpacity>
                 );
               })
             )}
@@ -527,7 +534,12 @@ const MyBidPage = () => {
                 const statusIcon = isWon ? image.won_mybids : image.lost_mybids;
 
                 return (
-                  <View key={bid.id} style={styles.bidCard}>
+                  <TouchableOpacity
+                    key={bid.id}
+                    activeOpacity={0.8}
+                    onPress={() => goToProductDetail(bid.auctionId)}
+                    style={styles.bidCard}
+                  >
                     {/* Status Badge */}
                     <View
                       style={[
@@ -558,15 +570,10 @@ const MyBidPage = () => {
                     </View>
 
                     {/* Product Image */}
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => goToProductDetail(bid.auctionId)}
-                    >
-                      <Image
-                        source={getImageSource(bid.image)}
-                        style={styles.productImage}
-                      />
-                    </TouchableOpacity>
+                    <Image
+                      source={getImageSource(bid.image)}
+                      style={styles.productImage}
+                    />
 
                     {/* Product Title */}
                     <AppText
@@ -650,7 +657,7 @@ const MyBidPage = () => {
                         View Detail
                       </AppText>
                     </TouchableOpacity>
-                  </View>
+                  </TouchableOpacity>
                 );
               })
             )}
@@ -741,7 +748,10 @@ const MyBidPage = () => {
                 weight="regular"
                 style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6 }}
               >
-                Minimum bid: {formatPrice(bidModalItem.currentBid + 1)}
+                Minimum bid:{" "}
+                {formatPrice(
+                  bidModalItem.currentBid + (bidModalItem.bidIncrement || 1),
+                )}
               </AppText>
             )}
           </View>
@@ -754,7 +764,11 @@ const MyBidPage = () => {
                   key={increment}
                   style={styles.quickAmountBtn}
                   onPress={() =>
-                    setBidAmount(String(bidModalItem.currentBid + increment))
+                    setBidAmount((prev) => {
+                      const current =
+                        parseFloat(prev) || bidModalItem.currentBid;
+                      return String(current + increment);
+                    })
                   }
                 >
                   <AppText

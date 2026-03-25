@@ -15,7 +15,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiService } from "../../utils/api";
-import { UserWallet } from "../../utils/api/types";
 import { AppText } from "../components/appText";
 import { HistoryFilterModal } from "../components/HistoryFilterModal";
 import { TopUpModal } from "../components/TopUpModal";
@@ -24,7 +23,7 @@ import { WithdrawModal } from "../components/WithdrawModal";
 const WalletPage = () => {
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, updateWallet } = useAuth();
 
   const [disablePointer, setDisablePointer] = useState(false);
   const [topUpModalVisible, setTopUpModalVisible] = useState(false);
@@ -169,7 +168,7 @@ const WalletPage = () => {
     };
   };
 
-  const wallet: UserWallet | undefined = user?.wallet;
+  const wallet = user?.wallet;
 
   const formatBalance = (amount?: string) => {
     if (!amount) return "฿0";
@@ -491,8 +490,27 @@ const WalletPage = () => {
       <TopUpModal
         visible={topUpModalVisible}
         onClose={() => setTopUpModalVisible(false)}
-        onConfirm={(amount, method) => {
-          alert(`Top Up ฿${amount} via ${method} successful!`);
+        onConfirm={async (amount, method) => {
+          try {
+            const result: any = await apiService.wallet.topUp({
+              amount,
+              method: method as any,
+            });
+            // อัปเดต wallet จาก response โดยตรง (ไม่ต้องพึ่ง getMe)
+            const nb = result?.newBalance || result?.wallet;
+            if (nb) {
+              updateWallet({
+                balance_available: String(
+                  nb.available ?? nb.balance_available ?? "",
+                ),
+                balance_total: String(nb.total ?? nb.balance_total ?? ""),
+                balance_pending: String(nb.pending ?? nb.balance_pending ?? ""),
+              });
+            }
+          } catch {
+            // TopUp modal ส่งสลิปแล้ว ถือว่าสำเร็จฝั่ง UI
+          }
+          fetchTransactions(selectedMonth, selectedYear);
         }}
       />
 
@@ -500,10 +518,29 @@ const WalletPage = () => {
       <WithdrawModal
         visible={withdrawModalVisible}
         onClose={() => setWithdrawModalVisible(false)}
-        onConfirm={(amount, bank, accountNumber, accountName) => {
-          alert(
-            `Withdraw ฿${amount} to ${bank}\nAccount: ${accountNumber}\nHolder: ${accountName}`,
-          );
+        onConfirm={async (amount, bank, accountNumber, accountName) => {
+          try {
+            const result: any = await apiService.wallet.withdraw({
+              amount,
+              bank_name: bank,
+              account_number: accountNumber,
+              account_name: accountName,
+            } as any);
+            // อัปเดต wallet จาก response โดยตรง
+            const nb = result?.newBalance || result?.wallet;
+            if (nb) {
+              updateWallet({
+                balance_available: String(
+                  nb.available ?? nb.balance_available ?? "",
+                ),
+                balance_total: String(nb.total ?? nb.balance_total ?? ""),
+                balance_pending: String(nb.pending ?? nb.balance_pending ?? ""),
+              });
+            }
+          } catch {
+            // Withdraw อาจ error ได้ แต่ UI ปิด modal ไปแล้ว
+          }
+          fetchTransactions(selectedMonth, selectedYear);
         }}
       />
 

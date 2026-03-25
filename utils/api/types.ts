@@ -77,7 +77,7 @@ export interface ResetPasswordRequest {
 // ─── Product (จาก API /products) ─────────────────────────────
 
 export type ProductTag = "hot" | "ending" | "incoming" | "default";
-export type ProductStatus = "active" | "ended" | "pending";
+export type ProductStatus = "active" | "ended" | "pending" | "completed";
 
 export interface ProductImage {
   id: number;
@@ -237,6 +237,7 @@ export interface ActiveBid {
   timeLeft: string;
   totalBids: number;
   status: "Winning" | "Outbid";
+  bidIncrement?: number;
 }
 
 export interface HistoryBid {
