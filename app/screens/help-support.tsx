@@ -24,6 +24,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { AppText } from "../components/appText";
 
 // FAQ Data
@@ -77,7 +78,6 @@ const REPORT_TYPES: { id: ReportType; label: string; color: string }[] = [
   { id: "scam", label: "🚨 หลอกลวง (Scam)", color: "#EF4444" },
   { id: "fake_product", label: "📦 สินค้าปลอม", color: "#F59E0B" },
   { id: "harassment", label: "😡 คุกคาม", color: "#EC4899" },
-  { id: "fraud", label: "💰 ฉ้อโกง", color: "#8B5CF6" },
   {
     id: "inappropriate_content",
     label: "⚠️ เนื้อหาไม่เหมาะสม",
@@ -97,6 +97,7 @@ const getReportTypeInfo = (type: ReportType) => {
 
 const HelpSupportPage = () => {
   const router = useRouter();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<"faq" | "report" | "status">(
     "faq",
   );
@@ -289,9 +290,9 @@ const HelpSupportPage = () => {
   };
 
   const tabs = [
-    { key: "faq" as const, label: "❓ FAQ" },
-    { key: "report" as const, label: "🚨 Report" },
-    { key: "status" as const, label: "📋 Status" },
+    { key: "faq" as const, label: t("tabFaq") },
+    { key: "report" as const, label: t("tabReport") },
+    { key: "status" as const, label: t("tabStatus") },
   ];
 
   const renderFAQTab = () => (
@@ -1029,7 +1030,7 @@ const HelpSupportPage = () => {
                       </View>
                       <View style={{ flex: 1 }}>
                         <AppText weight="semibold" style={styles.adminName}>
-                          Admin BidKhong
+                          {t("adminName")}
                         </AppText>
                       </View>
                     </View>
@@ -1039,7 +1040,6 @@ const HelpSupportPage = () => {
                   </View>
                 </View>
               )}
-              
             </ScrollView>
           </View>
         </View>
@@ -1064,7 +1064,7 @@ const HelpSupportPage = () => {
             numberOfLines={1}
             adjustsFontSizeToFit
           >
-            Help & Support
+            {t("helpSupportTitle")}
           </AppText>
           <View style={{ width: 40 }} />
         </SafeAreaView>

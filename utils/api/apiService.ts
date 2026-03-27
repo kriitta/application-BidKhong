@@ -1,57 +1,56 @@
 import axios from "axios";
 import apiClient, {
-  ApiResponse,
-  BASE_URL,
-  ENDPOINTS,
-  PaginatedResponse,
-  handleApiError,
-  tokenManager,
+    ApiResponse,
+    BASE_URL,
+    ENDPOINTS,
+    PaginatedResponse,
+    handleApiError,
+    tokenManager,
 } from "./config";
 import {
-  ActiveBid,
-  AdminIncomingProduct,
-  AdminReplyRequest,
-  AdminReport,
-  AdminStats,
-  AdminUpdateReportStatusRequest,
-  Auction,
-  AuctionDetail,
-  AuctionListType,
-  BidHistoryEntry,
-  BidStats,
-  BuyNowRequest,
-  Category,
-  CategoryProduct,
-  ChangePasswordRequest,
-  CreateAuctionRequest,
-  EvidenceImage,
-  FAQ,
-  ForgotPasswordRequest,
-  HistoryBid,
-  HistoryStats,
-  LoginRequest,
-  LoginResponse,
-  Order,
-  PlaceBidRequest,
-  Product,
-  ProductPaginatedResponse,
-  RegisterRequest,
-  ReportStatus,
-  ResetPasswordRequest,
-  SearchResult,
-  Subcategory,
-  SubmitReportRequest,
-  TopUpRequest,
-  Transaction,
-  TransactionFilter,
-  TrendingTag,
-  UpdateProfileRequest,
-  UploadResponse,
-  User,
-  UserReport,
-  WalletBalance,
-  WithdrawRequest,
-  WonProduct,
+    ActiveBid,
+    AdminIncomingProduct,
+    AdminReplyRequest,
+    AdminReport,
+    AdminStats,
+    AdminUpdateReportStatusRequest,
+    Auction,
+    AuctionDetail,
+    AuctionListType,
+    BidHistoryEntry,
+    BidStats,
+    BuyNowRequest,
+    Category,
+    CategoryProduct,
+    ChangePasswordRequest,
+    CreateAuctionRequest,
+    EvidenceImage,
+    FAQ,
+    ForgotPasswordRequest,
+    HistoryBid,
+    HistoryStats,
+    LoginRequest,
+    LoginResponse,
+    Order,
+    PlaceBidRequest,
+    Product,
+    ProductPaginatedResponse,
+    RegisterRequest,
+    ReportStatus,
+    ResetPasswordRequest,
+    SearchResult,
+    Subcategory,
+    SubmitReportRequest,
+    Transaction,
+    TransactionFilter,
+    TrendingTag,
+    UpdateProfileRequest,
+    UploadResponse,
+    User,
+    UserReport,
+    WalletBalance,
+    WithdrawRequest,
+    WonProduct,
 } from "./types";
 
 // ============================================================
@@ -92,6 +91,58 @@ const apiService = {
           await tokenManager.setToken(token);
         }
 
+        // หลัง login สำเร็จ → เรียก /profile เพื่อตรวจสอบ ban status
+        // (login response ไม่มี ban fields เพราะ backend เก็บใน user_strikes table)
+        // /auth/me ไม่มี (404) → ใช้ /profile แทน
+        try {
+          const profileResponse = await apiClient.get(ENDPOINTS.AUTH.PROFILE);
+          const profileData = profileResponse.data as any;
+          const freshUser =
+            profileData?.data || profileData?.user || profileData;
+          if (freshUser) {
+            // merge ban fields เข้า user object (ถ้า backend ส่งมา)
+            if (freshUser.is_banned !== undefined)
+              user.is_banned = freshUser.is_banned;
+            if (freshUser.banned_until !== undefined)
+              user.banned_until = freshUser.banned_until;
+            if (freshUser.ban_reason !== undefined)
+              user.ban_reason = freshUser.ban_reason;
+            // บาง backend ส่ง strikes array มาใน profile
+            if (freshUser.strikes?.length) {
+              const activeStrike = freshUser.strikes.find(
+                (s: any) => new Date(s.banned_until) > new Date(),
+              );
+              if (activeStrike) {
+                user.is_banned = true;
+                user.banned_until = activeStrike.banned_until;
+                user.ban_reason = activeStrike.reason || "บัญชีของคุณถูกระงับ";
+              }
+            }
+            // บาง backend ส่ง active_strike object เดี่ยว
+            if (freshUser.active_strike) {
+              user.is_banned = true;
+              user.banned_until = freshUser.active_strike.banned_until;
+              user.ban_reason =
+                freshUser.active_strike.reason || "บัญชีของคุณถูกระงับ";
+            }
+          }
+        } catch (profileError: any) {
+          // ถ้า 403 → interceptor จะ emit "banned" event ให้ AuthContext จัดการแล้ว
+          if (profileError?.response?.status === 403) {
+            const errData = profileError.response?.data as any;
+            user.is_banned = true;
+            user.banned_until =
+              errData?.banned_until || errData?.strike?.banned_until || null;
+            user.ban_reason =
+              errData?.reason ||
+              errData?.ban_reason ||
+              errData?.strike?.reason ||
+              errData?.message ||
+              "บัญชีของคุณถูกระงับ";
+          }
+          // ถ้า 404 = endpoint ไม่มี → ข้ามไป
+        }
+
         // เก็บ user data ไว้ใน AsyncStorage
         const AsyncStorage =
           require("@react-native-async-storage/async-storage").default;
@@ -127,12 +178,20 @@ const apiService = {
 
     getMe: async (): Promise<User> => {
       try {
+        // ลอง /auth/me ก่อน
         const response = await apiClient.get<ApiResponse<User>>(
           ENDPOINTS.AUTH.ME,
         );
         return response.data.data;
-      } catch (error) {
-        throw new Error(handleApiError(error));
+      } catch {
+        // ถ้า /auth/me ไม่มี (404) → ลอง /profile แทน
+        try {
+          const profileRes = await apiClient.get(ENDPOINTS.AUTH.PROFILE);
+          const data = profileRes.data as any;
+          return data?.data || data?.user || data;
+        } catch (error) {
+          throw new Error(handleApiError(error));
+        }
       }
     },
 
@@ -544,13 +603,26 @@ const apiService = {
       }
     },
 
-    topUp: async (
-      data: TopUpRequest,
-    ): Promise<{ transaction: Transaction; newBalance: WalletBalance }> => {
+    topUp: async (data: {
+      amount: number;
+      slipImageUri: string;
+      slipMimeType?: string;
+    }): Promise<{ transaction: Transaction; newBalance: WalletBalance }> => {
       try {
+        const formData = new FormData();
+        formData.append("amount", String(data.amount));
+        const mimeType = data.slipMimeType || "image/jpeg";
+        const ext = mimeType.split("/")[1] || "jpg";
+        formData.append("slip_image", {
+          uri: data.slipImageUri,
+          type: mimeType,
+          name: `slip.${ext}`,
+        } as any);
         const response = await apiClient.post<
           ApiResponse<{ transaction: Transaction; newBalance: WalletBalance }>
-        >(ENDPOINTS.WALLET.TOPUP, data);
+        >(ENDPOINTS.WALLET.TOPUP, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
         return response.data.data;
       } catch (error) {
         throw new Error(handleApiError(error));
@@ -933,12 +1005,19 @@ const apiService = {
       }
     },
 
-    getRecentSearches: async (): Promise<string[]> => {
+    getRecentSearches: async (): Promise<any[]> => {
       try {
-        const response = await apiClient.get<ApiResponse<string[]>>(
-          ENDPOINTS.SEARCH.RECENT,
-        );
-        return response.data.data;
+        const response = await apiClient.get(ENDPOINTS.SEARCH.HISTORY);
+        const data = response.data;
+        return data.data ?? data.history ?? data ?? [];
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    deleteSearchHistoryItem: async (id: number): Promise<void> => {
+      try {
+        await apiClient.delete(ENDPOINTS.SEARCH.HISTORY_DELETE(id));
       } catch (error) {
         throw new Error(handleApiError(error));
       }
@@ -946,7 +1025,15 @@ const apiService = {
 
     clearRecentSearches: async (): Promise<void> => {
       try {
-        await apiClient.delete(ENDPOINTS.SEARCH.RECENT);
+        await apiClient.delete(ENDPOINTS.SEARCH.HISTORY);
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    saveSearchKeyword: async (keyword: string): Promise<void> => {
+      try {
+        await apiClient.post(ENDPOINTS.SEARCH.HISTORY, { keyword });
       } catch (error) {
         throw new Error(handleApiError(error));
       }
@@ -1333,7 +1420,12 @@ const apiService = {
       try {
         const response = await apiClient.get(ENDPOINTS.ORDER.MY_ORDERS);
         const data = response.data;
-        return data.orders ?? data.data ?? [];
+        // Handle all possible response shapes from the backend
+        if (Array.isArray(data)) return data;
+        if (Array.isArray(data?.orders)) return data.orders;
+        if (Array.isArray(data?.data)) return data.data;
+        if (Array.isArray(data?.data?.orders)) return data.data.orders;
+        return [];
       } catch (error) {
         throw new Error(handleApiError(error));
       }
@@ -1345,8 +1437,8 @@ const apiService = {
      */
     getMyOrdersConstructed: async (userId: number): Promise<Order[]> => {
       try {
-        // Fetch completed + ended products
-        const [completedRes, endedRes] = await Promise.all([
+        // Fetch products across all statuses that might have ended
+        const [completedRes, endedRes, activeRes] = await Promise.all([
           apiClient
             .get<ProductPaginatedResponse>(ENDPOINTS.PRODUCT.LIST, {
               params: { per_page: 100, status: "completed" },
@@ -1357,12 +1449,25 @@ const apiService = {
               params: { per_page: 100, status: "ended" },
             })
             .catch(() => ({ data: { data: [] } as any })),
+          // Also include active products whose auction_end_time has already passed
+          apiClient
+            .get<ProductPaginatedResponse>(ENDPOINTS.PRODUCT.LIST, {
+              params: { per_page: 100, tag: "ending" },
+            })
+            .catch(() => ({ data: { data: [] } as any })),
         ]);
         const completedProducts: Product[] = completedRes.data?.data ?? [];
         const endedProducts: Product[] = endedRes.data?.data ?? [];
+        const activeEndedProducts: Product[] = (
+          activeRes.data?.data ?? []
+        ).filter((p: Product) => new Date(p.auction_end_time) < new Date());
 
         // Combine and deduplicate
-        const allProducts = [...completedProducts, ...endedProducts];
+        const allProducts = [
+          ...completedProducts,
+          ...endedProducts,
+          ...activeEndedProducts,
+        ];
         const seen = new Set<number>();
         const uniqueProducts = allProducts.filter((p) => {
           if (seen.has(p.id)) return false;
@@ -1459,6 +1564,219 @@ const apiService = {
       }
     },
 
+    /**
+     * Construct orders from the perspective of the SELLER.
+     * Used when /users/me/orders only returns buyer-side orders.
+     * Fetches the seller's own completed/ended products that have a winning bidder.
+     */
+    getMySellerOrdersConstructed: async (userId: number): Promise<Order[]> => {
+      try {
+        const [completedRes, endedRes] = await Promise.all([
+          apiClient
+            .get<ProductPaginatedResponse>(ENDPOINTS.PRODUCT.LIST, {
+              params: { per_page: 100, status: "completed" },
+            })
+            .catch(() => ({ data: { data: [] } as any })),
+          apiClient
+            .get<ProductPaginatedResponse>(ENDPOINTS.PRODUCT.LIST, {
+              params: { per_page: 100, status: "ended" },
+            })
+            .catch(() => ({ data: { data: [] } as any })),
+        ]);
+
+        const allProducts: Product[] = [
+          ...(completedRes.data?.data ?? []),
+          ...(endedRes.data?.data ?? []),
+        ];
+
+        // Keep only THIS user's products that have at least one bid
+        const seen = new Set<number>();
+        const myProducts = allProducts.filter((p: Product) => {
+          if (seen.has(p.id)) return false;
+          seen.add(p.id);
+          return p.user_id === userId && p.bids_count > 0;
+        });
+
+        // Fetch bids for each product to find the winner (highest bidder)
+        const results = await Promise.all(
+          myProducts.map(async (product: Product) => {
+            try {
+              const res = await apiClient.get(
+                ENDPOINTS.PRODUCT.BIDS(product.id),
+              );
+              const data = res.data;
+              const bids: any[] = Array.isArray(data)
+                ? data
+                : Array.isArray(data?.data)
+                  ? data.data
+                  : [];
+              return { product, bids };
+            } catch {
+              return { product, bids: [] as any[] };
+            }
+          }),
+        );
+
+        const orders: Order[] = [];
+        for (const { product, bids } of results) {
+          if (bids.length === 0) continue;
+
+          // Highest bid = winner
+          const sorted = [...bids].sort(
+            (a, b) => parseFloat(b.price) - parseFloat(a.price),
+          );
+          const winnerBid = sorted[0];
+          if (!winnerBid) continue;
+
+          const endedAt = product.updated_at || product.auction_end_time;
+          const deadline = new Date(
+            new Date(endedAt).getTime() + 24 * 60 * 60 * 1000,
+          );
+          const isExpired = deadline < new Date();
+
+          orders.push({
+            id: product.id,
+            product_id: product.id,
+            auction_id: product.id,
+            buyer_id: Number(winnerBid.user_id),
+            seller_id: userId,
+            my_role: "seller",
+            final_price: String(parseFloat(winnerBid.price)),
+            status: isExpired ? "expired" : ("pending_confirmation" as any),
+            confirmed_at: null,
+            shipped_at: null,
+            completed_at:
+              product.status === "completed" ? product.updated_at : null,
+            disputed_at: null,
+            cancelled_at: null,
+            expired_at: isExpired ? deadline.toISOString() : null,
+            deadline_at: deadline.toISOString(),
+            dispute_reason: null,
+            dispute_evidence_images: null,
+            created_at: product.updated_at || product.created_at,
+            updated_at: product.updated_at,
+            product: {
+              id: product.id,
+              name: product.name,
+              description: product.description,
+              picture: product.picture,
+              image_url: product.image_url,
+              images: product.images,
+            },
+            seller: {
+              id: userId,
+              name: "",
+              email: "",
+              phone_number: null,
+              profile_image: null,
+            },
+          } as Order);
+        }
+
+        return orders;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    /**
+     * Discover real seller orders with actual status from backend.
+     * Tries multiple strategies since /users/me/orders only returns buyer orders.
+     */
+    getSellerOrdersForProducts: async (
+      userId: number,
+      productIds: number[],
+    ): Promise<Order[]> => {
+      if (productIds.length === 0) return [];
+      const pidSet = new Set(productIds);
+
+      // Strategy 1: Check if /users/me/orders returns seller orders too
+      try {
+        const res = await apiClient.get(ENDPOINTS.ORDER.MY_ORDERS);
+        const data = res.data;
+        const all: Order[] = Array.isArray(data)
+          ? data
+          : (data?.orders ?? data?.data ?? []);
+        const sellerOrders = all.filter(
+          (o) => o.seller_id === userId || pidSet.has(o.product_id),
+        );
+        // Only use if we found orders matching seller's products
+        if (sellerOrders.some((o) => pidSet.has(o.product_id))) {
+          return sellerOrders
+            .filter((o) => pidSet.has(o.product_id))
+            .map((o) => ({ ...o, my_role: "seller" as const }));
+        }
+      } catch {}
+
+      // Strategy 2: Try with role=seller query param
+      try {
+        const res = await apiClient.get(ENDPOINTS.ORDER.MY_ORDERS, {
+          params: { role: "seller" },
+        });
+        const data = res.data;
+        const all: Order[] = Array.isArray(data)
+          ? data
+          : (data?.orders ?? data?.data ?? []);
+        if (all.length > 0) {
+          const matched = all
+            .filter((o) => pidSet.has(o.product_id))
+            .map((o) => ({ ...o, my_role: "seller" as const }));
+          if (matched.length > 0) return matched;
+        }
+      } catch {}
+
+      // Strategy 3: Scan recent order IDs to discover seller orders
+      try {
+        // Get max known order ID from buyer orders
+        const buyerRes = await apiClient.get(ENDPOINTS.ORDER.MY_ORDERS);
+        const buyerData = buyerRes.data;
+        const buyerOrders: Order[] = Array.isArray(buyerData)
+          ? buyerData
+          : (buyerData?.orders ?? buyerData?.data ?? []);
+        const maxId =
+          buyerOrders.length > 0
+            ? Math.max(...buyerOrders.map((o) => o.id))
+            : 0;
+
+        // Scan IDs from 1 to maxId + 10, skipping known buyer order IDs
+        const knownIds = new Set(buyerOrders.map((o) => o.id));
+        const scanMax = Math.max(maxId + 10, 15);
+        const idsToTry = Array.from(
+          { length: scanMax },
+          (_, i) => i + 1,
+        ).filter((id) => !knownIds.has(id));
+
+        const found: Order[] = [];
+        // Scan in small parallel batches to avoid flooding
+        for (let i = 0; i < idsToTry.length; i += 5) {
+          const batch = idsToTry.slice(i, i + 5);
+          const results = await Promise.allSettled(
+            batch.map((id) =>
+              apiClient
+                .get(ENDPOINTS.ORDER.DETAIL(id))
+                .then((r) => r.data?.order ?? r.data?.data ?? r.data),
+            ),
+          );
+          for (const r of results) {
+            if (r.status === "fulfilled" && r.value) {
+              const order = r.value as Order;
+              if (
+                pidSet.has(order.product_id) &&
+                (order.seller_id === userId || !order.seller_id)
+              ) {
+                found.push({ ...order, my_role: "seller" as const });
+              }
+            }
+          }
+          // Stop early if we found all products
+          if (found.length >= productIds.length) break;
+        }
+        return found;
+      } catch {}
+
+      return [];
+    },
+
     getOrderDetail: async (orderId: number): Promise<Order> => {
       try {
         const response = await apiClient.get(ENDPOINTS.ORDER.DETAIL(orderId));
@@ -1494,6 +1812,46 @@ const apiService = {
         const response = await apiClient.post(ENDPOINTS.ORDER.RECEIVE(orderId));
         const data = response.data;
         return data.order ?? data.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    getSellerRatings: async (
+      sellerId: number,
+    ): Promise<{
+      summary: {
+        average_rating: number;
+        total_reviews: number;
+        rating_breakdown: Record<string, number>;
+      };
+      ratings: any;
+    }> => {
+      try {
+        const response = await apiClient.get(
+          ENDPOINTS.ORDER.SELLER_RATINGS(sellerId),
+        );
+        return response.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    rateSeller: async (
+      sellerId: number,
+      orderId: number,
+      rating: number,
+    ): Promise<{
+      review: any;
+      seller_rating: number;
+      seller_total_reviews: number;
+    }> => {
+      try {
+        const response = await apiClient.post(
+          ENDPOINTS.ORDER.RATE_SELLER(sellerId),
+          { rating, order_id: orderId },
+        );
+        return response.data;
       } catch (error) {
         throw new Error(handleApiError(error));
       }

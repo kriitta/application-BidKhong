@@ -110,6 +110,8 @@ export const image = {
     all_product: require("./all_product.png"),
     location_seller: require("./location_seller.png"),
     recommend: require("./recommend.png"),
+    prompay: require("./prompay.jpeg"),
+    qr_code: require("./qr_code.png"),
     
     
 };

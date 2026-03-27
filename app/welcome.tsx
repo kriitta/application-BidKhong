@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../assets/images";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { getPublicStats } from "../utils/api";
 import { AppText } from "./components/appText";
 import { AuthModal } from "./components/AuthModal";
@@ -20,6 +21,7 @@ const WelcomePage = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { enterAsGuest } = useAuth();
+  const { t } = useLanguage();
   const [authModalVisible, setAuthModalVisible] = useState(false);
   const [totalUsers, setTotalUsers] = useState<number | null>(null);
   const [totalProducts, setTotalProducts] = useState<number | null>(null);
@@ -63,11 +65,10 @@ const WelcomePage = () => {
                 style={[styles.subtitle, { fontWeight: 600 }]}
                 numberOfLines={1}
               >
-                Your Ultimate Auction Platform
+                {t("welcomeTagline")}
               </AppText>
               <AppText style={styles.description} numberOfLines={3}>
-                Discover unique items, place bids in real-time, and win amazing
-                deals. Join thousands of happy bidders today!
+                {t("welcomeDescription")}
               </AppText>
             </View>
 
@@ -91,7 +92,7 @@ const WelcomePage = () => {
                   numberOfLines={1}
                   adjustsFontSizeToFit
                 >
-                  Active Users
+                  {t("activeUsers")}
                 </AppText>
               </View>
 
@@ -113,7 +114,7 @@ const WelcomePage = () => {
                   numberOfLines={1}
                   adjustsFontSizeToFit
                 >
-                  Product Auctions
+                  {t("productAuctions")}
                 </AppText>
               </View>
             </View>
@@ -137,10 +138,10 @@ const WelcomePage = () => {
                   style={styles.featureTitle}
                   numberOfLines={1}
                 >
-                  Real-Time Bidding
+                  {t("featureRealtimeBidding")}
                 </AppText>
                 <AppText style={styles.featureDescription} numberOfLines={2}>
-                  Place bids instantly and track live auctions
+                  {t("featureRealtimeBiddingDesc")}
                 </AppText>
               </View>
 
@@ -162,10 +163,10 @@ const WelcomePage = () => {
                   style={styles.featureTitle}
                   numberOfLines={1}
                 >
-                  Instant Alerts
+                  {t("featureAlerts")}
                 </AppText>
                 <AppText style={styles.featureDescription} numberOfLines={2}>
-                  Get notified when you are outbid
+                  {t("featureAlertsDesc")}
                 </AppText>
               </View>
 
@@ -187,10 +188,10 @@ const WelcomePage = () => {
                   style={styles.featureTitle}
                   numberOfLines={1}
                 >
-                  Win Great Deals
+                  {t("featureDeals")}
                 </AppText>
                 <AppText style={styles.featureDescription} numberOfLines={2}>
-                  Amazing products at competitive prices
+                  {t("featureDealsDesc")}
                 </AppText>
               </View>
             </View>
@@ -215,7 +216,7 @@ const WelcomePage = () => {
                     style={styles.primaryButtonText}
                     numberOfLines={1}
                   >
-                    Get Started Now
+                    {t("browseAsGuest")}
                   </AppText>
                   <AppText
                     weight="semibold"
@@ -236,7 +237,7 @@ const WelcomePage = () => {
                   style={styles.secondaryButtonText}
                   numberOfLines={1}
                 >
-                  I Have an Account
+                  {t("loginSignup")}
                 </AppText>
               </TouchableOpacity>
             </View>

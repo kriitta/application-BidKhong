@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { apiService } from "../../utils/api";
 import { AppText } from "../components/appText";
 import { HistoryFilterModal } from "../components/HistoryFilterModal";
@@ -24,6 +25,7 @@ const WalletPage = () => {
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
   const { user, refreshUser, updateWallet } = useAuth();
+  const { t, lang } = useLanguage();
 
   const [disablePointer, setDisablePointer] = useState(false);
   const [topUpModalVisible, setTopUpModalVisible] = useState(false);
@@ -143,18 +145,21 @@ const WalletPage = () => {
       const now = new Date();
       const diffMs = now.getTime() - txDate.getTime();
       const diffMins = Math.floor(diffMs / 60000);
-      if (diffMins < 1) timeText = "just now";
-      else if (diffMins < 60) timeText = `${diffMins} min ago`;
+      if (diffMins < 1) timeText = t("justNow");
+      else if (diffMins < 60) timeText = `${diffMins} ${t("minAgo")}`;
       else if (diffMins < 1440)
-        timeText = `${Math.floor(diffMins / 60)} hours ago`;
+        timeText = `${Math.floor(diffMins / 60)} ${t("hoursAgo")}`;
       else if (diffMins < 43200)
-        timeText = `${Math.floor(diffMins / 1440)} days ago`;
+        timeText = `${Math.floor(diffMins / 1440)} ${t("daysAgo")}`;
       else
-        timeText = txDate.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        });
+        timeText = txDate.toLocaleDateString(
+          lang === "th" ? "th-TH" : "en-US",
+          {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          },
+        );
     }
 
     return {
@@ -187,9 +192,9 @@ const WalletPage = () => {
   }, []);
 
   const quickActions = [
-    { id: 1, name: "Deposit", icon: image.deposit, bgColor: "#D6E9FF" },
-    { id: 2, name: "Withdraw", icon: image.withdraw, bgColor: "#D4F5DD" },
-    { id: 3, name: "History", icon: image.history, bgColor: "#E8D9FF" },
+    { id: 1, name: t("topUp"), icon: image.deposit, bgColor: "#D6E9FF" },
+    { id: 2, name: t("withdraw"), icon: image.withdraw, bgColor: "#D4F5DD" },
+    { id: 3, name: t("filter"), icon: image.history, bgColor: "#E8D9FF" },
   ];
 
   // Animation values
@@ -231,7 +236,7 @@ const WalletPage = () => {
                 numberOfLines={1}
                 style={styles.headerText}
               >
-                My Wallet
+                {t("walletTitle")}
               </AppText>
             </View>
 
@@ -252,7 +257,7 @@ const WalletPage = () => {
                   numberOfLines={1}
                   style={styles.balanceLabel}
                 >
-                  Total Balance
+                  {t("totalBalance")}
                 </AppText>
               </View>
               <View
@@ -280,7 +285,7 @@ const WalletPage = () => {
                     numberOfLines={1}
                     style={styles.topUpText}
                   >
-                    + Top Up
+                    + {t("topUp")}
                   </AppText>
                 </TouchableOpacity>
               </View>
@@ -290,7 +295,7 @@ const WalletPage = () => {
               <View style={styles.balanceDetails}>
                 <View style={styles.balanceItem}>
                   <AppText numberOfLines={1} style={styles.balanceSubLabel}>
-                    Available
+                    {t("availableBalance")}
                   </AppText>
                   <AppText
                     weight="medium"
@@ -303,7 +308,7 @@ const WalletPage = () => {
                 </View>
                 <View style={styles.balanceItem}>
                   <AppText numberOfLines={1} style={styles.balanceSubLabel}>
-                    In Pending Bids
+                    {t("pendingBalance")}
                   </AppText>
                   <AppText
                     weight="medium"
@@ -381,8 +386,8 @@ const WalletPage = () => {
               style={styles.sectionTitle}
             >
               {selectedMonth && selectedYear
-                ? `Transactions - ${new Date(selectedYear, selectedMonth - 1).toLocaleDateString("en-US", { month: "long", year: "numeric" })}`
-                : "Recent Transactions"}
+                ? `${t("transactionHistory")} - ${new Date(selectedYear, selectedMonth - 1).toLocaleDateString(lang === "th" ? "th-TH" : "en-US", { month: "long", year: "numeric" })}`
+                : t("transactionHistory")}
             </AppText>
             {selectedMonth && selectedYear && (
               <TouchableOpacity
@@ -403,7 +408,7 @@ const WalletPage = () => {
                   style={{ fontSize: 11, color: "#FF4444" }}
                   numberOfLines={1}
                 >
-                  Clear
+                  {t("clear")}
                 </AppText>
               </TouchableOpacity>
             )}
@@ -432,8 +437,8 @@ const WalletPage = () => {
                   style={{ color: "#9CA3AF", fontSize: 13, marginTop: 8 }}
                 >
                   {selectedMonth && selectedYear
-                    ? "No transactions found for this period"
-                    : "No recent transactions"}
+                    ? t("noTransactions")
+                    : t("noTransactions")}
                 </AppText>
               </View>
             ) : (
@@ -490,25 +495,17 @@ const WalletPage = () => {
       <TopUpModal
         visible={topUpModalVisible}
         onClose={() => setTopUpModalVisible(false)}
-        onConfirm={async (amount, method) => {
-          try {
-            const result: any = await apiService.wallet.topUp({
-              amount,
-              method: method as any,
+        onConfirm={(result) => {
+          // TopUpModal จัดการเรียก API เสร็จแล้ว อัปเดต wallet จาก response
+          const nb = result?.newBalance || result?.wallet;
+          if (nb) {
+            updateWallet({
+              balance_available: String(
+                nb.available ?? nb.balance_available ?? "",
+              ),
+              balance_total: String(nb.total ?? nb.balance_total ?? ""),
+              balance_pending: String(nb.pending ?? nb.balance_pending ?? ""),
             });
-            // อัปเดต wallet จาก response โดยตรง (ไม่ต้องพึ่ง getMe)
-            const nb = result?.newBalance || result?.wallet;
-            if (nb) {
-              updateWallet({
-                balance_available: String(
-                  nb.available ?? nb.balance_available ?? "",
-                ),
-                balance_total: String(nb.total ?? nb.balance_total ?? ""),
-                balance_pending: String(nb.pending ?? nb.balance_pending ?? ""),
-              });
-            }
-          } catch {
-            // TopUp modal ส่งสลิปแล้ว ถือว่าสำเร็จฝั่ง UI
           }
           fetchTransactions(selectedMonth, selectedYear);
         }}

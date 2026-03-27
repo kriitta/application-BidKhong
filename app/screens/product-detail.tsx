@@ -21,6 +21,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { apiService, getFullImageUrl } from "../../utils/api";
 import { Product, ProductBid } from "../../utils/api/types";
 import { AppText } from "../components/appText";
@@ -32,17 +33,22 @@ const { width } = Dimensions.get("window");
 const ProductDetailPage = () => {
   const { productId } = useLocalSearchParams();
   const router = useRouter();
+  const { t } = useLanguage();
   const [bidAmount, setBidAmount] = useState("");
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const imageScrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
-  const { isGuest } = useAuth();
+  const { isGuest, user } = useAuth();
   const [authModalVisible, setAuthModalVisible] = useState(false);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [bidHistory, setBidHistory] = useState<ProductBid[]>([]);
+  const [sellerRating, setSellerRating] = useState<{
+    average: number;
+    total: number;
+  } | null>(null);
 
   // ─── Real-time countdown tick (re-render every second) ───
   const [, setTick] = useState(0);
@@ -59,13 +65,25 @@ const ProductDetailPage = () => {
         if (!id) return;
         const data = await apiService.product.getProduct(id);
         setProduct(data);
-        // Fetch bid history
-        try {
-          const bids = await apiService.product.getProductBids(id);
-          setBidHistory(bids);
-        } catch (e) {
-          // bid history optional
-        }
+        // Fetch bid history + seller ratings in parallel
+        const sellerId = data.user?.id || data.user_id;
+        await Promise.all([
+          apiService.product
+            .getProductBids(id)
+            .then((bids) => setBidHistory(bids))
+            .catch(() => {}),
+          sellerId
+            ? apiService.order
+                .getSellerRatings(sellerId)
+                .then((res) =>
+                  setSellerRating({
+                    average: res.summary.average_rating,
+                    total: res.summary.total_reviews,
+                  }),
+                )
+                .catch(() => {})
+            : Promise.resolve(),
+        ]);
       } catch (error: any) {
         console.error("Failed to fetch product:", error.message);
       } finally {
@@ -122,7 +140,7 @@ const ProductDetailPage = () => {
     const now = new Date();
     const end = new Date(endTime);
     const diff = end.getTime() - now.getTime();
-    if (diff <= 0) return "Ended";
+    if (diff <= 0) return t("ended");
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -147,6 +165,7 @@ const ProductDetailPage = () => {
     ? parseFloat(product.bid_increment)
     : 0;
   const minBidAmount = currentBid + bidIncrement;
+  const isOwner = !!product && !!user && product.user_id === user.id;
   const productImages = getProductImages();
 
   const [bidLoading, setBidLoading] = useState(false);
@@ -282,14 +301,14 @@ const ProductDetailPage = () => {
         ]}
       >
         <AppText weight="medium" style={{ color: "#999", fontSize: 16 }}>
-          Product not found
+          {t("productNotFound")}
         </AppText>
         <TouchableOpacity
           onPress={() => router.back()}
           style={{ marginTop: 16 }}
         >
           <AppText weight="semibold" style={{ color: "#003d82", fontSize: 16 }}>
-            Go Back
+            {t("goBack")}
           </AppText>
         </TouchableOpacity>
       </SafeAreaView>
@@ -418,29 +437,23 @@ const ProductDetailPage = () => {
                 numberOfLines={1}
               >
                 {isHot
-                  ? "🔥 Hot"
+                  ? t("tagHot")
                   : isEnding
-                    ? "⏰ Ending Soon"
+                    ? t("tagEndingSoon")
                     : isDefault
                       ? ""
-                      : "🔜 Incoming"}
+                      : t("tagIncoming")}
               </AppText>
             </View>
           )}
-          {product.certificate && (
+          {product.certificate?.status === "approved" && (
             <View
               style={[
                 styles.tag,
                 {
-                  backgroundColor:
-                    product.certificate.status === "approved"
-                      ? "#E8F5E9"
-                      : "#FFF8E1",
+                  backgroundColor: "#E8F5E9",
                   borderWidth: 0.5,
-                  borderColor:
-                    product.certificate.status === "approved"
-                      ? "#4CAF50"
-                      : "#FFC107",
+                  borderColor: "#4CAF50",
                 },
               ]}
             >
@@ -449,17 +462,12 @@ const ProductDetailPage = () => {
                 style={[
                   styles.tagText,
                   {
-                    color:
-                      product.certificate.status === "approved"
-                        ? "#2E7D32"
-                        : "#F57F17",
+                    color: "#2E7D32",
                   },
                 ]}
                 numberOfLines={1}
               >
-                {product.certificate.status === "approved"
-                  ? "✅ Certified"
-                  : "🕐 Pending Certificate"}
+                {t("tagCertified")}
               </AppText>
             </View>
           )}
@@ -518,7 +526,7 @@ const ProductDetailPage = () => {
                 style={styles.sellerName}
                 numberOfLines={1}
               >
-                {product.user?.name || "Unknown Seller"}
+                {product.user?.name || t("unknownSeller")}
               </AppText>
               <AppText
                 weight="regular"
@@ -553,6 +561,27 @@ const ProductDetailPage = () => {
                   `ID: ${product.user_id}`}
               </AppText>
             </View>
+            {sellerRating && (
+              <View style={styles.sellerRatingRow}>
+                <View style={styles.sellerStars}>
+                  {[1, 2, 3, 4, 5].map((star) => {
+                    const filled = sellerRating.average >= star;
+                    const half = !filled && sellerRating.average >= star - 0.5;
+                    return (
+                      <AppText key={star} style={styles.sellerStarText}>
+                        {filled ? "⭐" : half ? "⭐" : "☆"}
+                      </AppText>
+                    );
+                  })}
+                </View>
+                <AppText weight="semibold" style={styles.sellerRatingText}>
+                  {sellerRating.average.toFixed(1)}
+                </AppText>
+                <AppText weight="regular" style={styles.sellerReviewCount}>
+                  ({sellerRating.total} รีวิว)
+                </AppText>
+              </View>
+            )}
           </View>
         </View>
 
@@ -571,14 +600,14 @@ const ProductDetailPage = () => {
                 style={styles.incomingBannerTitle}
                 numberOfLines={1}
               >
-                Upcoming Auction
+                {t("upcomingAuction")}
               </AppText>
               <AppText
                 weight="regular"
                 style={styles.incomingBannerSub}
                 numberOfLines={2}
               >
-                This auction hasn't started yet. Starts in{" "}
+                {t("auctionNotStarted")}{" "}
                 {formatTimeRemaining(product.auction_start_time)}.
               </AppText>
             </View>
@@ -621,7 +650,7 @@ const ProductDetailPage = () => {
                 style={styles.bidLabelSmall}
                 numberOfLines={1}
               >
-                Current Bid
+                {t("currentBid")}
               </AppText>
               <AppText
                 weight="bold"
@@ -657,7 +686,7 @@ const ProductDetailPage = () => {
                   style={[styles.bidLabel, { color: "#2C7BFC" }]}
                   numberOfLines={1}
                 >
-                  Buy Now
+                  {t("buyNow")}
                 </AppText>
               </View>
               <AppText
@@ -665,7 +694,7 @@ const ProductDetailPage = () => {
                 style={styles.bidLabelSmall}
                 numberOfLines={1}
               >
-                Buyout Price
+                {t("buyoutPriceLabel")}
               </AppText>
               <AppText
                 weight="bold"
@@ -696,7 +725,8 @@ const ProductDetailPage = () => {
               style={styles.minimumBidText}
               numberOfLines={1}
             >
-              Minimum bid increment: ฿{bidIncrement.toLocaleString()}
+              {t("minimumIncrement")}
+              {bidIncrement.toLocaleString()}
             </AppText>
           </View>
         )}
@@ -738,7 +768,7 @@ const ProductDetailPage = () => {
                 style={styles.bidLabelSmall}
                 numberOfLines={1}
               >
-                Current Bid
+                {t("currentBid")}
               </AppText>
               <AppText
                 weight="bold"
@@ -776,7 +806,7 @@ const ProductDetailPage = () => {
                   style={[styles.bidLabel, { color: "#2C7BFC" }]}
                   numberOfLines={1}
                 >
-                  Buy Now
+                  {t("buyNow")}
                 </AppText>
               </View>
               <AppText
@@ -784,7 +814,7 @@ const ProductDetailPage = () => {
                 style={styles.bidLabelSmall}
                 numberOfLines={1}
               >
-                Buyout Price
+                {t("buyoutPriceLabel")}
               </AppText>
               <AppText
                 weight="bold"
@@ -834,15 +864,15 @@ const ProductDetailPage = () => {
                 numberOfLines={1}
               >
                 {product?.status === "completed"
-                  ? "Sold — Bought Now"
-                  : "Auction Ended"}
+                  ? t("soldBoughtNow")
+                  : t("auctionEnded")}
               </AppText>
               <AppText
                 weight="regular"
                 style={{ fontSize: 12, color: "#991B1B", marginTop: 2 }}
                 numberOfLines={1}
               >
-                This auction is no longer accepting bids.
+                {t("auctionEndedSub")}
               </AppText>
             </View>
           </View>
@@ -858,27 +888,41 @@ const ProductDetailPage = () => {
                   style={styles.minBidLabel}
                   numberOfLines={1}
                 >
-                  Place Your Bid
+                  {t("placeYourBid")}
                 </AppText>
                 <View style={styles.inputRow}>
                   <TextInput
-                    style={styles.biddingInput}
+                    style={[
+                      styles.biddingInput,
+                      isOwner && {
+                        backgroundColor: "#F3F4F6",
+                        color: "#9CA3AF",
+                      },
+                    ]}
                     placeholder={`Min : ฿${minBidAmount.toLocaleString()}`}
                     placeholderTextColor="#9CA3AF"
                     keyboardType="decimal-pad"
                     value={bidAmount}
                     onChangeText={setBidAmount}
+                    editable={!isOwner}
                   />
-                  <TouchableOpacity onPress={handleBid}>
+                  <TouchableOpacity onPress={handleBid} disabled={isOwner}>
                     <LinearGradient
-                      colors={["#00112E", "#003994"]}
+                      colors={
+                        isOwner
+                          ? ["#D1D5DB", "#D1D5DB"]
+                          : ["#00112E", "#003994"]
+                      }
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={styles.primaryButton}
                     >
                       <AppText
                         weight="bold"
-                        style={styles.bidButtonText}
+                        style={[
+                          styles.bidButtonText,
+                          isOwner && { color: "#9CA3AF" },
+                        ]}
                         numberOfLines={1}
                       >
                         Bid
@@ -901,7 +945,8 @@ const ProductDetailPage = () => {
                     style={styles.minimumBidText}
                     numberOfLines={1}
                   >
-                    Minimum bid increment: ฿{bidIncrement.toLocaleString()}
+                    {t("minimumIncrement")}
+                    {bidIncrement.toLocaleString()}
                   </AppText>
                 </View>
               </View>
@@ -912,7 +957,7 @@ const ProductDetailPage = () => {
         {/* Auction Information */}
         <View style={styles.auctionInfoSection}>
           <AppText weight="bold" style={styles.sectionTitle} numberOfLines={1}>
-            Auction Information
+            {t("auctionInformation")}
           </AppText>
 
           <View style={styles.infoRow}>
@@ -928,7 +973,7 @@ const ProductDetailPage = () => {
                 style={styles.infoLabel}
                 numberOfLines={1}
               >
-                {isIncoming ? "Starts" : "Ends"}
+                {isIncoming ? t("starts") : t("ends")}
               </AppText>
               <AppText
                 weight="semibold"
@@ -955,7 +1000,7 @@ const ProductDetailPage = () => {
                 style={styles.infoLabel}
                 numberOfLines={1}
               >
-                {isIncoming ? "Starts In" : "Time Remaining"}
+                {isIncoming ? t("startsIn") : t("timeRemaining")}
               </AppText>
               <AppText
                 weight="semibold"
@@ -982,7 +1027,7 @@ const ProductDetailPage = () => {
                 style={styles.infoLabel}
                 numberOfLines={1}
               >
-                Starting Bid
+                {t("startingBid")}
               </AppText>
               <AppText
                 weight="semibold"
@@ -1007,7 +1052,7 @@ const ProductDetailPage = () => {
                 style={styles.infoLabel}
                 numberOfLines={1}
               >
-                Location
+                {t("location")}
               </AppText>
               <AppText
                 weight="semibold"
@@ -1023,7 +1068,7 @@ const ProductDetailPage = () => {
         {/* Description */}
         <View style={styles.descriptionSection}>
           <AppText weight="bold" style={styles.sectionTitle} numberOfLines={1}>
-            Description
+            {t("description")}
           </AppText>
           <AppText
             weight="regular"
@@ -1042,7 +1087,7 @@ const ProductDetailPage = () => {
               style={styles.sectionTitle}
               numberOfLines={1}
             >
-              Bid History
+              {t("bidHistory")}
               <AppText
                 weight="regular"
                 style={styles.bidHistoryCount}
@@ -1063,12 +1108,12 @@ const ProductDetailPage = () => {
                 const timeAgo = () => {
                   const diff = Date.now() - bidTime.getTime();
                   const mins = Math.floor(diff / 60000);
-                  if (mins < 1) return "just now";
-                  if (mins < 60) return `${mins}m ago`;
+                  if (mins < 1) return t("justNow");
+                  if (mins < 60) return `${mins}${t("mAgo")}`;
                   const hrs = Math.floor(mins / 60);
-                  if (hrs < 24) return `${hrs}h ago`;
+                  if (hrs < 24) return `${hrs}${t("hAgo")}`;
                   const days = Math.floor(hrs / 24);
-                  return `${days}d ago`;
+                  return `${days}${t("dAgo")}`;
                 };
                 return (
                   <View key={bid.id || index} style={styles.bidHistoryItem}>
@@ -1149,15 +1194,15 @@ const ProductDetailPage = () => {
                 weight="regular"
                 style={{ color: "#9CA3AF", fontSize: 13, marginTop: 8 }}
               >
-                No bids yet
+                {t("noBidsYet")}
               </AppText>
             )}
           </View>
         )}
       </ScrollView>
 
-      {/* Bottom Action Buttons — hidden for incoming & ended */}
-      {!isIncoming && !isAuctionEnded && (
+      {/* Bottom Action Buttons — hidden for incoming, ended, or own product */}
+      {!isIncoming && !isAuctionEnded && product?.user_id !== user?.id && (
         <View
           style={[
             styles.bottomButtonsContainer,
@@ -1185,7 +1230,7 @@ const ProductDetailPage = () => {
                   style={styles.placeBidButtonText}
                   numberOfLines={1}
                 >
-                  Place Bid
+                  {t("placeBid")}
                 </AppText>
               )}
             </LinearGradient>
@@ -1212,7 +1257,7 @@ const ProductDetailPage = () => {
                   style={styles.buyNowButtonText}
                   numberOfLines={1}
                 >
-                  Buy Now
+                  {t("buyNow")}
                 </AppText>
               )}
             </LinearGradient>
@@ -1382,6 +1427,29 @@ const styles = StyleSheet.create({
   sellerUserId: {
     fontSize: 13,
     color: "#6B7280",
+  },
+  sellerRatingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  sellerStars: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 4,
+  },
+  sellerStarText: {
+    fontSize: 11,
+    marginRight: 1,
+  },
+  sellerRatingText: {
+    fontSize: 13,
+    color: "#F59E0B",
+    marginRight: 4,
+  },
+  sellerReviewCount: {
+    fontSize: 12,
+    color: "#9CA3AF",
   },
   bidInfoContainer: {
     paddingHorizontal: 20,

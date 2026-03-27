@@ -24,6 +24,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { apiService } from "../../utils/api";
 import { Category, Subcategory } from "../../utils/api/types";
 import { AppText } from "../components/appText";
@@ -111,6 +112,7 @@ const THAI_PROVINCES = [
 
 const SellerPage = () => {
   const router = useRouter();
+  const { t } = useLanguage();
 
   // ─── Intro splash animation ───
   const [showIntro, setShowIntro] = useState(true);
@@ -415,38 +417,38 @@ const SellerPage = () => {
   // ─── Validation & Submit ───
   const handleCreateAuction = async () => {
     if (!productTitle.trim()) {
-      Alert.alert("Required", "Please enter a product title.");
+      Alert.alert("Required", t("reqTitle"));
       return;
     }
     if (!selectedCategoryId || !selectedSubcategoryId) {
-      Alert.alert("Required", "Please select a category and subcategory.");
+      Alert.alert("Required", t("reqCategorySub"));
       return;
     }
     if (!description.trim()) {
-      Alert.alert("Required", "Please enter a description.");
+      Alert.alert("Required", t("reqDescription"));
       return;
     }
     if (!startingBid.trim()) {
-      Alert.alert("Required", "Please enter a starting bid price.");
+      Alert.alert("Required", t("reqStartingBid"));
       return;
     }
     if (!location.trim()) {
-      Alert.alert("Required", "Please select a location.");
+      Alert.alert("Required", t("reqLocation"));
       return;
     }
     if (!auctionStartDate || !auctionStartTime) {
-      Alert.alert("Required", "Please select auction start date and time.");
+      Alert.alert("Required", t("reqStartDateTime"));
       return;
     }
     if (!auctionDate || !auctionTime) {
-      Alert.alert("Required", "Please select auction end date and time.");
+      Alert.alert("Required", t("reqEndDateTime"));
       return;
     }
 
     const startTime = buildDateTimeString(auctionStartDate, auctionStartTime);
     const endTime = buildDateTimeString(auctionDate, auctionTime);
     if (!startTime || !endTime) {
-      Alert.alert("Error", "Invalid auction time.");
+      Alert.alert("Error", t("errInvalidTime"));
       return;
     }
 
@@ -529,10 +531,10 @@ const SellerPage = () => {
             style={{ width: 220, height: 220 }}
           />
           <AppText weight="bold" style={styles.introTitle}>
-            Seller Mode
+            {t("sellerModeTitle")}
           </AppText>
           <AppText weight="regular" style={styles.introSubtitle}>
-            กำลังเตรียมหน้าสร้างประมูล...
+            {t("sellerModeSubtitle")}
           </AppText>
         </Animated.View>
       )}
@@ -552,7 +554,7 @@ const SellerPage = () => {
               numberOfLines={1}
               style={styles.headerTitle}
             >
-              Create Auction
+              {t("createAuction")}
             </AppText>
             <View style={{ width: 40 }} />
           </View>
@@ -574,7 +576,7 @@ const SellerPage = () => {
                   numberOfLines={1}
                   style={styles.sectionTitle}
                 >
-                  Product Photos * (Max 8)
+                  {t("productPhotos")}
                 </AppText>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -600,7 +602,7 @@ const SellerPage = () => {
                       </View>
                       {index === 0 && (
                         <Text style={styles.photoHint}>
-                          First Photo will be the cover image
+                          {t("firstPhotoCover")}
                         </Text>
                       )}
                     </View>
@@ -612,7 +614,7 @@ const SellerPage = () => {
                       onPress={handleAddPhoto}
                     >
                       <Text style={styles.addPhotoIcon}>+</Text>
-                      <Text style={styles.addPhotoText}>Add Photo</Text>
+                      <Text style={styles.addPhotoText}>{t("addPhoto")}</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -622,7 +624,7 @@ const SellerPage = () => {
             {/* ════════ Product Title ════════ */}
             <View style={styles.section}>
               <AppText weight="medium" numberOfLines={1} style={styles.label}>
-                Product Title *
+                {t("productTitle")}
               </AppText>
               <TextInput
                 style={styles.input}
@@ -636,7 +638,7 @@ const SellerPage = () => {
             {/* ════════ Category ════════ */}
             <View style={styles.section}>
               <AppText weight="medium" numberOfLines={1} style={styles.label}>
-                Category *
+                {t("category")}
               </AppText>
               {loadingCategories ? (
                 <ActivityIndicator
@@ -682,7 +684,7 @@ const SellerPage = () => {
             {selectedCategoryId && subcategories.length > 0 && (
               <View style={styles.section}>
                 <AppText weight="medium" numberOfLines={1} style={styles.label}>
-                  Subcategory *
+                  {t("subcategory")}
                 </AppText>
                 <View style={styles.gridContainer}>
                   {subcategories.map((sub) => (
@@ -731,7 +733,7 @@ const SellerPage = () => {
                   numberOfLines={1}
                   style={styles.sectionTitle}
                 >
-                  Description *
+                  {t("descriptionStar")}
                 </AppText>
               </View>
               <TextInput
@@ -758,7 +760,7 @@ const SellerPage = () => {
                   numberOfLines={1}
                   style={styles.sectionTitle}
                 >
-                  Location *
+                  {t("locationStar")}
                 </AppText>
               </View>
               <TouchableOpacity
@@ -805,7 +807,7 @@ const SellerPage = () => {
                     numberOfLines={1}
                     style={styles.sectionTitle}
                   >
-                    Pricing
+                    {t("pricing")}
                   </AppText>
                 </View>
 
@@ -815,7 +817,7 @@ const SellerPage = () => {
                     numberOfLines={1}
                     style={styles.priceLabel}
                   >
-                    Starting Bid *
+                    {t("startingBidStar")}
                   </AppText>
                   <View style={styles.priceInputWrapper}>
                     <Text style={styles.currencySymbol}>฿</Text>
@@ -836,7 +838,7 @@ const SellerPage = () => {
                     numberOfLines={1}
                     style={styles.priceLabel}
                   >
-                    Bid Increment *
+                    {t("bidIncrementStar")}
                   </AppText>
                   <View style={styles.priceInputWrapper}>
                     <Text style={styles.currencySymbol}>฿</Text>
@@ -866,7 +868,7 @@ const SellerPage = () => {
                     numberOfLines={1}
                     style={styles.priceLabel}
                   >
-                    Buyout Price
+                    {t("buyoutPrice")}
                   </AppText>
                   <View style={styles.priceInputWrapper}>
                     <Text style={styles.currencySymbol}>฿</Text>
@@ -884,9 +886,7 @@ const SellerPage = () => {
                       source={image.info}
                       style={{ width: 16, height: 16 }}
                     />
-                    <Text style={styles.infoText}>
-                      Buyers can purchase immediately at this price
-                    </Text>
+                    <Text style={styles.infoText}>{t("buyoutPriceInfo")}</Text>
                   </View>
                 </View>
               </View>
@@ -904,7 +904,7 @@ const SellerPage = () => {
                   numberOfLines={1}
                   style={styles.sectionTitle}
                 >
-                  Auction Start Date & Time *
+                  {t("auctionStartDateTime")}
                 </AppText>
               </View>
               <View style={styles.dateTimeContainer}>
@@ -971,13 +971,13 @@ const SellerPage = () => {
               {auctionStartDate && auctionStartTime && (
                 <View style={styles.dateTimeSummary}>
                   <AppText style={{ fontSize: 13, color: "#6B7280" }}>
-                    Auction starts:{" "}
+                    {t("auctionStartsSummary")}{" "}
                   </AppText>
                   <AppText
                     weight="semibold"
                     style={{ fontSize: 13, color: "#16A34A" }}
                   >
-                    {formatDate(auctionStartDate)} at{" "}
+                    {formatDate(auctionStartDate)} {t("at")}{" "}
                     {formatTime(auctionStartTime)}
                   </AppText>
                 </View>
@@ -996,7 +996,7 @@ const SellerPage = () => {
                   numberOfLines={1}
                   style={styles.sectionTitle}
                 >
-                  Auction End Date & Time *
+                  {t("auctionEndDateTime")}
                 </AppText>
               </View>
               <View style={styles.dateTimeContainer}>
@@ -1059,13 +1059,14 @@ const SellerPage = () => {
               {auctionDate && auctionTime && (
                 <View style={styles.dateTimeSummary}>
                   <AppText style={{ fontSize: 13, color: "#6B7280" }}>
-                    Auction ends:{" "}
+                    {t("auctionEndsSummary")}{" "}
                   </AppText>
                   <AppText
                     weight="semibold"
                     style={{ fontSize: 13, color: "#2563EB" }}
                   >
-                    {formatDate(auctionDate)} at {formatTime(auctionTime)}
+                    {formatDate(auctionDate)} {t("at")}{" "}
+                    {formatTime(auctionTime)}
                   </AppText>
                 </View>
               )}
@@ -1080,11 +1081,11 @@ const SellerPage = () => {
                   numberOfLines={1}
                   style={styles.sectionTitle}
                 >
-                  Certificate of Authenticity
+                  {t("certificate")}
                 </AppText>
                 <View style={styles.optionalBadge}>
                   <AppText weight="regular" style={styles.optionalBadgeText}>
-                    Optional
+                    {t("certOptional")}
                   </AppText>
                 </View>
               </View>
@@ -1096,7 +1097,7 @@ const SellerPage = () => {
                   color="#6B7280"
                 />
                 <AppText weight="regular" style={styles.certInfoText}>
-                  Upload a certificate to prove this product is authentic
+                  {t("certInfo")}
                 </AppText>
               </View>
 
@@ -1121,7 +1122,7 @@ const SellerPage = () => {
                         weight="medium"
                         style={{ fontSize: 13, color: "#2563EB" }}
                       >
-                        Change
+                        {t("change")}
                       </AppText>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -1137,7 +1138,7 @@ const SellerPage = () => {
                         weight="medium"
                         style={{ fontSize: 13, color: "#EF4444" }}
                       >
-                        Remove
+                        {t("remove")}
                       </AppText>
                     </TouchableOpacity>
                   </View>
@@ -1153,10 +1154,10 @@ const SellerPage = () => {
                     color="#9CA3AF"
                   />
                   <AppText weight="medium" style={styles.certUploadText}>
-                    Upload Certificate
+                    {t("uploadCertificate")}
                   </AppText>
                   <AppText weight="regular" style={styles.certUploadHint}>
-                    JPG, PNG supported
+                    {t("certHint")}
                   </AppText>
                 </TouchableOpacity>
               )}
@@ -1182,7 +1183,7 @@ const SellerPage = () => {
                     numberOfLines={1}
                     style={styles.createButtonText}
                   >
-                    Create Auction
+                    {t("createAuction")}
                   </AppText>
                 )}
               </TouchableOpacity>
@@ -1303,11 +1304,11 @@ const SellerPage = () => {
                         weight="medium"
                         style={{ fontSize: 16, color: "#FF3B30" }}
                       >
-                        Cancel
+                        {t("cancelPicker")}
                       </AppText>
                     </TouchableOpacity>
                     <AppText weight="semibold" style={{ fontSize: 16 }}>
-                      Start Date
+                      {t("startDate")}
                     </AppText>
                     <TouchableOpacity
                       onPress={() => {
@@ -1319,7 +1320,7 @@ const SellerPage = () => {
                         weight="medium"
                         style={{ fontSize: 16, color: "#4285F4" }}
                       >
-                        Done
+                        {t("donePicker")}
                       </AppText>
                     </TouchableOpacity>
                   </View>
@@ -1362,11 +1363,11 @@ const SellerPage = () => {
                         weight="medium"
                         style={{ fontSize: 16, color: "#FF3B30" }}
                       >
-                        Cancel
+                        {t("cancelPicker")}
                       </AppText>
                     </TouchableOpacity>
                     <AppText weight="semibold" style={{ fontSize: 16 }}>
-                      Start Time
+                      {t("startTime")}
                     </AppText>
                     <TouchableOpacity
                       onPress={() => {
@@ -1378,7 +1379,7 @@ const SellerPage = () => {
                         weight="medium"
                         style={{ fontSize: 16, color: "#4285F4" }}
                       >
-                        Done
+                        {t("donePicker")}
                       </AppText>
                     </TouchableOpacity>
                   </View>
@@ -1417,11 +1418,11 @@ const SellerPage = () => {
                         weight="medium"
                         style={{ fontSize: 16, color: "#FF3B30" }}
                       >
-                        Cancel
+                        {t("cancelPicker")}
                       </AppText>
                     </TouchableOpacity>
                     <AppText weight="semibold" style={{ fontSize: 16 }}>
-                      Select Date
+                      {t("selectDate")}
                     </AppText>
                     <TouchableOpacity
                       onPress={() => {
@@ -1433,7 +1434,7 @@ const SellerPage = () => {
                         weight="medium"
                         style={{ fontSize: 16, color: "#4285F4" }}
                       >
-                        Done
+                        {t("donePicker")}
                       </AppText>
                     </TouchableOpacity>
                   </View>
@@ -1474,11 +1475,11 @@ const SellerPage = () => {
                         weight="medium"
                         style={{ fontSize: 16, color: "#FF3B30" }}
                       >
-                        Cancel
+                        {t("cancelPicker")}
                       </AppText>
                     </TouchableOpacity>
                     <AppText weight="semibold" style={{ fontSize: 16 }}>
-                      Select Time
+                      {t("selectTime")}
                     </AppText>
                     <TouchableOpacity
                       onPress={() => {
@@ -1490,7 +1491,7 @@ const SellerPage = () => {
                         weight="medium"
                         style={{ fontSize: 16, color: "#4285F4" }}
                       >
-                        Done
+                        {t("donePicker")}
                       </AppText>
                     </TouchableOpacity>
                   </View>
@@ -1533,10 +1534,10 @@ const SellerPage = () => {
                     weight="bold"
                     style={[styles.submittingTitle, { color: "#4CAF50" }]}
                   >
-                    สร้างประมูลสำเร็จ!
+                    {t("auctionCreatedSuccess")}
                   </AppText>
                   <AppText weight="regular" style={styles.submittingSubtitle}>
-                    กำลังพาคุณกลับหน้าหลัก...
+                    {t("auctionCreatedSub")}
                   </AppText>
                 </>
               ) : submitResult === "error" ? (
@@ -1545,7 +1546,7 @@ const SellerPage = () => {
                     weight="bold"
                     style={[styles.submittingTitle, { color: "#F44336" }]}
                   >
-                    เกิดข้อผิดพลาด
+                    {t("auctionError")}
                   </AppText>
                   <AppText weight="regular" style={styles.submittingSubtitle}>
                     {submitMessage}
@@ -1554,10 +1555,10 @@ const SellerPage = () => {
               ) : (
                 <>
                   <AppText weight="bold" style={styles.submittingTitle}>
-                    Creating Auction
+                    {t("creatingAuction")}
                   </AppText>
                   <AppText weight="regular" style={styles.submittingSubtitle}>
-                    กำลังสร้างประมูลของคุณ...
+                    {t("creatingAuctionSub")}
                   </AppText>
                 </>
               )}

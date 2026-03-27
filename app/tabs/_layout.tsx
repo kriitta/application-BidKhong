@@ -1,26 +1,25 @@
 import { Tabs } from "expo-router";
 import React, { useState } from "react";
-import { View } from "react-native";
-import { image } from "../../assets/images";
-import { CustomTabBar } from "../components/customTabBar";
 import { Image } from "react-native";
+import { image } from "../../assets/images";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { CustomTabBar } from "../components/customTabBar";
 
 export default function TabLayout() {
   const [modalVisible, setModalVisible] = useState(false);
+  const { t } = useLanguage();
 
   return (
     <>
       <Tabs
-        tabBar={(props) => (
-          <CustomTabBar {...props} />
-        )}
+        tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{ headerShown: false }}
       >
         <Tabs.Screen
           name="home"
           options={{
-            title: "Home",
-            tabBarLabel: "Home",
+            title: t("tabHome"),
+            tabBarLabel: t("tabHome"),
             tabBarIcon: ({ focused }) => (
               <Image
                 source={focused ? image.home_blue : image.home_gray}
@@ -33,8 +32,8 @@ export default function TabLayout() {
         <Tabs.Screen
           name="wallet"
           options={{
-            title: "My Wallet",
-            tabBarLabel: "My Wallet",
+            title: t("tabWallet"),
+            tabBarLabel: t("tabWallet"),
             tabBarIcon: ({ focused }) => (
               <Image
                 source={focused ? image.wallet_blue : image.wallet_gray}
@@ -55,8 +54,8 @@ export default function TabLayout() {
         <Tabs.Screen
           name="mybid"
           options={{
-            title: "My Bids",
-            tabBarLabel: "My Bids",
+            title: t("tabBids"),
+            tabBarLabel: t("tabBids"),
             tabBarIcon: ({ focused }) => (
               <Image
                 source={focused ? image.bids_blue : image.bids_gray}
@@ -69,8 +68,8 @@ export default function TabLayout() {
         <Tabs.Screen
           name="profile"
           options={{
-            title: "Profile",
-            tabBarLabel: "Profile",
+            title: t("tabProfile"),
+            tabBarLabel: t("tabProfile"),
             tabBarIcon: ({ focused }) => (
               <Image
                 source={focused ? image.profile_blue : image.profile_gray}

@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { apiService, getFullImageUrl } from "../../utils/api";
 import {
   ActiveBid,
@@ -30,6 +31,7 @@ const MyBidPage = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [selectedFilter, setSelectedFilter] = useState("All Bids");
   const [showHistory, setShowHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -180,7 +182,7 @@ const MyBidPage = () => {
   const statsData = [
     {
       id: 1,
-      label: "Total Bids",
+      label: t("totalBids"),
       value: String(activeStats.totalBids),
       bgColor: "#E3F2FD",
       bdColor: "#AFD6FF",
@@ -188,7 +190,7 @@ const MyBidPage = () => {
     },
     {
       id: 2,
-      label: "Outbid",
+      label: t("outbid"),
       value: String(activeStats.outbid),
       bgColor: "#FFF9C4",
       bdColor: "#FFE598",
@@ -196,7 +198,7 @@ const MyBidPage = () => {
     },
     {
       id: 3,
-      label: "Winning",
+      label: t("winning"),
       value: String(activeStats.winning),
       bgColor: "#C8E6C9",
       bdColor: "#9BECA7",
@@ -207,7 +209,7 @@ const MyBidPage = () => {
   const historyStatsData = [
     {
       id: 1,
-      label: "Total Bids",
+      label: t("totalBids"),
       value: String(historyStats.total),
       bgColor: "#E8F4FF",
       bdColor: "#B3D9FF",
@@ -215,7 +217,7 @@ const MyBidPage = () => {
     },
     {
       id: 2,
-      label: "Won",
+      label: t("wonLabel"),
       value: String(historyStats.won),
       bgColor: "#F0E6FF",
       bdColor: "#D4B3FF",
@@ -223,7 +225,7 @@ const MyBidPage = () => {
     },
     {
       id: 3,
-      label: "Lost",
+      label: t("lostLabel"),
       value: String(historyStats.lost),
       bgColor: "#F5F5F5",
       bdColor: "#D1D1D1",
@@ -252,11 +254,11 @@ const MyBidPage = () => {
                   numberOfLines={1}
                   style={styles.headerText}
                 >
-                  My Bids
+                  {t("myBids")}
                 </AppText>
               </View>
               <AppText numberOfLines={1} style={styles.headerSubtext}>
-                Track all your auction activities
+                {t("activeBids")}
               </AppText>
             </View>
           </View>
@@ -304,7 +306,7 @@ const MyBidPage = () => {
               <Image source={image.search_gray} style={styles.searchIcon} />
               <AppTextInput
                 style={styles.searchInput}
-                placeholder="Search your bids..."
+                placeholder={t("searchBids")}
                 placeholderTextColor="#999"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -329,7 +331,7 @@ const MyBidPage = () => {
                   showHistory && styles.filterButtonTextActive,
                 ]}
               >
-                {showHistory ? "Bidding" : "History"}
+                {showHistory ? t("activeBids") : t("bidHistory")}
               </AppText>
             </TouchableOpacity>
           </View>
@@ -362,7 +364,7 @@ const MyBidPage = () => {
                   weight="medium"
                   style={{ fontSize: 14, color: "#999", marginTop: 8 }}
                 >
-                  No active bids yet
+                  {t("noBidsYet")}
                 </AppText>
               </View>
             ) : (
@@ -437,7 +439,7 @@ const MyBidPage = () => {
                     >
                       <View style={styles.bidInfoRow}>
                         <AppText numberOfLines={1} style={styles.bidInfoLabel}>
-                          Your Bid
+                          {t("yourBid")}
                         </AppText>
                         <AppText
                           weight="semibold"
@@ -449,7 +451,7 @@ const MyBidPage = () => {
                       </View>
                       <View style={styles.bidInfoRow}>
                         <AppText numberOfLines={1} style={styles.bidInfoLabel}>
-                          Current Bid
+                          {t("currentBid")}
                         </AppText>
                         <AppText
                           weight="semibold"
@@ -524,7 +526,7 @@ const MyBidPage = () => {
                   weight="medium"
                   style={{ fontSize: 14, color: "#999", marginTop: 8 }}
                 >
-                  No bid history yet
+                  {t("noBidHistory")}
                 </AppText>
               </View>
             ) : (
@@ -595,7 +597,7 @@ const MyBidPage = () => {
                     >
                       <View style={styles.bidInfoRow}>
                         <AppText numberOfLines={1} style={styles.bidInfoLabel}>
-                          Your Bid
+                          {t("yourBid")}
                         </AppText>
                         <AppText
                           weight="semibold"
@@ -627,7 +629,7 @@ const MyBidPage = () => {
                           style={styles.clockIcon}
                         />
                         <AppText numberOfLines={1} style={styles.timeLabel}>
-                          Ended
+                          {t("ended")}
                         </AppText>
                       </View>
                       <AppText numberOfLines={1} style={styles.timeAgo}>
@@ -684,7 +686,9 @@ const MyBidPage = () => {
           {/* Modal Header */}
           <View style={styles.bidModalHeader}>
             <AppText weight="semibold" style={{ fontSize: 16, color: "#111" }}>
-              {bidModalItem?.status === "Outbid" ? "Bid Again" : "Increase Bid"}
+              {bidModalItem?.status === "Outbid"
+                ? t("placeBid")
+                : t("placeBid")}
             </AppText>
             <TouchableOpacity onPress={() => setBidModalVisible(false)}>
               <Ionicons name="close-circle" size={28} color="#D1D5DB" />
@@ -710,7 +714,7 @@ const MyBidPage = () => {
                   weight="regular"
                   style={{ fontSize: 12, color: "#6B7280", marginTop: 4 }}
                 >
-                  Current Bid:{" "}
+                  {t("currentBid")}:{" "}
                   <AppText weight="semibold" style={{ color: "#111" }}>
                     {formatPrice(bidModalItem.currentBid)}
                   </AppText>
@@ -725,7 +729,7 @@ const MyBidPage = () => {
               weight="medium"
               style={{ fontSize: 13, color: "#374151", marginBottom: 8 }}
             >
-              Your Bid Amount
+              {t("yourBid")}
             </AppText>
             <View style={styles.bidModalInputWrapper}>
               <AppText
@@ -739,7 +743,7 @@ const MyBidPage = () => {
                 value={bidAmount}
                 onChangeText={setBidAmount}
                 keyboardType="numeric"
-                placeholder="Enter amount"
+                placeholder={t("enterAmount")}
                 placeholderTextColor="#D1D5DB"
               />
             </View>
@@ -748,7 +752,7 @@ const MyBidPage = () => {
                 weight="regular"
                 style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6 }}
               >
-                Minimum bid:{" "}
+                {t("minimumBid")}:{" "}
                 {formatPrice(
                   bidModalItem.currentBid + (bidModalItem.bidIncrement || 1),
                 )}
@@ -800,7 +804,7 @@ const MyBidPage = () => {
                 weight="semibold"
                 style={{ fontSize: 15, color: "#fff" }}
               >
-                Place Bid
+                {t("placeBid")}
               </AppText>
             )}
           </TouchableOpacity>

@@ -22,10 +22,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { AppText } from "../components/appText";
 import { AppTextInput } from "../components/appTextInput";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// Backend may return either "pending_confirmation" or "pending_buyer_confirm"
+const isPendingConfirm = (status: OrderStatus) =>
+  status === "pending_confirmation" || status === "pending_buyer_confirm";
 
 // Map API OrderStatus to UI tab filter
 type UITab = "all" | "won" | "shipping" | "completed" | "problem";
@@ -33,6 +38,7 @@ type UITab = "all" | "won" | "shipping" | "completed" | "problem";
 const mapStatusToTab = (status: OrderStatus): UITab => {
   switch (status) {
     case "pending_confirmation":
+    case "pending_buyer_confirm":
       return "won";
     case "confirmed":
     case "shipped":
@@ -46,39 +52,78 @@ const mapStatusToTab = (status: OrderStatus): UITab => {
   }
 };
 
-const getStatusConfig = (status: OrderStatus) => {
+// Returns true if the order's confirmation deadline has already passed (client-side)
+const isDeadlinePassed = (order: Order): boolean =>
+  !!(order.deadline_at && new Date(order.deadline_at) < new Date());
+
+// Maps an order to its display tab — deadline-expired pending orders go to "problem"
+const getOrderTab = (order: Order): UITab => {
+  if (isPendingConfirm(order.status) && isDeadlinePassed(order))
+    return "problem";
+  return mapStatusToTab(order.status);
+};
+
+type TFunc = (key: any) => string;
+
+const getStatusConfig = (status: OrderStatus, t: TFunc) => {
   switch (status) {
     case "pending_confirmation":
-      return { label: "Won", color: "#FF9500", bg: "#FFF3E0", icon: "🏆" };
+    case "pending_buyer_confirm":
+      return {
+        label: t("statusWon"),
+        color: "#FF9500",
+        bg: "#FFF3E0",
+        icon: "🏆",
+      };
     case "confirmed":
       return {
-        label: "Confirmed",
+        label: t("statusConfirmed"),
         color: "#2196F3",
         bg: "#E3F2FD",
         icon: "✅",
       };
     case "shipped":
-      return { label: "Shipped", color: "#7B1FA2", bg: "#F3E5F5", icon: "📦" };
+      return {
+        label: t("statusShipped"),
+        color: "#7B1FA2",
+        bg: "#F3E5F5",
+        icon: "📦",
+      };
     case "completed":
       return {
-        label: "Completed",
+        label: t("statusCompleted"),
         color: "#4CAF50",
         bg: "#E8F5E9",
         icon: "🎉",
       };
     case "disputed":
-      return { label: "Disputed", color: "#E65100", bg: "#FFF3E0", icon: "⚠️" };
+      return {
+        label: t("statusDisputed"),
+        color: "#E65100",
+        bg: "#FFF3E0",
+        icon: "⚠️",
+      };
     case "cancelled":
       return {
-        label: "Cancelled",
+        label: t("statusCancelled"),
         color: "#D32F2F",
         bg: "#FFEBEE",
         icon: "⛔",
       };
     case "expired":
-      return { label: "Expired", color: "#D32F2F", bg: "#FFEBEE", icon: "⛔" };
+      return {
+        label: t("statusExpired"),
+        color: "#D32F2F",
+        bg: "#FFEBEE",
+        icon: "⛔",
+      };
     default:
-      return { label: "Unknown", color: "#9CA3AF", bg: "#F3F4F6", icon: "❓" };
+      return {
+        label: t("statusUnknown"),
+        color: "#9CA3AF",
+        bg: "#F3F4F6",
+        icon: "❓",
+      };
   }
 };
 
@@ -87,10 +132,12 @@ const CountdownTimer = ({
   deadlineAt,
   onExpire,
   size = "normal",
+  t,
 }: {
   deadlineAt: string;
   onExpire?: () => void;
   size?: "small" | "normal";
+  t: TFunc;
 }) => {
   const getRemaining = () => {
     const deadline = new Date(deadlineAt).getTime();
@@ -141,7 +188,7 @@ const CountdownTimer = ({
             color: isExpired ? "#D32F2F" : isUrgent ? "#E65100" : "#7B1FA2",
           }}
         >
-          {isExpired ? "⛔ Expired" : `⏳ ${timeStr}`}
+          {isExpired ? `⛔ ${t("statusExpired")}` : `⏳ ${timeStr}`}
         </AppText>
       </View>
     );
@@ -170,8 +217,8 @@ const CountdownTimer = ({
         }}
       >
         {isExpired
-          ? "Verification Deadline Passed"
-          : "Time Remaining to Verify"}
+          ? t("verificationDeadlinePassed")
+          : t("timeRemainingToVerify")}
       </AppText>
       <View style={styles.countdownTimerRow}>
         {isExpired ? (
@@ -191,7 +238,7 @@ const CountdownTimer = ({
                 {hours.toString().padStart(2, "0")}
               </AppText>
               <AppText weight="regular" style={styles.countdownUnit}>
-                hrs
+                {t("hrs")}
               </AppText>
             </View>
             <AppText
@@ -214,7 +261,7 @@ const CountdownTimer = ({
                 {minutes.toString().padStart(2, "0")}
               </AppText>
               <AppText weight="regular" style={styles.countdownUnit}>
-                min
+                {t("min")}
               </AppText>
             </View>
             <AppText
@@ -237,7 +284,7 @@ const CountdownTimer = ({
                 {seconds.toString().padStart(2, "0")}
               </AppText>
               <AppText weight="regular" style={styles.countdownUnit}>
-                sec
+                {t("sec")}
               </AppText>
             </View>
           </>
@@ -277,6 +324,7 @@ const formatDate = (dateStr: string | null): string => {
 const VerifyProductPage = () => {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -332,17 +380,52 @@ const VerifyProductPage = () => {
     try {
       // Try the real orders endpoint first
       const data = await apiService.order.getMyOrders();
-      isConstructedRef.current = false;
-      setOrders(Array.isArray(data) ? data : []);
+      if (Array.isArray(data) && data.length > 0) {
+        // Real orders found — mark role + ensure deadline_at for pending orders
+        const tagged = data.map((o) => {
+          const role =
+            o.my_role ??
+            (user?.id && o.seller_id === user.id ? "seller" : "buyer");
+          // Compute deadline locally if backend doesn't provide one
+          let deadline = o.deadline_at;
+          if (!deadline && isPendingConfirm(o.status) && o.created_at) {
+            deadline = new Date(
+              new Date(o.created_at).getTime() + 24 * 60 * 60 * 1000,
+            ).toISOString();
+          }
+          return { ...o, my_role: role, deadline_at: deadline };
+        });
+        isConstructedRef.current = false;
+        setOrders(tagged as Order[]);
+        return;
+      }
+      // API returned empty array — fall through to constructed fallback
+      throw new Error("empty");
     } catch {
-      // Fallback: construct orders from won products
+      // Fallback: construct orders from both buyer wins AND seller products
       if (user?.id) {
         try {
-          const constructed = await apiService.order.getMyOrdersConstructed(
-            user.id,
-          );
+          const [buyerOrders, sellerOrders] = await Promise.all([
+            apiService.order
+              .getMyOrdersConstructed(user.id)
+              .catch(() => [] as Order[]),
+            apiService.order
+              .getMySellerOrdersConstructed(user.id)
+              .catch(() => [] as Order[]),
+          ]);
+
+          // Merge, dedup by product_id (buyer order takes precedence if same product)
+          const seen = new Set<number>();
+          const merged: Order[] = [];
+          for (const o of [...buyerOrders, ...sellerOrders]) {
+            if (!seen.has(o.product_id)) {
+              seen.add(o.product_id);
+              merged.push(o);
+            }
+          }
+
           isConstructedRef.current = true;
-          setOrders(constructed);
+          setOrders(merged);
         } catch (e2: any) {
           console.error("Failed to construct orders:", e2.message);
         }
@@ -366,17 +449,14 @@ const VerifyProductPage = () => {
   const filteredOrders =
     activeTab === "all"
       ? orders
-      : orders.filter((o) => mapStatusToTab(o.status) === activeTab);
+      : orders.filter((o) => getOrderTab(o) === activeTab);
 
   const tabCounts = {
     all: orders.length,
-    won: orders.filter((o) => mapStatusToTab(o.status) === "won").length,
-    shipping: orders.filter((o) => mapStatusToTab(o.status) === "shipping")
-      .length,
-    completed: orders.filter((o) => mapStatusToTab(o.status) === "completed")
-      .length,
-    problem: orders.filter((o) => mapStatusToTab(o.status) === "problem")
-      .length,
+    won: orders.filter((o) => getOrderTab(o) === "won").length,
+    shipping: orders.filter((o) => getOrderTab(o) === "shipping").length,
+    completed: orders.filter((o) => getOrderTab(o) === "completed").length,
+    problem: orders.filter((o) => getOrderTab(o) === "problem").length,
   };
 
   // ─── Open detail & refresh from API ────────────────────────
@@ -389,7 +469,14 @@ const VerifyProductPage = () => {
     // 1) Try the real order detail endpoint
     try {
       const detail = await apiService.order.getOrderDetail(order.id);
-      enrichedOrder = detail;
+      enrichedOrder = {
+        ...detail,
+        // Preserve locally-computed deadline if API doesn't return one
+        deadline_at: detail.deadline_at || order.deadline_at,
+        // Preserve role + product fallback from original constructed order
+        my_role: detail.my_role ?? order.my_role,
+        product: detail.product ?? order.product,
+      };
     } catch {
       // order endpoint likely 404 — continue with list-level data
     }
@@ -496,13 +583,68 @@ const VerifyProductPage = () => {
     );
   };
 
+  // ─── Ship Order (Seller) ───────────────────────────────────
+  const handleShip = (orderId: number, productId: number) => {
+    Alert.alert(
+      "ยืนยันการจัดส่ง",
+      "คุณได้จัดส่งสินค้าให้ผู้ซื้อแล้วใช่ไหม? ผู้ซื้อจะได้รับการแจ้งเตือน",
+      [
+        { text: "ยกเลิก" },
+        {
+          text: "ยืนยัน",
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              const realId = await resolveRealOrderId(orderId, productId);
+              const updated = await apiService.order.shipOrder(realId);
+              try {
+                const freshOrders = await apiService.order.getMyOrders();
+                if (Array.isArray(freshOrders) && freshOrders.length > 0) {
+                  isConstructedRef.current = false;
+                  setOrders(freshOrders);
+                  const freshSelected = freshOrders.find(
+                    (o) => o.product_id === productId,
+                  );
+                  setSelectedOrder(freshSelected ?? updated);
+                } else {
+                  setOrders((prev) =>
+                    prev.map((o) => (o.id === orderId ? updated : o)),
+                  );
+                  setSelectedOrder((prev) =>
+                    prev && prev.id === orderId ? updated : prev,
+                  );
+                }
+              } catch {
+                setOrders((prev) =>
+                  prev.map((o) => (o.id === orderId ? updated : o)),
+                );
+                setSelectedOrder((prev) =>
+                  prev && prev.id === orderId ? updated : prev,
+                );
+              }
+              Alert.alert("สำเร็จ", "แจ้งจัดส่งสินค้าเรียบร้อยแล้ว");
+            } catch (error: any) {
+              const msg = error.message || "";
+              Alert.alert(
+                "เกิดข้อผิดพลาด",
+                msg || "ไม่สามารถแจ้งจัดส่งได้ กรุณาลองใหม่อีกครั้ง",
+              );
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   // ─── Receive Order (Buyer) ─────────────────────────────────
   // Review Modal States
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewRating, setReviewRating] = useState(0);
-  const [reviewComment, setReviewComment] = useState("");
   const [reviewOrderId, setReviewOrderId] = useState<number | null>(null);
   const [reviewProductId, setReviewProductId] = useState<number | null>(null);
+  const [reviewSellerId, setReviewSellerId] = useState<number | null>(null);
   const [starAnimations] = useState(() =>
     Array.from({ length: 5 }, () => new Animated.Value(1)),
   );
@@ -527,11 +669,15 @@ const VerifyProductPage = () => {
     animateStar(star - 1);
   };
 
-  const handleReceived = (orderId: number, productId: number) => {
+  const handleReceived = (
+    orderId: number,
+    productId: number,
+    sellerId: number,
+  ) => {
     setReviewOrderId(orderId);
     setReviewProductId(productId);
+    setReviewSellerId(sellerId);
     setReviewRating(0);
-    setReviewComment("");
     setModalVisible(false);
     setTimeout(() => {
       setShowReviewModal(true);
@@ -547,7 +693,22 @@ const VerifyProductPage = () => {
       setActionLoading(true);
       try {
         const realId = await resolveRealOrderId(reviewOrderId, reviewProductId);
+        // 1. Confirm receipt
         const updated = await apiService.order.receiveOrder(realId);
+
+        // 2. Rate seller
+        if (reviewSellerId) {
+          try {
+            await apiService.order.rateSeller(
+              reviewSellerId,
+              realId,
+              reviewRating,
+            );
+          } catch (rateError: any) {
+            console.warn("Rate seller failed:", rateError.message);
+          }
+        }
+
         // Refresh orders with real data
         try {
           const freshOrders = await apiService.order.getMyOrders();
@@ -695,6 +856,16 @@ const VerifyProductPage = () => {
     }
   };
 
+  // Derived values used in the detail modal
+  const modalIsExpiredByDeadline =
+    !!selectedOrder &&
+    isPendingConfirm(selectedOrder.status) &&
+    isDeadlinePassed(selectedOrder);
+  const modalMyRole: "buyer" | "seller" = selectedOrder
+    ? (selectedOrder.my_role ??
+      (user?.id === selectedOrder.seller_id ? "seller" : "buyer"))
+    : "buyer";
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -712,7 +883,7 @@ const VerifyProductPage = () => {
             numberOfLines={1}
             adjustsFontSizeToFit
           >
-            Verify Product
+            {t("verifyProductTitle")}
           </AppText>
           <View style={{ width: 40 }} />
         </SafeAreaView>
@@ -722,11 +893,11 @@ const VerifyProductPage = () => {
       <View style={styles.tabsContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {[
-            { key: "all" as UITab, label: "All" },
-            { key: "won" as UITab, label: "🏆 Won" },
-            { key: "shipping" as UITab, label: "📦 Shipping" },
-            { key: "completed" as UITab, label: "✅ Done" },
-            { key: "problem" as UITab, label: "⚠️ Problem" },
+            { key: "all" as UITab, label: t("tabAll") },
+            { key: "won" as UITab, label: t("tabWon") },
+            { key: "shipping" as UITab, label: t("tabShipping") },
+            { key: "completed" as UITab, label: t("tabDone") },
+            { key: "problem" as UITab, label: t("tabProblem") },
           ].map((tab) => (
             <TouchableOpacity
               key={tab.key}
@@ -767,7 +938,7 @@ const VerifyProductPage = () => {
             style={{ width: 180, height: 180 }}
           />
           <AppText weight="medium" style={{ color: "#9CA3AF", marginTop: 8 }}>
-            Loading orders...
+            {t("loadingOrders")}
           </AppText>
         </View>
       ) : (
@@ -792,7 +963,7 @@ const VerifyProductPage = () => {
                 style={styles.emptyTitle}
                 numberOfLines={1}
               >
-                No orders found
+                {t("noOrdersFound")}
               </AppText>
               <AppText
                 weight="regular"
@@ -800,97 +971,159 @@ const VerifyProductPage = () => {
                 numberOfLines={2}
               >
                 {activeTab === "all"
-                  ? "You haven't won any auctions yet"
-                  : "No orders in this status"}
+                  ? t("noWonAuctions")
+                  : t("noOrdersInStatus")}
               </AppText>
             </View>
           ) : (
             filteredOrders.map((order) => {
-              const statusConfig = getStatusConfig(order.status);
               const productImage = getOrderProductImage(order);
+              const deadlinePassed =
+                isPendingConfirm(order.status) && isDeadlinePassed(order);
+              const cardRole =
+                order.my_role ??
+                (user?.id === order.seller_id ? "seller" : "buyer");
+              const statusConfig = deadlinePassed
+                ? cardRole === "seller"
+                  ? {
+                      label: "สิ้นสุดแล้ว",
+                      color: "#D32F2F",
+                      bg: "#FFEBEE",
+                      icon: "🏁",
+                    }
+                  : {
+                      label: t("statusExpired"),
+                      color: "#D32F2F",
+                      bg: "#FFEBEE",
+                      icon: "⛔",
+                    }
+                : getStatusConfig(order.status, t);
               const isProblem =
                 order.status === "expired" ||
                 order.status === "cancelled" ||
-                order.status === "disputed";
+                order.status === "disputed" ||
+                deadlinePassed;
+              const isConfirmedSeller =
+                order.status === "confirmed" && cardRole === "seller";
               return (
-                <TouchableOpacity
+                <View
                   key={order.id}
                   style={[styles.productCard, isProblem && { opacity: 0.6 }]}
-                  onPress={() => openOrderDetail(order)}
-                  activeOpacity={0.7}
                 >
-                  {productImage ? (
-                    <Image source={productImage} style={styles.productImage} />
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      flex: 1,
+                    }}
+                    onPress={() => openOrderDetail(order)}
+                    activeOpacity={0.7}
+                  >
+                    {productImage ? (
+                      <Image
+                        source={productImage}
+                        style={styles.productImage}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.productImage,
+                          {
+                            justifyContent: "center",
+                            alignItems: "center",
+                            backgroundColor: "#F0F0F0",
+                          },
+                        ]}
+                      >
+                        <AppText style={{ fontSize: 28 }}>📦</AppText>
+                      </View>
+                    )}
+                    <View style={styles.productInfo}>
+                      <AppText
+                        weight="semibold"
+                        style={[
+                          styles.productName,
+                          isProblem && {
+                            textDecorationLine: "line-through",
+                            color: "#9CA3AF",
+                          },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {order.product?.name || `Order #${order.id}`}
+                      </AppText>
+                      <AppText
+                        weight="regular"
+                        style={styles.productDate}
+                        numberOfLines={1}
+                      >
+                        {t("wonOn")} {formatDate(order.created_at)}
+                      </AppText>
+                      {isPendingConfirm(order.status) &&
+                        !deadlinePassed &&
+                        order.deadline_at && (
+                          <CountdownTimer
+                            deadlineAt={order.deadline_at}
+                            onExpire={() => fetchOrders()}
+                            size="small"
+                            t={t}
+                          />
+                        )}
+                      {(!isPendingConfirm(order.status) || deadlinePassed) && (
+                        <AppText
+                          weight="bold"
+                          style={styles.productPrice}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                        >
+                          ฿
+                          {parseFloat(order.final_price).toLocaleString(
+                            "en-US",
+                          )}
+                        </AppText>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                  {isConfirmedSeller ? (
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handleShip(order.id, order.product_id)}
+                      disabled={actionLoading}
+                      style={styles.cardShipButton}
+                    >
+                      {actionLoading ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <AppText
+                          weight="bold"
+                          style={styles.cardShipButtonText}
+                          numberOfLines={1}
+                        >
+                          📦 จัดส่ง
+                        </AppText>
+                      )}
+                    </TouchableOpacity>
                   ) : (
                     <View
                       style={[
-                        styles.productImage,
-                        {
-                          justifyContent: "center",
-                          alignItems: "center",
-                          backgroundColor: "#F0F0F0",
-                        },
+                        styles.statusBadge,
+                        { backgroundColor: statusConfig.bg },
                       ]}
                     >
-                      <AppText style={{ fontSize: 28 }}>📦</AppText>
-                    </View>
-                  )}
-                  <View style={styles.productInfo}>
-                    <AppText
-                      weight="semibold"
-                      style={[
-                        styles.productName,
-                        isProblem && {
-                          textDecorationLine: "line-through",
-                          color: "#9CA3AF",
-                        },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {order.product?.name || `Order #${order.id}`}
-                    </AppText>
-                    <AppText
-                      weight="regular"
-                      style={styles.productDate}
-                      numberOfLines={1}
-                    >
-                      Won on {formatDate(order.created_at)}
-                    </AppText>
-                    {order.status === "pending_confirmation" &&
-                      order.deadline_at && (
-                        <CountdownTimer
-                          deadlineAt={order.deadline_at}
-                          onExpire={() => fetchOrders()}
-                          size="small"
-                        />
-                      )}
-                    {order.status !== "pending_confirmation" && (
                       <AppText
-                        weight="bold"
-                        style={styles.productPrice}
+                        weight="semibold"
+                        style={[
+                          styles.statusText,
+                          { color: statusConfig.color },
+                        ]}
                         numberOfLines={1}
                         adjustsFontSizeToFit
                       >
-                        ฿{parseFloat(order.final_price).toLocaleString("en-US")}
+                        {statusConfig.icon} {statusConfig.label}
                       </AppText>
-                    )}
-                  </View>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      { backgroundColor: statusConfig.bg },
-                    ]}
-                  >
-                    <AppText
-                      weight="semibold"
-                      style={[styles.statusText, { color: statusConfig.color }]}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                    >
-                      {statusConfig.icon} {statusConfig.label}
-                    </AppText>
-                  </View>
-                </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
               );
             })
           )}
@@ -922,7 +1155,7 @@ const VerifyProductPage = () => {
                 style={styles.modalTitle}
                 numberOfLines={1}
               >
-                Order Details
+                {t("orderDetails")}
               </AppText>
               <View style={{ width: 28 }} />
             </View>
@@ -966,7 +1199,7 @@ const VerifyProductPage = () => {
                     style={styles.modalPriceLabel}
                     numberOfLines={1}
                   >
-                    Winning Price
+                    {t("winningPrice")}
                   </AppText>
                   <AppText
                     weight="bold"
@@ -986,7 +1219,7 @@ const VerifyProductPage = () => {
                     style={styles.modalDateLabel}
                     numberOfLines={1}
                   >
-                    Won on
+                    {t("wonOn")}
                   </AppText>
                   <AppText
                     weight="medium"
@@ -998,13 +1231,14 @@ const VerifyProductPage = () => {
                 </View>
               </View>
 
-              {/* Countdown Timer — only for pending_confirmation */}
-              {selectedOrder.status === "pending_confirmation" &&
+              {/* Countdown Timer — only for pending_confirmation / pending_buyer_confirm */}
+              {isPendingConfirm(selectedOrder.status) &&
                 selectedOrder.deadline_at && (
                   <View style={styles.countdownSection}>
                     <CountdownTimer
                       deadlineAt={selectedOrder.deadline_at}
                       onExpire={() => fetchOrders()}
+                      t={t}
                     />
                   </View>
                 )}
@@ -1016,7 +1250,7 @@ const VerifyProductPage = () => {
                   style={styles.progressTitle}
                   numberOfLines={1}
                 >
-                  Order Progress
+                  {t("orderProgress")}
                 </AppText>
                 <View style={styles.progressTrack}>
                   {/* Step 1: Won */}
@@ -1025,14 +1259,16 @@ const VerifyProductPage = () => {
                       style={[
                         styles.progressDot,
                         selectedOrder.status === "expired" ||
-                        selectedOrder.status === "cancelled"
+                        selectedOrder.status === "cancelled" ||
+                        modalIsExpiredByDeadline
                           ? { backgroundColor: "#D32F2F" }
                           : styles.progressDotDone,
                       ]}
                     >
                       <AppText style={{ fontSize: 12, color: "#fff" }}>
                         {selectedOrder.status === "expired" ||
-                        selectedOrder.status === "cancelled"
+                        selectedOrder.status === "cancelled" ||
+                        modalIsExpiredByDeadline
                           ? "✗"
                           : "✓"}
                       </AppText>
@@ -1042,7 +1278,7 @@ const VerifyProductPage = () => {
                       style={styles.progressLabel}
                       numberOfLines={1}
                     >
-                      Won Auction
+                      {t("wonAuction")}
                     </AppText>
                   </View>
 
@@ -1050,12 +1286,14 @@ const VerifyProductPage = () => {
                     style={[
                       styles.progressLine,
                       (selectedOrder.status === "expired" ||
-                        selectedOrder.status === "cancelled") && {
+                        selectedOrder.status === "cancelled" ||
+                        modalIsExpiredByDeadline) && {
                         backgroundColor: "#EF9A9A",
                       },
-                      selectedOrder.status !== "pending_confirmation" &&
+                      !isPendingConfirm(selectedOrder.status) &&
                         selectedOrder.status !== "expired" &&
                         selectedOrder.status !== "cancelled" &&
+                        !modalIsExpiredByDeadline &&
                         styles.progressLineDone,
                     ]}
                   />
@@ -1066,21 +1304,24 @@ const VerifyProductPage = () => {
                       style={[
                         styles.progressDot,
                         (selectedOrder.status === "expired" ||
-                          selectedOrder.status === "cancelled") && {
+                          selectedOrder.status === "cancelled" ||
+                          modalIsExpiredByDeadline) && {
                           backgroundColor: "#D32F2F",
                         },
-                        selectedOrder.status !== "pending_confirmation" &&
+                        !isPendingConfirm(selectedOrder.status) &&
                           selectedOrder.status !== "expired" &&
                           selectedOrder.status !== "cancelled" &&
+                          !modalIsExpiredByDeadline &&
                           styles.progressDotDone,
                       ]}
                     >
                       {selectedOrder.status === "expired" ||
-                      selectedOrder.status === "cancelled" ? (
+                      selectedOrder.status === "cancelled" ||
+                      modalIsExpiredByDeadline ? (
                         <AppText style={{ fontSize: 12, color: "#fff" }}>
                           ✗
                         </AppText>
-                      ) : selectedOrder.status !== "pending_confirmation" ? (
+                      ) : !isPendingConfirm(selectedOrder.status) ? (
                         <AppText style={{ fontSize: 12, color: "#fff" }}>
                           ✓
                         </AppText>
@@ -1092,30 +1333,34 @@ const VerifyProductPage = () => {
                     </View>
                     <AppText
                       weight={
-                        selectedOrder.status !== "pending_confirmation" &&
+                        !isPendingConfirm(selectedOrder.status) &&
                         selectedOrder.status !== "expired" &&
-                        selectedOrder.status !== "cancelled"
+                        selectedOrder.status !== "cancelled" &&
+                        !modalIsExpiredByDeadline
                           ? "semibold"
                           : "regular"
                       }
                       style={[
                         styles.progressLabel,
-                        (selectedOrder.status === "pending_confirmation" ||
+                        (isPendingConfirm(selectedOrder.status) ||
                           selectedOrder.status === "expired" ||
-                          selectedOrder.status === "cancelled") && {
+                          selectedOrder.status === "cancelled" ||
+                          modalIsExpiredByDeadline) && {
                           color:
                             selectedOrder.status === "expired" ||
-                            selectedOrder.status === "cancelled"
+                            selectedOrder.status === "cancelled" ||
+                            modalIsExpiredByDeadline
                               ? "#D32F2F"
                               : "#9CA3AF",
                         },
                       ]}
                     >
-                      {selectedOrder.status === "expired"
-                        ? "Expired"
+                      {selectedOrder.status === "expired" ||
+                      modalIsExpiredByDeadline
+                        ? t("statusExpired")
                         : selectedOrder.status === "cancelled"
-                          ? "Cancelled"
-                          : "Confirmed"}
+                          ? t("statusCancelled")
+                          : t("statusConfirmed")}
                     </AppText>
                   </View>
 
@@ -1164,7 +1409,7 @@ const VerifyProductPage = () => {
                           },
                       ]}
                     >
-                      Shipped
+                      {t("statusShipped")}
                     </AppText>
                   </View>
 
@@ -1208,7 +1453,7 @@ const VerifyProductPage = () => {
                         },
                       ]}
                     >
-                      Received
+                      {t("receivedItem")}
                     </AppText>
                   </View>
                 </View>
@@ -1222,7 +1467,7 @@ const VerifyProductPage = () => {
                     style={styles.sellerSectionTitle}
                     numberOfLines={1}
                   >
-                    Seller Contact
+                    {t("sellerContact")}
                   </AppText>
                   <View style={styles.sellerCard}>
                     {selectedOrder.seller.profile_image ? (
@@ -1303,140 +1548,229 @@ const VerifyProductPage = () => {
               )}
 
               {/* ─── Action Section per Status ─────────────── */}
-              {selectedOrder.status === "pending_confirmation" && (
-                <View style={styles.actionSection}>
-                  <View style={styles.actionNote}>
-                    <Image
-                      source={image.info}
-                      style={{
-                        width: 16,
-                        height: 16,
-                        tintColor: "#FF9500",
-                        marginRight: 10,
-                      }}
-                    />
-                    <AppText
-                      weight="regular"
-                      style={styles.actionNoteText}
-                      numberOfLines={2}
-                    >
-                      Please contact the seller to arrange shipping before
-                      confirming.
-                    </AppText>
-                  </View>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() =>
-                      handleConfirm(selectedOrder.id, selectedOrder.product_id)
-                    }
-                    disabled={actionLoading}
-                  >
-                    <LinearGradient
-                      colors={["#00112E", "#003994"]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.actionButton}
-                    >
-                      {actionLoading ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <AppText
-                          weight="bold"
-                          style={styles.actionButtonText}
-                          numberOfLines={1}
-                        >
-                          ✓ Confirm Contact
-                        </AppText>
-                      )}
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {(selectedOrder.status === "confirmed" ||
-                selectedOrder.status === "shipped") && (
-                <View style={styles.actionSection}>
-                  <View style={styles.shippingCard}>
-                    <View style={styles.shippingIconCircle}>
-                      <AppText style={{ fontSize: 28 }}>📦</AppText>
+              {isPendingConfirm(selectedOrder.status) &&
+                !modalIsExpiredByDeadline && (
+                  <View style={styles.actionSection}>
+                    <View style={styles.actionNote}>
+                      <Image
+                        source={image.info}
+                        style={{
+                          width: 16,
+                          height: 16,
+                          tintColor: "#FF9500",
+                          marginRight: 10,
+                        }}
+                      />
+                      <AppText
+                        weight="regular"
+                        style={styles.actionNoteText}
+                        numberOfLines={2}
+                      >
+                        {t("confirmContactNote")}
+                      </AppText>
                     </View>
-                    <AppText
-                      weight="semibold"
-                      style={styles.shippingTitle}
-                      numberOfLines={1}
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() =>
+                        handleConfirm(
+                          selectedOrder.id,
+                          selectedOrder.product_id,
+                        )
+                      }
+                      disabled={actionLoading}
                     >
-                      {selectedOrder.status === "confirmed"
-                        ? "Waiting for Seller to Ship"
-                        : "Waiting for Delivery"}
-                    </AppText>
-                    <AppText
-                      weight="regular"
-                      style={styles.shippingSub}
-                      numberOfLines={3}
-                    >
-                      {selectedOrder.status === "confirmed"
-                        ? "The seller has been notified. Waiting for shipment."
-                        : "Your product is being shipped. Once you receive it, press the button below to confirm."}
-                    </AppText>
-                  </View>
-                  {selectedOrder.status === "shipped" && (
-                    <>
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() =>
-                          handleReceived(
-                            selectedOrder.id,
-                            selectedOrder.product_id,
-                          )
-                        }
-                        disabled={actionLoading}
+                      <LinearGradient
+                        colors={["#00112E", "#003994"]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.actionButton}
                       >
-                        <LinearGradient
-                          colors={["#2EA200", "#3CD500"]}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={styles.actionButton}
-                        >
-                          {actionLoading ? (
-                            <ActivityIndicator color="#fff" />
-                          ) : (
-                            <AppText
-                              weight="bold"
-                              style={styles.actionButtonText}
-                              numberOfLines={1}
-                            >
-                              Product Received
-                            </AppText>
-                          )}
-                        </LinearGradient>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() =>
-                          openDisputeModal(
-                            selectedOrder.id,
-                            selectedOrder.product_id,
-                          )
-                        }
-                        disabled={actionLoading}
-                      >
-                        <LinearGradient
-                          colors={["#da0303", "#ff4d4d"]}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={[styles.actionButton, { marginTop: 12 }]}
-                        >
+                        {actionLoading ? (
+                          <ActivityIndicator color="#fff" />
+                        ) : (
                           <AppText
                             weight="bold"
                             style={styles.actionButtonText}
                             numberOfLines={1}
                           >
-                            Report an Issue
+                            {t("confirmContact")}
                           </AppText>
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </>
-                  )}
+                        )}
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+              {/* ─── Deadline Expired (no contact) ─────────── */}
+              {isPendingConfirm(selectedOrder.status) &&
+                modalIsExpiredByDeadline && (
+                  <View style={styles.actionSection}>
+                    <View style={styles.expiredCard}>
+                      <View style={styles.expiredIconCircle}>
+                        <AppText style={{ fontSize: 32 }}>
+                          {modalMyRole === "seller" ? "🏁" : "⛔"}
+                        </AppText>
+                      </View>
+                      <AppText
+                        weight="bold"
+                        style={styles.expiredTitle}
+                        numberOfLines={1}
+                      >
+                        {modalMyRole === "seller"
+                          ? "สินค้าสิ้นสุดแล้ว"
+                          : "หมดเวลาการติดต่อ"}
+                      </AppText>
+                      <AppText
+                        weight="regular"
+                        style={styles.expiredSub}
+                        numberOfLines={4}
+                      >
+                        {modalMyRole === "seller"
+                          ? "ผู้ซื้อไม่ได้ยืนยันการติดต่อภายในเวลาที่กำหนด สินค้าของคุณพร้อมนำออกประมูลใหม่ได้"
+                          : "ไม่มีการติดต่อภายในระยะเวลาที่กำหนด คำสั่งซื้อนี้ถูกยกเลิกโดยอัตโนมัติ กรุณาติดต่อทีมงานหากมีข้อสงสัย"}
+                      </AppText>
+                    </View>
+                  </View>
+                )}
+
+              {(selectedOrder.status === "confirmed" ||
+                selectedOrder.status === "shipped") && (
+                <View style={styles.actionSection}>
+                  {(() => {
+                    const myRole =
+                      selectedOrder.my_role ??
+                      (user?.id === selectedOrder.seller_id
+                        ? "seller"
+                        : "buyer");
+                    return (
+                      <View style={styles.shippingCard}>
+                        <View style={styles.shippingIconCircle}>
+                          <AppText style={{ fontSize: 28 }}>📦</AppText>
+                        </View>
+                        <AppText
+                          weight="semibold"
+                          style={styles.shippingTitle}
+                          numberOfLines={1}
+                        >
+                          {selectedOrder.status === "confirmed"
+                            ? myRole === "seller"
+                              ? "กรุณาจัดส่งสินค้า"
+                              : t("waitingSellerShip")
+                            : t("waitingDelivery")}
+                        </AppText>
+                        <AppText
+                          weight="regular"
+                          style={styles.shippingSub}
+                          numberOfLines={3}
+                        >
+                          {selectedOrder.status === "confirmed"
+                            ? myRole === "seller"
+                              ? "ผู้ซื้อยืนยันแล้ว กรุณาจัดส่งสินค้าภายใน 3 วัน"
+                              : "The seller has been notified. Waiting for shipment."
+                            : "Your product is being shipped. Once you receive it, press the button below to confirm."}
+                        </AppText>
+
+                        {/* Seller: Ship button */}
+                        {myRole === "seller" &&
+                          selectedOrder.status === "confirmed" && (
+                            <TouchableOpacity
+                              activeOpacity={0.8}
+                              onPress={() =>
+                                handleShip(
+                                  selectedOrder.id,
+                                  selectedOrder.product_id,
+                                )
+                              }
+                              disabled={actionLoading}
+                              style={{ marginTop: 16, width: "100%" }}
+                            >
+                              <LinearGradient
+                                colors={["#7B1FA2", "#AB47BC"]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.actionButton}
+                              >
+                                {actionLoading ? (
+                                  <ActivityIndicator color="#fff" />
+                                ) : (
+                                  <AppText
+                                    weight="bold"
+                                    style={styles.actionButtonText}
+                                    numberOfLines={1}
+                                  >
+                                    📦 แจ้งจัดส่งสินค้า
+                                  </AppText>
+                                )}
+                              </LinearGradient>
+                            </TouchableOpacity>
+                          )}
+
+                        {/* Buyer: Received + Dispute buttons */}
+                        {myRole === "buyer" &&
+                          selectedOrder.status === "shipped" && (
+                            <>
+                              <TouchableOpacity
+                                activeOpacity={0.8}
+                                onPress={() =>
+                                  handleReceived(
+                                    selectedOrder.id,
+                                    selectedOrder.product_id,
+                                    selectedOrder.seller_id,
+                                  )
+                                }
+                                disabled={actionLoading}
+                                style={{ marginTop: 16, width: "100%" }}
+                              >
+                                <LinearGradient
+                                  colors={["#2EA200", "#3CD500"]}
+                                  start={{ x: 0, y: 0 }}
+                                  end={{ x: 1, y: 0 }}
+                                  style={styles.actionButton}
+                                >
+                                  {actionLoading ? (
+                                    <ActivityIndicator color="#fff" />
+                                  ) : (
+                                    <AppText
+                                      weight="bold"
+                                      style={styles.actionButtonText}
+                                      numberOfLines={1}
+                                    >
+                                      {t("productReceived")}
+                                    </AppText>
+                                  )}
+                                </LinearGradient>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                activeOpacity={0.8}
+                                onPress={() =>
+                                  openDisputeModal(
+                                    selectedOrder.id,
+                                    selectedOrder.product_id,
+                                  )
+                                }
+                                disabled={actionLoading}
+                                style={{ marginTop: 12, width: "100%" }}
+                              >
+                                <LinearGradient
+                                  colors={["#da0303", "#ff4d4d"]}
+                                  start={{ x: 0, y: 0 }}
+                                  end={{ x: 1, y: 0 }}
+                                  style={styles.actionButton}
+                                >
+                                  <AppText
+                                    weight="bold"
+                                    style={styles.actionButtonText}
+                                    numberOfLines={1}
+                                  >
+                                    {t("reportIssue")}
+                                  </AppText>
+                                </LinearGradient>
+                              </TouchableOpacity>
+                            </>
+                          )}
+                      </View>
+                    );
+                  })()}
                 </View>
               )}
 
@@ -1451,15 +1785,14 @@ const VerifyProductPage = () => {
                       style={styles.completedTitle}
                       numberOfLines={1}
                     >
-                      Completed!
+                      {t("completedTitle")}
                     </AppText>
                     <AppText
                       weight="regular"
                       style={styles.completedSub}
                       numberOfLines={3}
                     >
-                      This transaction has been completed successfully. Thank
-                      you for using BidKhong!
+                      {t("completedSub")}
                     </AppText>
                   </View>
                 </View>
@@ -1478,7 +1811,7 @@ const VerifyProductPage = () => {
                       style={[styles.expiredTitle, { color: "#E65100" }]}
                       numberOfLines={1}
                     >
-                      Under Dispute
+                      {t("underDispute")}
                     </AppText>
                     <AppText
                       weight="regular"
@@ -1505,8 +1838,8 @@ const VerifyProductPage = () => {
                       numberOfLines={1}
                     >
                       {selectedOrder.status === "expired"
-                        ? "Order Expired"
-                        : "Order Cancelled"}
+                        ? t("orderExpired")
+                        : t("orderCancelled")}
                     </AppText>
                     <AppText
                       weight="regular"
@@ -1514,8 +1847,8 @@ const VerifyProductPage = () => {
                       numberOfLines={3}
                     >
                       {selectedOrder.status === "expired"
-                        ? "The confirmation deadline has passed. This order has been voided."
-                        : "This order has been cancelled."}
+                        ? t("orderExpiredSub")
+                        : t("orderCancelledSub")}
                     </AppText>
                   </View>
                 </View>
@@ -1592,18 +1925,6 @@ const VerifyProductPage = () => {
                         ? "ดี"
                         : "ยอดเยี่ยม!"}
             </AppText>
-
-            {/* Comment Input */}
-            <View style={styles.reviewInputWrapper}>
-              <AppTextInput
-                placeholder="เขียนรีวิวเพิ่มเติม (ไม่บังคับ)..."
-                value={reviewComment}
-                onChangeText={setReviewComment}
-                multiline
-                numberOfLines={3}
-                style={styles.reviewInput}
-              />
-            </View>
 
             {/* Buttons */}
             <View style={styles.reviewButtonsRow}>
@@ -1917,6 +2238,19 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 11,
+  },
+  cardShipButton: {
+    backgroundColor: "#7B1FA2",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 76,
+  },
+  cardShipButtonText: {
+    fontSize: 12,
+    color: "#fff",
   },
 
   // Modal

@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { image } from "../../assets/images";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { apiService } from "../../utils/api";
 import { AppText } from "./appText";
 import { AppTextInput } from "./appTextInput";
@@ -37,6 +38,7 @@ const { height, width } = Dimensions.get("window");
 export function AuthModal({ visible, onClose }: AuthModalProps) {
   const router = useRouter();
   const { loginSuccess } = useAuth();
+  const { t } = useLanguage();
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -202,15 +204,15 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
   const getTitle = () => {
     switch (mode) {
       case "login":
-        return "Log In";
+        return t("loginTitle");
       case "pdpa":
-        return "Privacy Policy";
+        return t("pdpaTitle");
       case "signup":
-        return "Sign Up";
+        return t("registerTitle");
       case "forgot-password":
-        return "Forgot Password";
+        return t("forgotPassword");
       case "reset-password":
-        return "Reset Password";
+        return t("resetPassword");
     }
   };
 
@@ -357,7 +359,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.forgotPassword}
                     >
-                      Forgot Password?
+                      {t("forgotPassword")}
                     </AppText>
                   </TouchableOpacity>
 
@@ -378,7 +380,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                         numberOfLines={1}
                         style={styles.primaryButtonText}
                       >
-                        {loading ? "Logging in..." : "Log In"}
+                        {loading ? t("loading") : t("login")}
                       </AppText>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -391,7 +393,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.dividerText}
                     >
-                      Don't have an account?
+                      {t("noAccount")}
                     </AppText>
                     <View style={styles.dividerLine} />
                   </View>
@@ -409,7 +411,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.signupLinkText}
                     >
-                      Sign Up
+                      {t("register")}
                     </AppText>
                   </TouchableOpacity>
                 </View>
@@ -538,7 +540,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                         numberOfLines={1}
                         style={styles.primaryButtonText}
                       >
-                        ยอมรับและดำเนินการต่อ
+                        {t("pdpaContinue")}
                       </AppText>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -587,7 +589,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.label}
                     >
-                      Full Name
+                      {t("fullName")}
                     </AppText>
                     <View style={styles.inputWrapper}>
                       <Image source={image.person} style={styles.inputIcon} />
@@ -611,7 +613,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.label}
                     >
-                      Email Address
+                      {t("email")}
                     </AppText>
                     <View style={styles.inputWrapper}>
                       <Image source={image.mail} style={styles.inputIcon} />
@@ -636,7 +638,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.label}
                     >
-                      Phone Number
+                      {t("phoneNumber")}
                     </AppText>
                     <View style={styles.inputWrapper}>
                       <Image source={image.phone} style={styles.inputIcon} />
@@ -661,7 +663,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.label}
                     >
-                      Password
+                      {t("password")}
                     </AppText>
                     <View style={styles.inputWrapper}>
                       <Image source={image.password} style={styles.inputIcon} />
@@ -697,7 +699,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.label}
                     >
-                      Confirm Password
+                      {t("confirmPassword")}
                     </AppText>
                     <View style={styles.inputWrapper}>
                       <Image source={image.password} style={styles.inputIcon} />
@@ -756,7 +758,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                         numberOfLines={1}
                         style={styles.primaryButtonText}
                       >
-                        {loading ? "Creating Account..." : "Create Account"}
+                        {loading ? t("loading") : t("register")}
                       </AppText>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -769,7 +771,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.dividerText}
                     >
-                      Already have an account?
+                      {t("haveAccount")}
                     </AppText>
                     <View style={styles.dividerLine} />
                   </View>
@@ -787,7 +789,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.loginLinkText}
                     >
-                      Log In
+                      {t("login")}
                     </AppText>
                   </TouchableOpacity>
                 </View>
@@ -805,7 +807,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.label}
                     >
-                      Email Address
+                      {t("email")}
                     </AppText>
                     <View style={styles.inputWrapper}>
                       <Image source={image.mail} style={styles.inputIcon} />
@@ -837,7 +839,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                         numberOfLines={1}
                         style={styles.primaryButtonText}
                       >
-                        {loading ? "Sending..." : "Send Reset Token"}
+                        {loading ? t("loading") : t("sendToken")}
                       </AppText>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -856,7 +858,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       adjustsFontSizeToFit
                       style={styles.alreadyHaveToken}
                     >
-                      Already have a token? Reset Password
+                      {t("enterToken")} - {t("resetPassword")}
                     </AppText>
                   </TouchableOpacity>
 
@@ -868,7 +870,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.dividerText}
                     >
-                      Remember your password?
+                      {t("rememberPassword")}
                     </AppText>
                     <View style={styles.dividerLine} />
                   </View>
@@ -886,7 +888,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.loginLinkText}
                     >
-                      Back to Log In
+                      {t("back")}
                     </AppText>
                   </TouchableOpacity>
                 </View>
@@ -904,7 +906,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.label}
                     >
-                      Email Address
+                      {t("email")}
                     </AppText>
                     <View style={styles.inputWrapper}>
                       <Image source={image.mail} style={styles.inputIcon} />
@@ -926,7 +928,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.label}
                     >
-                      Reset Token
+                      {t("resetToken")}
                     </AppText>
                     <View style={styles.inputWrapper}>
                       <Image source={image.password} style={styles.inputIcon} />
@@ -947,7 +949,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.label}
                     >
-                      New Password
+                      {t("newPasswordLabel")}
                     </AppText>
                     <View style={styles.inputWrapper}>
                       <Image source={image.password} style={styles.inputIcon} />
@@ -990,7 +992,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                         numberOfLines={1}
                         style={styles.primaryButtonText}
                       >
-                        {loading ? "Resetting..." : "Reset Password"}
+                        {loading ? t("resettingPwd") : t("resetPassword")}
                       </AppText>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -1003,7 +1005,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.dividerText}
                     >
-                      Remember your password?
+                      {t("rememberPassword")}
                     </AppText>
                     <View style={styles.dividerLine} />
                   </View>
@@ -1021,7 +1023,7 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       numberOfLines={1}
                       style={styles.loginLinkText}
                     >
-                      Back to Log In
+                      {t("back")}
                     </AppText>
                   </TouchableOpacity>
                 </View>
@@ -1043,14 +1045,14 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
             />
             <AppText weight="medium" style={styles.loadingOverlayText}>
               {mode === "login"
-                ? "Logging in..."
+                ? t("loggingIn")
                 : mode === "signup"
-                  ? "Creating account..."
+                  ? t("creatingAccount")
                   : mode === "forgot-password"
-                    ? "Sending..."
+                    ? t("sendingReset")
                     : mode === "reset-password"
-                      ? "Resetting..."
-                      : "Please wait..."}
+                      ? t("resettingPwd")
+                      : t("pleaseWait")}
             </AppText>
           </View>
         </View>

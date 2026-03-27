@@ -21,6 +21,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { apiService, getFullImageUrl } from "../../utils/api";
 import { User } from "../../utils/api/types";
 import { AppText } from "../components/appText";
@@ -28,6 +29,7 @@ import { AppText } from "../components/appText";
 const EditProfilePage = () => {
   const router = useRouter();
   const { updateUser } = useAuth();
+  const { t } = useLanguage();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -108,19 +110,19 @@ const EditProfilePage = () => {
     Keyboard.dismiss();
 
     if (!fullName.trim()) {
-      Alert.alert("Error", "Please enter your full name");
+      Alert.alert("Error", t("errEnterFullName"));
       return;
     }
     if (!email.trim()) {
-      Alert.alert("Error", "Please enter your email");
+      Alert.alert("Error", t("errEnterEmail"));
       return;
     }
     if (!email.includes("@")) {
-      Alert.alert("Error", "Please enter a valid email address");
+      Alert.alert("Error", t("errValidEmail"));
       return;
     }
     if (!phoneNumber.trim()) {
-      Alert.alert("Error", "Please enter your phone number");
+      Alert.alert("Error", t("errEnterPhone"));
       return;
     }
 
@@ -136,10 +138,7 @@ const EditProfilePage = () => {
       setHasChanges(false);
       showSuccess();
     } catch (error: any) {
-      Alert.alert(
-        "Error",
-        error.message || "An error occurred while saving profile",
-      );
+      Alert.alert("Error", error.message || t("errEnterFullName"));
     } finally {
       setSaving(false);
     }
@@ -148,7 +147,7 @@ const EditProfilePage = () => {
   const handleSendToken = async () => {
     Keyboard.dismiss();
     if (!email) {
-      Alert.alert("Error", "Email not found");
+      Alert.alert("Error", t("errEnterEmail"));
       return;
     }
 
@@ -157,12 +156,9 @@ const EditProfilePage = () => {
       const res = await apiService.auth.forgotPassword({ email });
       setTokenSent(true);
       setCooldown(60);
-      Alert.alert(
-        "Token Sent Successfully",
-        `We have sent a token to ${email}\nPlease check your email and enter the token to reset your password.`,
-      );
+      Alert.alert(t("tokenSentTitle"), t("tokenSentMsg"));
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to send token");
+      Alert.alert("Error", error.message || t("sendingToken"));
     } finally {
       setSendingToken(false);
     }
@@ -172,19 +168,19 @@ const EditProfilePage = () => {
     Keyboard.dismiss();
 
     if (!resetToken.trim()) {
-      Alert.alert("Error", "Please enter the token sent to your email");
+      Alert.alert("Error", t("errEnterToken"));
       return;
     }
     if (!newPassword.trim()) {
-      Alert.alert("Error", "Please enter your new password");
+      Alert.alert("Error", t("errEnterNewPwd"));
       return;
     }
     if (newPassword.length < 6) {
-      Alert.alert("Error", "New password must be at least 6 characters");
+      Alert.alert("Error", t("errPwdLength"));
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert("Error", "New passwords do not match");
+      Alert.alert("Error", t("errPwdNoMatch"));
       return;
     }
 
@@ -201,9 +197,9 @@ const EditProfilePage = () => {
       setTokenSent(false);
       setShowResetSection(false);
       setCooldown(0);
-      Alert.alert("Success", "Password changed successfully");
+      Alert.alert("Success", t("pwdChangedSuccess"));
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to change password");
+      Alert.alert("Error", error.message || t("errEnterNewPwd"));
     } finally {
       setResettingPassword(false);
     }
@@ -212,10 +208,7 @@ const EditProfilePage = () => {
   const handleChangePhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        "Permission Required",
-        "Please allow access to your photo library to upload a profile picture",
-      );
+      Alert.alert(t("permissionRequired"), t("permissionPhotoMsg"));
       return;
     }
 
@@ -241,9 +234,9 @@ const EditProfilePage = () => {
         updateUser(updatedUser);
       }
       setProfileImageUri(getFullImageUrl(profileImagePath));
-      Alert.alert("Success", "Profile picture uploaded successfully");
+      Alert.alert("Success", t("profilePicUploaded"));
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to upload profile picture");
+      Alert.alert("Error", error.message || t("profilePicUploaded"));
     } finally {
       setUploadingImage(false);
     }
@@ -251,19 +244,14 @@ const EditProfilePage = () => {
 
   const handleGoBack = () => {
     if (hasChanges) {
-      Alert.alert(
-        "Unsaved Changes",
-        "You have unsaved changes. Do you want to discard them?",
-        [
-          { text: "Stay" },
-          {
-            text: "Discard",
-
-            style: "destructive",
-            onPress: () => router.back(),
-          },
-        ],
-      );
+      Alert.alert(t("unsavedChanges"), t("unsavedChangesMsg"), [
+        { text: t("stay") },
+        {
+          text: t("discard"),
+          style: "destructive",
+          onPress: () => router.back(),
+        },
+      ]);
     } else {
       router.back();
     }
@@ -291,7 +279,7 @@ const EditProfilePage = () => {
             <Image source={image.back} style={{ width: 32, height: 32 }} />
           </TouchableOpacity>
           <AppText weight="bold" numberOfLines={1} style={styles.headerTitle}>
-            Edit Profile
+            {t("editProfile")}
           </AppText>
           <TouchableOpacity
             onPress={handleSaveProfile}
@@ -309,7 +297,7 @@ const EditProfilePage = () => {
                 numberOfLines={1}
                 style={styles.saveBtnText}
               >
-                Save
+                {t("save")}
               </AppText>
             )}
           </TouchableOpacity>
@@ -340,7 +328,7 @@ const EditProfilePage = () => {
           adjustsFontSizeToFit
           style={styles.successToastText}
         >
-          ✅ Profile updated successfully
+          {t("profileUpdatedSuccess")}
         </AppText>
       </Animated.View>
 
@@ -383,7 +371,7 @@ const EditProfilePage = () => {
                 numberOfLines={1}
                 style={styles.changePhotoText}
               >
-                Change photo
+                {t("changePhoto")}
               </AppText>
             </TouchableOpacity>
           </View>
@@ -402,7 +390,7 @@ const EditProfilePage = () => {
                 numberOfLines={1}
                 style={styles.sectionTitle}
               >
-                Personal Information
+                {t("personalInfo")}
               </AppText>
             </View>
 
@@ -412,7 +400,7 @@ const EditProfilePage = () => {
                 numberOfLines={1}
                 style={styles.inputLabel}
               >
-                Full Name
+                {t("fullName")}
               </AppText>
               <View style={styles.inputWrapper}>
                 <Image
@@ -439,7 +427,7 @@ const EditProfilePage = () => {
                 numberOfLines={1}
                 style={styles.inputLabel}
               >
-                Email
+                {t("email")}
               </AppText>
               <View style={[styles.inputWrapper, styles.inputDisabled]}>
                 <Image
@@ -458,7 +446,7 @@ const EditProfilePage = () => {
                 numberOfLines={1}
                 style={styles.inputLabel}
               >
-                Phone Number
+                {t("phoneNumber")}
               </AppText>
               <View style={styles.inputWrapper}>
                 <Image
@@ -502,7 +490,7 @@ const EditProfilePage = () => {
                 numberOfLines={1}
                 style={styles.sectionTitle}
               >
-                Reset Password
+                {t("resetPasswordSection")}
               </AppText>
               <AppText style={styles.expandArrow}>
                 {showResetSection ? "▲" : "▼"}
@@ -513,14 +501,16 @@ const EditProfilePage = () => {
               <View style={styles.resetFields}>
                 {/* Info text */}
                 <AppText weight="regular" style={styles.resetInfoText}>
-                  We will send a token to your email{"\n"}
+                  {t("resetPwdInfo")}
+                  {"\n"}
                   <AppText
                     weight="semibold"
                     style={{ color: "#3B82F6", fontSize: 13 }}
                   >
                     {email}
                   </AppText>
-                  {"\n"}to use for resetting your password
+                  {"\n"}
+                  {t("resetPwdInfo").split("\n")[1] ? "" : t("enterTokenEmail")}
                 </AppText>
 
                 {/* Send Token Button */}
@@ -551,9 +541,9 @@ const EditProfilePage = () => {
                       >
                         {tokenSent
                           ? cooldown > 0
-                            ? `Resend in ${cooldown} seconds`
-                            : "Resend Token"
-                          : "Sent Token to Email"}
+                            ? `${t("resendIn")} ${cooldown}s`
+                            : t("resendToken")
+                          : t("sendTokenToEmail")}
                       </AppText>
                     )}
                   </LinearGradient>
@@ -568,7 +558,7 @@ const EditProfilePage = () => {
                         numberOfLines={1}
                         style={styles.inputLabel}
                       >
-                        Token
+                        {t("token")}
                       </AppText>
                       <View style={styles.inputWrapper}>
                         <Image
@@ -594,7 +584,7 @@ const EditProfilePage = () => {
                         numberOfLines={1}
                         style={styles.inputLabel}
                       >
-                        New Password
+                        {t("newPassword")}
                       </AppText>
                       <View style={styles.inputWrapper}>
                         <Image
@@ -636,7 +626,7 @@ const EditProfilePage = () => {
                         numberOfLines={1}
                         style={styles.inputLabel}
                       >
-                        Confirm New Password
+                        {t("confirmNewPassword")}
                       </AppText>
                       <View style={styles.inputWrapper}>
                         <Image
@@ -693,7 +683,7 @@ const EditProfilePage = () => {
                             numberOfLines={1}
                             style={styles.changePasswordText}
                           >
-                            Change Password
+                            {t("changePassword")}
                           </AppText>
                         )}
                       </LinearGradient>
@@ -720,10 +710,10 @@ const EditProfilePage = () => {
             />
             <AppText weight="medium" style={styles.loadingOverlayText}>
               {saving
-                ? "Saving..."
+                ? t("savingDots")
                 : sendingToken
-                  ? "Sending token..."
-                  : "Resetting password..."}
+                  ? t("sendingToken")
+                  : t("resettingPassword")}
             </AppText>
           </View>
         </View>

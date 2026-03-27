@@ -1,4 +1,11 @@
 import {
+  NotoSansThai_300Light,
+  NotoSansThai_400Regular,
+  NotoSansThai_500Medium,
+  NotoSansThai_600SemiBold,
+  NotoSansThai_700Bold,
+} from "@expo-google-fonts/noto-sans-thai";
+import {
   Poppins_300Light,
   Poppins_400Regular,
   Poppins_500Medium,
@@ -13,6 +20,7 @@ import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { AppReadyProvider, useAppReady } from "../contexts/AppReadyContext";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
+import { LanguageProvider } from "../contexts/LanguageContext";
 import { tokenManager } from "../utils/api/config";
 import SplashScreen from "./components/SplashScreen";
 
@@ -24,7 +32,7 @@ if (__DEV__) {
 function RootLayoutInner() {
   const [ready, setReady] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
-  const { isLoggedIn, isGuest, userRole, loginSuccess } = useAuth();
+  const { isLoggedIn, isGuest, userRole, isBanned, loginSuccess } = useAuth();
   const { isHomeReady, markHomeReady } = useAppReady();
   const router = useRouter();
   const segments = useSegments();
@@ -46,6 +54,14 @@ function RootLayoutInner() {
     if (!ready) return;
 
     const inAdminGroup = segments[0] === "admin";
+
+    // ถ้าโดนแบน → ไปหน้าแบน
+    if (isBanned) {
+      if (segments[0] !== "screens" || segments[1] !== "banned") {
+        router.replace("/screens/banned");
+      }
+      return;
+    }
 
     // ถ้าเป็น guest → อนุญาตเข้า tabs ได้
     if (isGuest) {
@@ -77,7 +93,7 @@ function RootLayoutInner() {
         router.replace("/tabs/home");
       }
     }
-  }, [ready, isLoggedIn, isGuest, userRole, segments]);
+  }, [ready, isLoggedIn, isGuest, userRole, isBanned, segments]);
 
   // Render app + splash overlay
   // Stack renders underneath so home.tsx can start fetching API data
@@ -118,6 +134,11 @@ export default function RootLayout() {
     Poppins_500Medium,
     Poppins_600SemiBold,
     Poppins_700Bold,
+    NotoSansThai_300Light,
+    NotoSansThai_400Regular,
+    NotoSansThai_500Medium,
+    NotoSansThai_600SemiBold,
+    NotoSansThai_700Bold,
   });
 
   if (!fontsLoaded) {
@@ -141,10 +162,12 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <AppReadyProvider>
-        <RootLayoutInner />
-      </AppReadyProvider>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <AppReadyProvider>
+          <RootLayoutInner />
+        </AppReadyProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }

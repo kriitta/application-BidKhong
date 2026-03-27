@@ -145,16 +145,12 @@ const getReportTypeIcon = (
       return { name: "warning", color: "#DC2626" };
     case "fake_product":
       return { name: "pricetag", color: "#F59E0B" };
-    case "payment":
-    case "payment_issue":
-      return { name: "card", color: "#3B82F6" };
-    case "delivery":
-    case "delivery_issue":
-      return { name: "cube", color: "#8B5CF6" };
+    case "harassment":
+      return { name: "person-remove", color: "#EC4899" };
     case "inappropriate_content":
       return { name: "flag", color: "#EF4444" };
-    case "counterfeit":
-      return { name: "alert-circle", color: "#F59E0B" };
+    case "other":
+      return { name: "help-circle", color: "#6B7280" };
     default:
       return { name: "help-circle", color: "#6B7280" };
   }
@@ -166,16 +162,10 @@ const getReportTypeLabel = (t: string) => {
       return "หลอกลวง";
     case "fake_product":
       return "สินค้าปลอม";
-    case "payment":
-    case "payment_issue":
-      return "การชำระเงิน";
-    case "delivery":
-    case "delivery_issue":
-      return "การจัดส่ง";
+    case "harassment":
+      return "คุกคาม";
     case "inappropriate_content":
       return "เนื้อหาไม่เหมาะสม";
-    case "counterfeit":
-      return "สินค้าปลอมแปลง";
     case "other":
       return "อื่นๆ";
     default:
@@ -2799,58 +2789,88 @@ const AdminScreen = () => {
                       เปลี่ยนสถานะ
                     </AppText>
                   </View>
-                  <TextInput
-                    style={[styles.replyInput, { marginBottom: 12 }]}
-                    placeholder="หมายเหตุจากแอดมิน (ไม่บังคับ)..."
-                    placeholderTextColor="#999"
-                    multiline
-                    numberOfLines={3}
-                    textAlignVertical="top"
-                    value={adminNote}
-                    onChangeText={setAdminNote}
-                  />
-                  <View style={styles.statusActions}>
-                    {(
-                      [
-                        "pending",
-                        "reviewing",
-                        "resolved",
-                        "dismissed",
-                      ] as string[]
-                    ).map((st) => (
-                      <TouchableOpacity
-                        key={st}
-                        style={[
-                          styles.statusActionBtn,
-                          {
-                            backgroundColor:
-                              selectedReport.status === st
-                                ? getReportStatusColor(st)
-                                : getReportStatusColor(st) + "15",
-                            borderColor: getReportStatusColor(st) + "40",
-                            borderWidth: 1,
-                          },
-                        ]}
-                        disabled={statusLoading}
-                        onPress={() =>
-                          handleUpdateReportStatus(selectedReport, st)
-                        }
+                  {selectedReport.order_id ? (
+                    <View
+                      style={{
+                        backgroundColor: "#FFF8E1",
+                        borderRadius: 10,
+                        padding: 12,
+                        borderWidth: 1,
+                        borderColor: "#FFC107",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <Ionicons
+                        name="information-circle"
+                        size={18}
+                        color="#F59E0B"
+                      />
+                      <AppText
+                        weight="regular"
+                        style={{ fontSize: 13, color: "#92400E", flex: 1 }}
                       >
-                        <AppText
-                          weight="semibold"
-                          style={{
-                            fontSize: 11,
-                            color:
-                              selectedReport.status === st
-                                ? "#FFF"
-                                : getReportStatusColor(st),
-                          }}
-                        >
-                          {getReportStatusLabel(st)}
-                        </AppText>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                        รายงานนี้มาจาก dispute คำสั่งซื้อ สถานะจัดการผ่านระบบ
+                        order โดยอัตโนมัติ
+                      </AppText>
+                    </View>
+                  ) : (
+                    <>
+                      <TextInput
+                        style={[styles.replyInput, { marginBottom: 12 }]}
+                        placeholder="หมายเหตุจากแอดมิน (ไม่บังคับ)..."
+                        placeholderTextColor="#999"
+                        multiline
+                        numberOfLines={3}
+                        textAlignVertical="top"
+                        value={adminNote}
+                        onChangeText={setAdminNote}
+                      />
+                      <View style={styles.statusActions}>
+                        {(
+                          [
+                            "pending",
+                            "reviewing",
+                            "resolved",
+                            "dismissed",
+                          ] as string[]
+                        ).map((st) => (
+                          <TouchableOpacity
+                            key={st}
+                            style={[
+                              styles.statusActionBtn,
+                              {
+                                backgroundColor:
+                                  selectedReport.status === st
+                                    ? getReportStatusColor(st)
+                                    : getReportStatusColor(st) + "15",
+                                borderColor: getReportStatusColor(st) + "40",
+                                borderWidth: 1,
+                              },
+                            ]}
+                            disabled={statusLoading}
+                            onPress={() =>
+                              handleUpdateReportStatus(selectedReport, st)
+                            }
+                          >
+                            <AppText
+                              weight="semibold"
+                              style={{
+                                fontSize: 11,
+                                color:
+                                  selectedReport.status === st
+                                    ? "#FFF"
+                                    : getReportStatusColor(st),
+                              }}
+                            >
+                              {getReportStatusLabel(st)}
+                            </AppText>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </>
+                  )}
                 </View>
               </View>
             </ScrollView>

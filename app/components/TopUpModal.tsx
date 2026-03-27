@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { apiService } from "../../utils/api";
 import { AppText } from "./appText";
 import { AppTextInput } from "./appTextInput";
 
@@ -24,7 +25,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 interface TopUpModalProps {
   visible: boolean;
   onClose: () => void;
-  onConfirm?: (amount: number, method: string) => void;
+  onConfirm?: (result: any) => void;
 }
 
 // ─── Bank accounts for mobile banking ───
@@ -61,6 +62,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
   const [slipUri, setSlipUri] = useState<string | null>(null);
+  const [slipMimeType, setSlipMimeType] = useState<string>("image/jpeg");
   const [submitting, setSubmitting] = useState(false);
 
   const quickAmounts = [
@@ -127,25 +129,34 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
 
     if (!result.canceled && result.assets?.length) {
       setSlipUri(result.assets[0].uri);
+      setSlipMimeType(result.assets[0].mimeType || "image/jpeg");
     }
   };
 
-  const handleSubmitSlip = () => {
+  const handleSubmitSlip = async () => {
     if (!slipUri) {
       Alert.alert("Error", "กรุณาอัปโหลดสลิปการโอนเงิน");
       return;
     }
+    const numAmount = parseInt(amount) || 0;
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      const numAmount = parseInt(amount) || 0;
-      const methodName = paymentMethods.find(
-        (m) => m.id === selectedMethod,
-      )?.name;
-      onConfirm?.(numAmount, methodName || "");
+    try {
+      const result = await apiService.wallet.topUp({
+        amount: numAmount,
+        slipImageUri: slipUri,
+        slipMimeType,
+      });
+      onConfirm?.(result);
       handleReset();
       onClose();
-    }, 1500);
+    } catch (error: any) {
+      Alert.alert(
+        "เกิดข้อผิดพลาด",
+        error.message || "ไม่สามารถส่งสลิปได้ กรุณาลองใหม่อีกครั้ง",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleReset = () => {
@@ -153,6 +164,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
     setSelectedMethod("mobilebanking");
     setStep(1);
     setSlipUri(null);
+    setSlipMimeType("image/jpeg");
     setSubmitting(false);
   };
 
@@ -193,7 +205,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
             <View style={styles.qrContainer}>
               <View style={styles.qrBox}>
                 <Image
-                  source={image.qr}
+                  source={image.qr_code}
                   style={styles.qrImage}
                   resizeMode="contain"
                 />

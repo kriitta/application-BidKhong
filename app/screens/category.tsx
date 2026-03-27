@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { apiService, getFullImageUrl } from "../../utils/api";
 import { Category, Product, Subcategory } from "../../utils/api/types";
 import { AppText } from "../components/appText";
@@ -55,6 +56,7 @@ const SUBCATEGORY_IMAGES: Record<string, any> = {
 const CategoryPage = () => {
   const { categoryId, categoryName } = useLocalSearchParams();
   const router = useRouter();
+  const { t } = useLanguage();
 
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<Category | null>(null);
@@ -121,7 +123,7 @@ const CategoryPage = () => {
     const now = new Date();
     const end = new Date(endTime);
     const diff = end.getTime() - now.getTime();
-    if (diff <= 0) return "Ended";
+    if (diff <= 0) return t("ended");
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -239,7 +241,7 @@ const CategoryPage = () => {
               style={styles.sectionLabel}
               numberOfLines={1}
             >
-              Select a subcategory
+              {t("selectSubcategory")}
             </AppText>
 
             {/* ─── Subcategory Grid ─── */}
@@ -305,14 +307,14 @@ const CategoryPage = () => {
                     style={styles.emptyStateTitle}
                     numberOfLines={1}
                   >
-                    No Subcategories Found
+                    {t("noSubcategoriesFound")}
                   </AppText>
                   <AppText
                     weight="regular"
                     style={styles.emptyStateSubtitle}
                     numberOfLines={2}
                   >
-                    Try adjusting your search
+                    {t("tryAdjustSearch")}
                   </AppText>
                 </Animated.View>
               </View>
@@ -333,7 +335,7 @@ const CategoryPage = () => {
                 <TextInput
                   ref={searchInputRef}
                   style={styles.searchInput}
-                  placeholder={`Search in ${selectedSub.name}...`}
+                  placeholder={`${t("searchIn")} ${selectedSub.name}...`}
                   placeholderTextColor="#B0B0B0"
                   value={searchQuery}
                   onChangeText={setSearchQuery}
@@ -367,7 +369,7 @@ const CategoryPage = () => {
                     style={styles.cancelText}
                     numberOfLines={1}
                   >
-                    Cancel
+                    {t("cancel")}
                   </AppText>
                 </TouchableOpacity>
               )}
@@ -477,7 +479,7 @@ const CategoryPage = () => {
                     style={styles.emptyStateTitle}
                     numberOfLines={1}
                   >
-                    No Products Found
+                    {t("noProductsFound")}
                   </AppText>
                   <AppText
                     weight="regular"
@@ -485,8 +487,8 @@ const CategoryPage = () => {
                     numberOfLines={2}
                   >
                     {searchQuery.trim()
-                      ? "Try adjusting your search"
-                      : `No products in "${selectedSub.name}" yet`}
+                      ? t("tryAdjustSearch")
+                      : `${t("noProductsInSub")} "${selectedSub.name}"`}
                   </AppText>
                 </Animated.View>
               </View>

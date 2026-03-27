@@ -1,10 +1,30 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios, {
-  AxiosError,
-  AxiosInstance,
-  AxiosResponse,
-  InternalAxiosRequestConfig,
+    AxiosError,
+    AxiosInstance,
+    AxiosResponse,
+    InternalAxiosRequestConfig,
 } from "axios";
+
+// ============================================================
+// 🚫 Ban Event Emitter — แจ้ง AuthContext เมื่อ user ถูกแบน
+// ============================================================
+type Listener = (...args: any[]) => void;
+class SimpleEmitter {
+  private listeners: Record<string, Listener[]> = {};
+  on(event: string, fn: Listener) {
+    (this.listeners[event] ||= []).push(fn);
+  }
+  off(event: string, fn: Listener) {
+    this.listeners[event] = (this.listeners[event] || []).filter(
+      (f) => f !== fn,
+    );
+  }
+  emit(event: string, ...args: any[]) {
+    (this.listeners[event] || []).forEach((fn) => fn(...args));
+  }
+}
+export const authEvents = new SimpleEmitter();
 
 // ============================================================
 // 🔧 Configuration
@@ -104,7 +124,8 @@ export const ENDPOINTS = {
   // 🔍 Search
   SEARCH: {
     QUERY: "/search",
-    RECENT: "/search/recent",
+    HISTORY: "/search-history",
+    HISTORY_DELETE: (id: number) => `/search-history/${id}`,
     TRENDING: "/search/trending",
   },
 
@@ -124,6 +145,8 @@ export const ENDPOINTS = {
     SHIP: (id: number) => `/orders/${id}/ship`,
     RECEIVE: (id: number) => `/orders/${id}/receive`,
     DISPUTE: (id: number) => `/orders/${id}/dispute`,
+    RATE_SELLER: (sellerId: number) => `/users/${sellerId}/rate`,
+    SELLER_RATINGS: (sellerId: number) => `/users/${sellerId}/ratings`,
   },
 
   // �🛡️ Admin
@@ -258,6 +281,34 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
     };
+
+    // ถ้า 403 Forbidden → ตรวจสอบว่าถูกแบนหรือไม่
+    if (error.response?.status === 403) {
+      const data = error.response.data as any;
+      const msg = (data?.message || "").toLowerCase();
+      if (
+        msg.includes("ban") ||
+        msg.includes("suspended") ||
+        msg.includes("blocked") ||
+        msg.includes("forbidden") ||
+        msg.includes("ระงับ") ||
+        msg.includes("deactivat") ||
+        data?.banned_until ||
+        data?.strike
+      ) {
+        authEvents.emit("banned", {
+          reason:
+            data?.reason ||
+            data?.ban_reason ||
+            data?.strike?.reason ||
+            data?.message ||
+            "บัญชีของคุณถูกระงับ",
+          banned_until:
+            data?.banned_until || data?.strike?.banned_until || null,
+        });
+        return Promise.reject(error);
+      }
+    }
 
     // ถ้า 401 Unauthorized → ลอง Refresh Token
     if (error.response?.status === 401 && !originalRequest._retry) {

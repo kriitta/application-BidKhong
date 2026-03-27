@@ -12,12 +12,14 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { getFullImageUrl } from "../../utils/api";
 import { AppText } from "../components/appText";
 
 const ProfilePage = () => {
   const router = useRouter();
   const { user, logout: contextLogout, refreshUser } = useAuth();
+  const { t, lang, setLang } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   useFocusEffect(
@@ -27,9 +29,9 @@ const ProfilePage = () => {
   );
 
   const formatJoinDate = (dateStr?: string) => {
-    if (!dateStr) return "Unknown";
+    if (!dateStr) return "";
     const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString(lang === "th" ? "th-TH" : "en-US", {
       month: "long",
       year: "numeric",
     });
@@ -42,10 +44,10 @@ const ProfilePage = () => {
   };
 
   const handleLogout = async () => {
-    Alert.alert("ออกจากระบบ", "คุณแน่ใจที่ต้องการออกจากระบบหรือไม่?", [
-      { text: "ยกเลิก", onPress: () => {} },
+    Alert.alert(t("logoutConfirmTitle"), t("logoutConfirmMessage"), [
+      { text: t("cancel"), onPress: () => {} },
       {
-        text: "ออกจากระบบ",
+        text: t("logoutConfirmYes"),
         onPress: async () => {
           await contextLogout();
           router.replace("/welcome");
@@ -120,7 +122,8 @@ const ProfilePage = () => {
               numberOfLines={1}
               style={styles.infoLabel}
             >
-              Joined {formatJoinDate(user?.join_date || user?.created_at)}
+              {t("joined")}{" "}
+              {formatJoinDate(user?.join_date || user?.created_at)}
             </AppText>
           </View>
 
@@ -163,7 +166,7 @@ const ProfilePage = () => {
                   numberOfLines={1}
                   style={styles.walletLabel}
                 >
-                  Balance
+                  {t("balance")}
                 </AppText>
                 <AppText
                   weight="bold"
@@ -181,7 +184,7 @@ const ProfilePage = () => {
                   numberOfLines={1}
                   style={styles.walletLabel}
                 >
-                  Pending
+                  {t("pending")}
                 </AppText>
                 <AppText
                   weight="bold"
@@ -199,7 +202,7 @@ const ProfilePage = () => {
                   numberOfLines={1}
                   style={styles.walletLabel}
                 >
-                  Total
+                  {t("total")}
                 </AppText>
                 <AppText
                   weight="bold"
@@ -230,7 +233,7 @@ const ProfilePage = () => {
                 numberOfLines={1}
                 style={styles.menuTitle}
               >
-                Edit Profile
+                {t("editProfile")}
               </AppText>
             </View>
             <AppText weight="regular" style={styles.menuArrow}>
@@ -253,7 +256,7 @@ const ProfilePage = () => {
                 numberOfLines={1}
                 style={styles.menuTitle}
               >
-                Verify Product
+                {t("verifyProduct")}
               </AppText>
             </View>
             <AppText weight="regular" style={styles.menuArrow}>
@@ -279,7 +282,7 @@ const ProfilePage = () => {
                 numberOfLines={1}
                 style={styles.menuTitle}
               >
-                My Products
+                {t("myProducts")}
               </AppText>
             </View>
             <AppText weight="regular" style={styles.menuArrow}>
@@ -302,7 +305,7 @@ const ProfilePage = () => {
                 numberOfLines={1}
                 style={styles.menuTitle}
               >
-                Help & Support
+                {t("helpSupport")}
               </AppText>
             </View>
             <AppText weight="regular" style={styles.menuArrow}>
@@ -326,13 +329,61 @@ const ProfilePage = () => {
                 numberOfLines={1}
                 style={styles.menuTitle}
               >
-                About app
+                {t("about")}
               </AppText>
             </View>
             <AppText weight="regular" style={styles.menuArrow}>
               ›
             </AppText>
           </TouchableOpacity>
+
+          {/* Language Toggle */}
+          <View style={styles.menuItem}>
+            <View
+              style={[styles.menuIconContainer, { backgroundColor: "#E8F4FD" }]}
+            >
+              <AppText style={{ fontSize: 16 }}>🌐</AppText>
+            </View>
+            <View style={styles.menuContent}>
+              <AppText
+                weight="semibold"
+                numberOfLines={1}
+                style={styles.menuTitle}
+              >
+                {t("language")}
+              </AppText>
+            </View>
+            <View style={styles.langToggleRow}>
+              <TouchableOpacity
+                onPress={() => setLang("th")}
+                style={[styles.langBtn, lang === "th" && styles.langBtnActive]}
+              >
+                <AppText
+                  weight={lang === "th" ? "semibold" : "regular"}
+                  style={[
+                    styles.langBtnText,
+                    lang === "th" && styles.langBtnTextActive,
+                  ]}
+                >
+                  ไทย
+                </AppText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setLang("en")}
+                style={[styles.langBtn, lang === "en" && styles.langBtnActive]}
+              >
+                <AppText
+                  weight={lang === "en" ? "semibold" : "regular"}
+                  style={[
+                    styles.langBtnText,
+                    lang === "en" && styles.langBtnTextActive,
+                  ]}
+                >
+                  EN
+                </AppText>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           {/* Logout Button */}
           <TouchableOpacity
@@ -353,7 +404,7 @@ const ProfilePage = () => {
                   numberOfLines={1}
                   style={styles.logoutText}
                 >
-                  Log out
+                  {t("logout")}
                 </AppText>
               </View>
               <AppText weight="regular" style={styles.logoutArrow}>
@@ -570,6 +621,29 @@ const styles = StyleSheet.create({
   walletDivider: {
     width: 1,
     backgroundColor: "#D0D8E8",
+  },
+  langToggleRow: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  langBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: "#C8D0DC",
+    backgroundColor: "#F5F7FA",
+  },
+  langBtnActive: {
+    borderColor: "#003994",
+    backgroundColor: "#003994",
+  },
+  langBtnText: {
+    fontSize: 12,
+    color: "#555",
+  },
+  langBtnTextActive: {
+    color: "#FFF",
   },
   additionalSection: {
     width: "100%",

@@ -14,6 +14,7 @@ import {
   ImageBackground,
   Keyboard,
   Modal,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -25,19 +26,24 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
 import { useAppReady } from "../../contexts/AppReadyContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { apiService, getFullImageUrl } from "../../utils/api";
-import { Category, Product } from "../../utils/api/types";
+import {
+  Category,
+  Product,
+  SearchHistoryItem,
+  SearchResult,
+} from "../../utils/api/types";
 import { AppText } from "../components/appText";
 import { AuthModal } from "../components/AuthModal";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-const RECENT_SEARCHES = ["Macbook", "BMW", "Labubu", "iPhone 16", "Nike Dunk"];
-
 const HomePage = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { isGuest, isLoggedIn, user, refreshUser } = useAuth();
+  const { t } = useLanguage();
   const [authModalVisible, setAuthModalVisible] = useState(false);
 
   useFocusEffect(
@@ -66,6 +72,51 @@ const HomePage = () => {
   const emptyOpacityAnim = useRef(new Animated.Value(0)).current;
   const lottieRef = useRef<LottieView>(null);
 
+  // ─── Search History from API ───
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
+
+  const fetchSearchHistory = useCallback(async () => {
+    if (isGuest) return;
+    try {
+      const data = await apiService.search.getRecentSearches();
+      if (Array.isArray(data)) {
+        setSearchHistory(data);
+      }
+    } catch {
+      // silently fail
+    }
+  }, [isGuest]);
+
+  // โหลดประวัติ search ทุกครั้งที่กลับมาที่หน้า home
+  useFocusEffect(
+    useCallback(() => {
+      fetchSearchHistory();
+    }, [fetchSearchHistory]),
+  );
+
+  const deleteSearchItem = useCallback(
+    async (id: number) => {
+      setSearchHistory((prev) => prev.filter((item) => item.id !== id));
+      try {
+        await apiService.search.deleteSearchHistoryItem(id);
+      } catch {
+        // re-fetch in case delete failed
+        fetchSearchHistory();
+      }
+    },
+    [fetchSearchHistory],
+  );
+
+  const clearAllSearchHistory = useCallback(async () => {
+    const backup = searchHistory;
+    setSearchHistory([]);
+    try {
+      await apiService.search.clearRecentSearches();
+    } catch {
+      setSearchHistory(backup);
+    }
+  }, [searchHistory]);
+
   // ─── Categories from API ───
   const [categories, setCategories] = useState<Category[]>([]);
 
@@ -85,6 +136,40 @@ const HomePage = () => {
   const [allProductDefault, setAllProductDefault] = useState<Product[]>([]);
   const [incoming, setIncoming] = useState<Product[]>([]);
   const [recommendations, setRecommendations] = useState<Product[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // ─── Refresh products (reusable for pull-to-refresh & polling) ───
+  const refreshProducts = useCallback(async () => {
+    try {
+      const [productsRes, recsRes] = await Promise.allSettled([
+        apiService.product.getProducts({ per_page: 100 }),
+        isLoggedIn && !isGuest
+          ? apiService.product.getRecommendations(10)
+          : Promise.resolve([]),
+      ]);
+
+      if (productsRes.status === "fulfilled") {
+        const all = productsRes.value.data ?? [];
+        setHotAuctions(all.filter((p) => p.tag === "hot"));
+        setEndingSoon(all.filter((p) => p.tag === "ending"));
+        setAllProductDefault(all.filter((p) => p.tag === "default"));
+        setIncoming(all.filter((p) => p.tag === "incoming"));
+      }
+
+      if (recsRes.status === "fulfilled") {
+        const recsData = recsRes.value;
+        setRecommendations(Array.isArray(recsData) ? recsData : []);
+      }
+    } catch (e) {
+      // silent
+    }
+  }, [isLoggedIn, isGuest]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refreshProducts();
+    setRefreshing(false);
+  }, [refreshProducts]);
 
   // Filter recommendations to only show active (non-ended) products
   const activeRecommendations = useMemo(() => {
@@ -151,6 +236,21 @@ const HomePage = () => {
     fetchInitialData();
   }, []);
 
+  // ─── Polling: refresh products every 15 seconds ───
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshProducts();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [refreshProducts]);
+
+  // ─── Refresh on focus ───
+  useFocusEffect(
+    useCallback(() => {
+      refreshProducts();
+    }, [refreshProducts]),
+  );
+
   /** ดึงรูปแรกของสินค้า หรือใช้ image_url / picture เป็น fallback */
   const getProductImage = (product: Product) => {
     if (product.images && product.images.length > 0) {
@@ -173,7 +273,7 @@ const HomePage = () => {
     const now = new Date();
     const end = new Date(endTime);
     const diff = end.getTime() - now.getTime();
-    if (diff <= 0) return "Ended";
+    if (diff <= 0) return t("ended");
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -197,14 +297,61 @@ const HomePage = () => {
     [hotAuctions, endingSoon, allProductDefault, incoming],
   );
 
-  const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
-    return allProducts.filter((item) => item.name.toLowerCase().includes(q));
-  }, [searchQuery, allProducts]);
+  // ─── API Search Results ───
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (searchQuery.length > 0 && searchResults.length === 0) {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setIsSearchLoading(false);
+      return;
+    }
+    setIsSearchLoading(true);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(async () => {
+      const keyword = searchQuery.trim();
+      try {
+        const res = await apiService.search.search({ q: keyword });
+        setSearchResults(res.data ?? []);
+        // บันทึก keyword ลง history โดยอัตโนมัติ
+        if (!isGuest) {
+          apiService.search
+            .saveSearchKeyword(keyword)
+            .then(fetchSearchHistory)
+            .catch(() => {});
+        }
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setIsSearchLoading(false);
+      }
+    }, 400);
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, [searchQuery]);
+
+  const saveKeywordAndRefreshHistory = useCallback(
+    async (keyword: string) => {
+      if (!keyword.trim() || isGuest) return;
+      try {
+        await apiService.search.saveSearchKeyword(keyword.trim());
+        await fetchSearchHistory();
+      } catch {
+        // silently fail
+      }
+    },
+    [isGuest, fetchSearchHistory],
+  );
+
+  useEffect(() => {
+    if (
+      searchQuery.length > 0 &&
+      !isSearchLoading &&
+      searchResults.length === 0
+    ) {
       emptyScaleAnim.setValue(0.5);
       emptyOpacityAnim.setValue(0);
       Animated.parallel([
@@ -216,10 +363,11 @@ const HomePage = () => {
         }),
       ]).start();
     }
-  }, [searchQuery, searchResults.length]);
+  }, [searchQuery, isSearchLoading, searchResults.length]);
 
   const openSearch = useCallback(() => {
     setSearchVisible(true);
+    fetchSearchHistory();
     fadeAnim.setValue(0);
     slideAnim.setValue(30);
     scaleAnim.setValue(0.97);
@@ -267,6 +415,7 @@ const HomePage = () => {
     ]).start(() => {
       setSearchVisible(false);
       setSearchQuery("");
+      setSearchResults([]);
     });
   }, []);
 
@@ -274,30 +423,42 @@ const HomePage = () => {
     Keyboard.dismiss();
     setIsSearching(false);
     setSearchQuery("");
+    setSearchResults([]);
   }, []);
 
-  const handleSearchItemPress = useCallback((item: (typeof allProducts)[0]) => {
-    cancelSearch();
-    router.push({
-      pathname: "/screens/product-detail",
-      params: {
-        productId: item.id.toString(),
-      },
-    });
-  }, []);
+  // ─── Fetch history เมื่อ inline search panel เปิด ───
+  useEffect(() => {
+    if (isSearching) {
+      fetchSearchHistory();
+    }
+  }, [isSearching]);
 
-  const getBadgeForType = (type: string) => {
-    switch (type) {
-      case "hot":
+  const handleSearchItemPress = useCallback(
+    (item: SearchResult) => {
+      closeSearch();
+      saveKeywordAndRefreshHistory(searchQuery);
+      setTimeout(() => {
+        router.push({
+          pathname: "/screens/product-detail",
+          params: { productId: item.id.toString() },
+        });
+      }, 300);
+    },
+    [closeSearch, saveKeywordAndRefreshHistory, searchQuery],
+  );
+
+  const getBadgeForStatus = (status: string) => {
+    switch (status) {
+      case "active":
         return { label: "🔥 Hot", bg: "#FF3B30" };
       case "ending":
         return { label: "⏰ Ending", bg: "#FF8C00" };
-      case "default":
-        return { label: "📦 All", bg: "#4285F4" };
       case "incoming":
         return { label: "🔜 Incoming", bg: "#9B27B0" };
+      case "ended":
+        return { label: "✅ Ended", bg: "#6B7280" };
       default:
-        return { label: "", bg: "#999" };
+        return { label: "📦 All", bg: "#4285F4" };
     }
   };
 
@@ -332,6 +493,9 @@ const HomePage = () => {
                   onChangeText={setSearchQuery}
                   autoCorrect={false}
                   returnKeyType="search"
+                  onSubmitEditing={() =>
+                    saveKeywordAndRefreshHistory(searchQuery)
+                  }
                 />
                 {searchQuery.length > 0 && (
                   <TouchableOpacity
@@ -344,7 +508,7 @@ const HomePage = () => {
               </View>
               <TouchableOpacity onPress={closeSearch} style={s.cancelBtn}>
                 <AppText weight="medium" style={s.cancelText} numberOfLines={1}>
-                  Cancel
+                  {t("cancel")}
                 </AppText>
               </TouchableOpacity>
             </View>
@@ -358,55 +522,67 @@ const HomePage = () => {
               {searchQuery.length === 0 && (
                 <Animated.View style={{ opacity: fadeAnim }}>
                   {/* Recent Searches */}
-                  <View style={s.searchSection}>
-                    <View style={s.searchSectionHeader}>
-                      <AppText
-                        weight="semibold"
-                        style={s.searchSectionTitle}
-                        numberOfLines={1}
-                      >
-                        🕐 ค้นหาล่าสุด
-                      </AppText>
-                      <TouchableOpacity>
+                  {searchHistory.length > 0 && (
+                    <View style={s.searchSection}>
+                      <View style={s.searchSectionHeader}>
                         <AppText
-                          weight="regular"
-                          style={s.clearAllText}
+                          weight="semibold"
+                          style={s.searchSectionTitle}
                           numberOfLines={1}
                         >
-                          ล้างทั้งหมด
+                          🕐 ค้นหาล่าสุด
                         </AppText>
-                      </TouchableOpacity>
-                    </View>
-                    {RECENT_SEARCHES.map((term, idx) => (
-                      <TouchableOpacity
-                        key={idx}
-                        style={s.recentItem}
-                        onPress={() => setSearchQuery(term)}
-                      >
-                        <View style={s.recentIcon}>
-                          <AppText style={{ fontSize: 14, color: "#999" }}>
-                            ↻
+                        <TouchableOpacity onPress={clearAllSearchHistory}>
+                          <AppText
+                            weight="regular"
+                            style={s.clearAllText}
+                            numberOfLines={1}
+                          >
+                            ล้างทั้งหมด
                           </AppText>
+                        </TouchableOpacity>
+                      </View>
+                      {searchHistory.map((item) => (
+                        <View key={item.id} style={s.recentItem}>
+                          <TouchableOpacity
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              flex: 1,
+                            }}
+                            onPress={() => setSearchQuery(item.keyword)}
+                          >
+                            <View style={s.recentIcon}>
+                              <AppText style={{ fontSize: 14, color: "#999" }}>
+                                ↻
+                              </AppText>
+                            </View>
+                            <AppText
+                              weight="regular"
+                              style={s.recentText}
+                              numberOfLines={1}
+                            >
+                              {item.keyword}
+                            </AppText>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => deleteSearchItem(item.id)}
+                            hitSlop={{
+                              top: 10,
+                              bottom: 10,
+                              left: 10,
+                              right: 10,
+                            }}
+                            style={{ padding: 4, marginLeft: 8 }}
+                          >
+                            <AppText style={{ fontSize: 14, color: "#9CA3AF" }}>
+                              ✕
+                            </AppText>
+                          </TouchableOpacity>
                         </View>
-                        <AppText
-                          weight="regular"
-                          style={s.recentText}
-                          numberOfLines={1}
-                        >
-                          {term}
-                        </AppText>
-                        <AppText
-                          style={{
-                            fontSize: 16,
-                            color: "#D1D5DB",
-                            marginLeft: "auto",
-                          }}
-                        >
-                          ↗
-                        </AppText>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                      ))}
+                    </View>
+                  )}
 
                   {/* Hot Auctions */}
                   <View style={s.searchSection}>
@@ -415,7 +591,7 @@ const HomePage = () => {
                       style={s.searchSectionTitle}
                       numberOfLines={1}
                     >
-                      🔥 Hot Auctions
+                      🔥 {t("hotBids")}
                     </AppText>
                     <ScrollView
                       horizontal
@@ -501,14 +677,14 @@ const HomePage = () => {
                             style={styles.searchHotViewAllText}
                             numberOfLines={1}
                           >
-                            View All
+                            {t("viewAll")}
                           </AppText>
                           <AppText
                             weight="regular"
                             style={styles.searchHotViewAllSub}
                             numberOfLines={1}
                           >
-                            Hot Auctions
+                            {t("hotBids")}
                           </AppText>
                         </View>
                       </TouchableOpacity>
@@ -520,85 +696,104 @@ const HomePage = () => {
               {/* Search Results */}
               {searchQuery.length > 0 && (
                 <View style={s.resultsSection}>
-                  <AppText
-                    weight="medium"
-                    style={s.resultsCount}
-                    numberOfLines={1}
-                  >
-                    {searchResults.length > 0
-                      ? `พบ ${searchResults.length} รายการ`
-                      : ""}
-                  </AppText>
-                  {searchResults.length === 0 ? (
+                  {isSearchLoading ? (
                     <View style={s.noResults}>
                       <AppText style={s.noResultsEmoji}>🔍</AppText>
-                      <AppText
-                        weight="semibold"
-                        style={s.noResultsTitle}
-                        numberOfLines={1}
-                      >
-                        ไม่พบสินค้า
-                      </AppText>
                       <AppText
                         weight="regular"
                         style={s.noResultsSub}
                         numberOfLines={1}
                       >
-                        ลองค้นหาด้วยคำอื่น
+                        กำลังค้นหา...
                       </AppText>
                     </View>
                   ) : (
-                    searchResults.map((item, idx) => {
-                      const badge = getBadgeForType(item.type);
-                      return (
-                        <TouchableOpacity
-                          key={`${item.type}-${item.id}-${idx}`}
-                          style={s.resultCard}
-                          onPress={() => handleSearchItemPress(item)}
-                          activeOpacity={0.7}
-                        >
-                          <Image
-                            source={getProductImage(item)}
-                            style={s.resultImage}
-                          />
-                          <View style={s.resultInfo}>
-                            <AppText
-                              weight="semibold"
-                              style={s.resultName}
-                              numberOfLines={1}
+                    <>
+                      <AppText
+                        weight="medium"
+                        style={s.resultsCount}
+                        numberOfLines={1}
+                      >
+                        {searchResults.length > 0
+                          ? `พบ ${searchResults.length} รายการ`
+                          : ""}
+                      </AppText>
+                      {searchResults.length === 0 ? (
+                        <View style={s.noResults}>
+                          <AppText style={s.noResultsEmoji}>🔍</AppText>
+                          <AppText
+                            weight="semibold"
+                            style={s.noResultsTitle}
+                            numberOfLines={1}
+                          >
+                            ไม่พบสินค้า
+                          </AppText>
+                          <AppText
+                            weight="regular"
+                            style={s.noResultsSub}
+                            numberOfLines={1}
+                          >
+                            ลองค้นหาด้วยคำอื่น
+                          </AppText>
+                        </View>
+                      ) : (
+                        searchResults.map((item, idx) => {
+                          const badge = getBadgeForStatus(item.status);
+                          const imgSrc = item.image
+                            ? { uri: getFullImageUrl(item.image) ?? item.image }
+                            : image.macbook;
+                          return (
+                            <TouchableOpacity
+                              key={`${item.id}-${idx}`}
+                              style={s.resultCard}
+                              onPress={() => handleSearchItemPress(item)}
+                              activeOpacity={0.7}
                             >
-                              {item.name}
-                            </AppText>
-                            <View style={s.resultMeta}>
-                              <View
-                                style={[
-                                  s.resultBadge,
-                                  { backgroundColor: badge.bg },
-                                ]}
-                              >
+                              <Image source={imgSrc} style={s.resultImage} />
+                              <View style={s.resultInfo}>
                                 <AppText
-                                  weight="medium"
-                                  style={s.resultBadgeText}
+                                  weight="semibold"
+                                  style={s.resultName}
                                   numberOfLines={1}
                                 >
-                                  {badge.label}
+                                  {item.title}
                                 </AppText>
+                                <View style={s.resultMeta}>
+                                  <View
+                                    style={[
+                                      s.resultBadge,
+                                      { backgroundColor: badge.bg },
+                                    ]}
+                                  >
+                                    <AppText
+                                      weight="medium"
+                                      style={s.resultBadgeText}
+                                      numberOfLines={1}
+                                    >
+                                      {badge.label}
+                                    </AppText>
+                                  </View>
+                                  {item.timeLeft && (
+                                    <AppText
+                                      weight="regular"
+                                      style={s.resultTime}
+                                      numberOfLines={1}
+                                    >
+                                      ⏱ {item.timeLeft}
+                                    </AppText>
+                                  )}
+                                </View>
                               </View>
                               <AppText
-                                weight="regular"
-                                style={s.resultTime}
-                                numberOfLines={1}
+                                style={{ fontSize: 18, color: "#D1D5DB" }}
                               >
-                                ⏱ {formatTimeRemaining(item.auction_end_time)}
+                                ›
                               </AppText>
-                            </View>
-                          </View>
-                          <AppText style={{ fontSize: 18, color: "#D1D5DB" }}>
-                            ›
-                          </AppText>
-                        </TouchableOpacity>
-                      );
-                    })
+                            </TouchableOpacity>
+                          );
+                        })
+                      )}
+                    </>
                   )}
                 </View>
               )}
@@ -627,7 +822,7 @@ const HomePage = () => {
                 numberOfLines={1}
                 style={styles.balanceLabel}
               >
-                Total Balance
+                {t("totalBalance")}
               </AppText>
               <AppText
                 weight="bold"
@@ -667,7 +862,7 @@ const HomePage = () => {
               numberOfLines={1}
               style={styles.guestSignInText}
             >
-              Sign In
+              {t("login")}
             </AppText>
           </TouchableOpacity>
         )}
@@ -677,6 +872,9 @@ const HomePage = () => {
         style={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* Search Bar */}
         <View style={styles.searchContainer}>
@@ -690,13 +888,14 @@ const HomePage = () => {
             <TextInput
               ref={searchInputRef}
               style={styles.searchInput}
-              placeholder="Search for items to bid..."
+              placeholder={t("searchPlaceholder")}
               placeholderTextColor="#B0B0B0"
               value={searchQuery}
               onChangeText={setSearchQuery}
               onFocus={() => setIsSearching(true)}
               returnKeyType="search"
               autoCorrect={false}
+              onSubmitEditing={() => saveKeywordAndRefreshHistory(searchQuery)}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity
@@ -714,7 +913,7 @@ const HomePage = () => {
                 style={styles.cancelText}
                 numberOfLines={1}
               >
-                Cancel
+                {t("cancel")}
               </AppText>
             </TouchableOpacity>
           )}
@@ -725,53 +924,62 @@ const HomePage = () => {
             {searchQuery.length === 0 ? (
               <>
                 {/* Recent Searches */}
-                <View style={styles.searchSection}>
-                  <View style={styles.searchSectionHeader}>
-                    <AppText
-                      weight="semibold"
-                      style={styles.searchSectionTitle}
-                      numberOfLines={1}
-                    >
-                      Recent
-                    </AppText>
-                    <TouchableOpacity>
+                {searchHistory.length > 0 && (
+                  <View style={styles.searchSection}>
+                    <View style={styles.searchSectionHeader}>
                       <AppText
-                        weight="regular"
-                        style={styles.clearAllText}
+                        weight="semibold"
+                        style={styles.searchSectionTitle}
                         numberOfLines={1}
                       >
-                        Clear All
+                        {t("recentSearches")}
                       </AppText>
-                    </TouchableOpacity>
-                  </View>
-                  {RECENT_SEARCHES.map((term, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      style={styles.recentItem}
-                      onPress={() => setSearchQuery(term)}
-                    >
-                      <View style={styles.recentIcon}>
-                        <AppText style={{ fontSize: 14, color: "#999" }}>
-                          ↻
+                      <TouchableOpacity onPress={clearAllSearchHistory}>
+                        <AppText
+                          weight="regular"
+                          style={styles.clearAllText}
+                          numberOfLines={1}
+                        >
+                          {t("clearAll")}
                         </AppText>
+                      </TouchableOpacity>
+                    </View>
+                    {searchHistory.map((item) => (
+                      <View key={item.id} style={styles.recentItem}>
+                        <TouchableOpacity
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            flex: 1,
+                          }}
+                          onPress={() => setSearchQuery(item.keyword)}
+                        >
+                          <View style={styles.recentIcon}>
+                            <AppText style={{ fontSize: 14, color: "#999" }}>
+                              ↻
+                            </AppText>
+                          </View>
+                          <AppText
+                            weight="regular"
+                            style={styles.recentText}
+                            numberOfLines={1}
+                          >
+                            {item.keyword}
+                          </AppText>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => deleteSearchItem(item.id)}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                          style={{ padding: 4, marginLeft: 8 }}
+                        >
+                          <AppText style={{ fontSize: 14, color: "#9CA3AF" }}>
+                            ✕
+                          </AppText>
+                        </TouchableOpacity>
                       </View>
-                      <AppText
-                        weight="regular"
-                        style={styles.recentText}
-                        numberOfLines={1}
-                      >
-                        {term}
-                      </AppText>
-                      <AppText
-                        style={{
-                          fontSize: 16,
-                          color: "#D1D5DB",
-                          marginLeft: "auto",
-                        }}
-                      ></AppText>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                    ))}
+                  </View>
+                )}
 
                 {/* Hot Auctions */}
                 <View style={styles.searchSection}>
@@ -780,7 +988,7 @@ const HomePage = () => {
                     style={styles.searchSectionTitle}
                     numberOfLines={1}
                   >
-                    🔥 Hot Auctions
+                    🔥 {t("hotBids")}
                   </AppText>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     {hotAuctions.map((item) => (
@@ -854,14 +1062,14 @@ const HomePage = () => {
                           style={styles.searchHotViewAllText}
                           numberOfLines={1}
                         >
-                          View All
+                          {t("viewAll")}
                         </AppText>
                         <AppText
                           weight="regular"
                           style={styles.searchHotViewAllSub}
                           numberOfLines={1}
                         >
-                          Hot Auctions
+                          {t("hotBids")}
                         </AppText>
                       </View>
                     </TouchableOpacity>
@@ -871,60 +1079,81 @@ const HomePage = () => {
             ) : (
               <View style={styles.resultsSection}>
                 <View style={styles.productsGrid}>
-                  {searchResults.length > 0 ? (
-                    searchResults.map((item, idx) => (
-                      <TouchableOpacity
-                        key={`${item.type}-${item.id}-${idx}`}
-                        style={styles.productCard}
-                        onPress={() => handleSearchItemPress(item)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.productImageContainer}>
-                          {item.type === "hot" && (
-                            <View style={styles.srHotBadge}>
-                              <Image
-                                source={image.hot_badge}
-                                style={{ width: 13, height: 14 }}
-                              />
-                            </View>
-                          )}
-                          {item.type === "ending" && (
-                            <View style={styles.srEndingBadge}>
-                              <Image
-                                source={image.ending_badge}
-                                style={{ width: 18, height: 18 }}
-                              />
-                            </View>
-                          )}
-                          <View style={styles.srTimeBadge}>
-                            <Image
-                              source={image.incoming_time}
-                              style={{ width: 12, height: 12, marginRight: 4 }}
-                            />
-                            <AppText
-                              weight="medium"
-                              style={styles.srTimeText}
-                              numberOfLines={1}
-                            >
-                              {item.type === "incoming"
-                                ? formatTimeRemaining(item.auction_start_time)
-                                : formatTimeRemaining(item.auction_end_time)}
-                            </AppText>
-                          </View>
-                          <Image
-                            source={getProductImage(item)}
-                            style={styles.productImage}
-                          />
-                        </View>
+                  {isSearchLoading ? (
+                    <View style={styles.emptyStateContainer}>
+                      <Animated.View style={styles.emptyStateContent}>
                         <AppText
-                          weight="medium"
-                          style={styles.productName}
+                          weight="regular"
+                          style={styles.emptyStateSub}
                           numberOfLines={1}
                         >
-                          {item.name}
+                          กำลังค้นหา...
                         </AppText>
-                      </TouchableOpacity>
-                    ))
+                      </Animated.View>
+                    </View>
+                  ) : searchResults.length > 0 ? (
+                    searchResults.map((item, idx) => {
+                      const imgSrc = item.image
+                        ? { uri: getFullImageUrl(item.image) ?? item.image }
+                        : image.macbook;
+                      return (
+                        <TouchableOpacity
+                          key={`${item.id}-${idx}`}
+                          style={styles.productCard}
+                          onPress={() => handleSearchItemPress(item)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={styles.productImageContainer}>
+                            {item.status === "active" && (
+                              <View style={styles.srHotBadge}>
+                                <Image
+                                  source={image.hot_badge}
+                                  style={{ width: 13, height: 14 }}
+                                />
+                              </View>
+                            )}
+                            {item.status === "ending" && (
+                              <View style={styles.srEndingBadge}>
+                                <Image
+                                  source={image.ending_badge}
+                                  style={{ width: 18, height: 18 }}
+                                />
+                              </View>
+                            )}
+                            {item.timeLeft && (
+                              <View style={styles.srTimeBadge}>
+                                <Image
+                                  source={image.incoming_time}
+                                  style={{
+                                    width: 12,
+                                    height: 12,
+                                    marginRight: 4,
+                                  }}
+                                />
+                                <AppText
+                                  weight="medium"
+                                  style={styles.srTimeText}
+                                  numberOfLines={1}
+                                >
+                                  {item.timeLeft}
+                                </AppText>
+                              </View>
+                            )}
+                            <Image
+                              source={imgSrc}
+                              style={styles.productImage}
+                            />
+                          </View>
+                          <AppText
+                            weight="medium"
+                            style={styles.productName}
+                            numberOfLines={1}
+                          >
+                            {item.title}
+                          </AppText>
+                        </TouchableOpacity>
+                      );
+                    })
                   ) : (
                     <View style={styles.emptyStateContainer}>
                       <Animated.View
@@ -948,14 +1177,14 @@ const HomePage = () => {
                           style={styles.emptyStateTitle}
                           numberOfLines={1}
                         >
-                          No Products Found
+                          {t("noResults")}
                         </AppText>
                         <AppText
                           weight="regular"
                           style={styles.emptyStateSub}
                           numberOfLines={2}
                         >
-                          Try adjusting your search
+                          {t("noProducts")}
                         </AppText>
                       </Animated.View>
                     </View>
@@ -974,7 +1203,7 @@ const HomePage = () => {
                   numberOfLines={1}
                   style={styles.sectionTitle}
                 >
-                  Categories
+                  {t("categories")}
                 </AppText>
               </View>
               <View style={styles.categoriesGrid}>
@@ -1024,7 +1253,7 @@ const HomePage = () => {
                       numberOfLines={1}
                       style={styles.sectionTitle}
                     >
-                      Recommended
+                      {t("recommended")}
                     </AppText>
                   </View>
                   <TouchableOpacity
@@ -1037,7 +1266,7 @@ const HomePage = () => {
                       numberOfLines={1}
                       style={styles.viewAll}
                     >
-                      View All →
+                      {t("viewAll")}
                     </AppText>
                   </TouchableOpacity>
                 </View>
@@ -1050,7 +1279,7 @@ const HomePage = () => {
                       style={styles.sectionEmptyLottie}
                     />
                     <AppText weight="medium" style={styles.sectionEmptyText}>
-                      No recommendations yet
+                      {t("noProducts")}
                     </AppText>
                   </View>
                 ) : (
@@ -1147,7 +1376,7 @@ const HomePage = () => {
                     numberOfLines={1}
                     style={styles.sectionTitle}
                   >
-                    Hot Auctions
+                    {t("hotBids")}
                   </AppText>
                 </View>
                 <TouchableOpacity
@@ -1158,7 +1387,7 @@ const HomePage = () => {
                     numberOfLines={1}
                     style={styles.viewAll}
                   >
-                    View All →
+                    {t("viewAll")}
                   </AppText>
                 </TouchableOpacity>
               </View>
@@ -1171,7 +1400,7 @@ const HomePage = () => {
                     style={styles.sectionEmptyLottie}
                   />
                   <AppText weight="medium" style={styles.sectionEmptyText}>
-                    No auctions available right now
+                    {t("noProducts")}
                   </AppText>
                 </View>
               ) : (
@@ -1251,7 +1480,7 @@ const HomePage = () => {
                     numberOfLines={1}
                     style={styles.sectionTitle}
                   >
-                    Ending Soon
+                    {t("endingSoon")}
                   </AppText>
                 </View>
                 <TouchableOpacity
@@ -1262,7 +1491,7 @@ const HomePage = () => {
                     numberOfLines={1}
                     style={styles.viewAll}
                   >
-                    View All →
+                    {t("viewAll")}
                   </AppText>
                 </TouchableOpacity>
               </View>
@@ -1275,7 +1504,7 @@ const HomePage = () => {
                     style={styles.sectionEmptyLottie}
                   />
                   <AppText weight="medium" style={styles.sectionEmptyText}>
-                    No ending soon auctions
+                    {t("noProducts")}
                   </AppText>
                 </View>
               ) : (
@@ -1355,7 +1584,7 @@ const HomePage = () => {
                     numberOfLines={1}
                     style={styles.sectionTitle}
                   >
-                    All Product
+                    {t("allProducts")}
                   </AppText>
                 </View>
                 <TouchableOpacity
@@ -1366,7 +1595,7 @@ const HomePage = () => {
                     numberOfLines={1}
                     style={styles.viewAll}
                   >
-                    View All →
+                    {t("viewAll")}
                   </AppText>
                 </TouchableOpacity>
               </View>
@@ -1379,7 +1608,7 @@ const HomePage = () => {
                     style={styles.sectionEmptyLottie}
                   />
                   <AppText weight="medium" style={styles.sectionEmptyText}>
-                    No products listed yet
+                    {t("noProducts")}
                   </AppText>
                 </View>
               ) : (
@@ -1453,7 +1682,7 @@ const HomePage = () => {
                     numberOfLines={1}
                     style={styles.sectionTitle}
                   >
-                    Incoming
+                    {t("incoming")}
                   </AppText>
                 </View>
                 <TouchableOpacity
@@ -1464,7 +1693,7 @@ const HomePage = () => {
                     numberOfLines={1}
                     style={styles.viewAll}
                   >
-                    View All →
+                    {t("viewAll")}
                   </AppText>
                 </TouchableOpacity>
               </View>
@@ -1477,7 +1706,7 @@ const HomePage = () => {
                     style={styles.sectionEmptyLottie}
                   />
                   <AppText weight="medium" style={styles.sectionEmptyText}>
-                    No incoming auctions
+                    {t("noProducts")}
                   </AppText>
                 </View>
               ) : (

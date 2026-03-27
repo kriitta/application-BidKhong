@@ -26,6 +26,9 @@ export interface User {
   join_date: string;
   role: "admin" | "user";
   profile_image: string | null;
+  is_banned?: boolean;
+  banned_until?: string | null;
+  ban_reason?: string | null;
   created_at: string;
   updated_at: string;
   wallet?: UserWallet;
@@ -386,17 +389,24 @@ export interface TrendingTag {
   count?: number;
 }
 
+export interface SearchHistoryItem {
+  id: number;
+  user_id: number;
+  keyword: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── Report / Support ────────────────────────────────────────
 
 export type ReportType =
   | "scam"
   | "fake_product"
   | "harassment"
-  | "fraud"
   | "inappropriate_content"
   | "other";
 
-export type ReportStatus = "pending" | "reviewing" | "resolved";
+export type ReportStatus = "pending" | "reviewing" | "resolved" | "dismissed";
 
 export interface FAQ {
   id: string;
@@ -464,6 +474,7 @@ export interface MyReportsResponse {
 
 export type OrderStatus =
   | "pending_confirmation"
+  | "pending_buyer_confirm"
   | "confirmed"
   | "shipped"
   | "completed"
@@ -504,6 +515,7 @@ export interface Order {
   seller_id: number;
   final_price: string;
   status: OrderStatus;
+  my_role?: "buyer" | "seller";
   confirmed_at: string | null;
   shipped_at: string | null;
   completed_at: string | null;

@@ -3,6 +3,8 @@ import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Image,
   RefreshControl,
   ScrollView,
@@ -13,9 +15,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { apiService, getFullImageUrl } from "../../utils/api";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { Product } from "../../utils/api/types";
+import { Order, Product } from "../../utils/api/types";
 import { AppText } from "../components/appText";
 
 type FilterTab = "all" | "incoming" | "active" | "ended" | "shipping";
@@ -23,11 +26,14 @@ type FilterTab = "all" | "incoming" | "active" | "ended" | "shipping";
 const MyProductsPage = () => {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [shippingProducts, setShippingProducts] = useState<Product[]>([]);
+  const [sellerOrders, setSellerOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
+  const [shipLoading, setShipLoading] = useState<number | null>(null);
 
   // Real-time countdown tick
   const [, setTick] = useState(0);
@@ -44,6 +50,26 @@ const MyProductsPage = () => {
           await apiService.product.getMyProductsWithShipping(user.id);
         setProducts(allProducts);
         setShippingProducts(shipping);
+
+        // Get seller orders with real status from backend
+        const shippingProductIds = shipping.map((p) => p.id);
+        const sellerReal = await apiService.order.getSellerOrdersForProducts(
+          user.id,
+          shippingProductIds,
+        );
+
+        // If real orders found, use them; otherwise fall back to constructed
+        let sellerSideOrders: Order[] = sellerReal;
+        if (sellerReal.length === 0 && shippingProductIds.length > 0) {
+          try {
+            sellerSideOrders =
+              await apiService.order.getMySellerOrdersConstructed(user.id);
+          } catch {
+            sellerSideOrders = [];
+          }
+        }
+
+        setSellerOrders(sellerSideOrders);
       } else {
         const data = await apiService.product.getMyProducts();
         setProducts(data);
@@ -66,6 +92,46 @@ const MyProductsPage = () => {
       params: { productId: product.id.toString() },
     });
   };
+
+  // ─── Get matching seller order for a product ──────────────
+  const getSellerOrder = useCallback(
+    (productId: number): Order | undefined =>
+      sellerOrders.find((o) => o.product_id === productId),
+    [sellerOrders],
+  );
+
+  // ─── Ship handler ─────────────────────────────────────────
+  const handleShip = useCallback(
+    (order: Order) => {
+      Alert.alert(
+        "ยืนยันการจัดส่ง",
+        "คุณได้จัดส่งสินค้าให้ผู้ซื้อแล้วใช่ไหม? ผู้ซื้อจะได้รับการแจ้งเตือน",
+        [
+          { text: "ยกเลิก", style: "cancel" },
+          {
+            text: "ยืนยัน",
+            onPress: async () => {
+              setShipLoading(order.product_id);
+              try {
+                await apiService.order.shipOrder(order.id);
+                Alert.alert("สำเร็จ", "แจ้งจัดส่งสินค้าเรียบร้อยแล้ว");
+                // Refresh everything
+                fetchProducts();
+              } catch (error: any) {
+                Alert.alert(
+                  "เกิดข้อผิดพลาด",
+                  error.message || "ไม่สามารถแจ้งจัดส่งได้ กรุณาลองใหม่",
+                );
+              } finally {
+                setShipLoading(null);
+              }
+            },
+          },
+        ],
+      );
+    },
+    [fetchProducts],
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -118,7 +184,7 @@ const MyProductsPage = () => {
     const end = new Date(endTime).getTime();
     const now = Date.now();
     const diff = end - now;
-    if (diff <= 0) return "Ended";
+    if (diff <= 0) return t("ended");
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -162,24 +228,29 @@ const MyProductsPage = () => {
   const getTagConfig = (tag: string) => {
     switch (tag) {
       case "hot":
-        return { label: "Hot", color: "#FF3B30", bg: "#FFEBEE", icon: "🔥" };
+        return {
+          label: t("tabHot"),
+          color: "#FF3B30",
+          bg: "#FFEBEE",
+          icon: "🔥",
+        };
       case "ending":
         return {
-          label: "Ending",
+          label: t("tagEnding"),
           color: "#FF9500",
           bg: "#FFF3E0",
           icon: "⏰",
         };
       case "incoming":
         return {
-          label: "Incoming",
+          label: t("tabIncoming"),
           color: "#7B1FA2",
           bg: "#F3E5F5",
           icon: "📦",
         };
       default:
         return {
-          label: "Active",
+          label: t("tagActive"),
           color: "#4CAF50",
           bg: "#E8F5E9",
           icon: "✅",
@@ -198,24 +269,24 @@ const MyProductsPage = () => {
   const getStatusConfig = (product: Product) => {
     if (isShippingProduct(product)) {
       return {
-        label: "Shipping",
+        label: t("tagShipping"),
         color: "#E65100",
         bg: "#FFF3E0",
         icon: "📦",
       };
     }
     if (isRealEnded(product)) {
-      return { label: "Ended", color: "#999", bg: "#F5F5F5" };
+      return { label: t("tabEnded"), color: "#999", bg: "#F5F5F5" };
     }
     return getTagConfig(product.tag);
   };
 
   const tabs: { key: FilterTab; label: string; count: number }[] = [
-    { key: "all", label: "All", count: stats.all },
-    { key: "incoming", label: "Incoming", count: stats.incoming },
-    { key: "active", label: "Active", count: stats.active },
-    { key: "ended", label: "Ended", count: stats.ended },
-    { key: "shipping", label: "Shipping", count: stats.shipping },
+    { key: "all", label: t("tabAll"), count: stats.all },
+    { key: "incoming", label: t("tabIncoming"), count: stats.incoming },
+    { key: "active", label: t("tabActive"), count: stats.active },
+    { key: "ended", label: t("tabEnded"), count: stats.ended },
+    { key: "shipping", label: t("tabShipping"), count: stats.shipping },
   ];
 
   return (
@@ -230,7 +301,7 @@ const MyProductsPage = () => {
             <Image source={image.back} style={{ width: 32, height: 32 }} />
           </TouchableOpacity>
           <AppText weight="bold" style={styles.headerTitle} numberOfLines={1}>
-            My Products
+            {t("myProductsTitle")}
           </AppText>
           <View style={{ width: 40 }} />
         </SafeAreaView>
@@ -300,6 +371,11 @@ const MyProductsPage = () => {
             const statusConfig = getStatusConfig(product);
             const isEnded = isRealEnded(product);
             const isShipping = isShippingProduct(product);
+            const sellerOrder = isShipping
+              ? getSellerOrder(product.id)
+              : undefined;
+            // confirmed = buyer contacted, seller needs to ship
+            const needsShip = sellerOrder?.status === "confirmed";
             const timeDisplay =
               product.tag === "incoming"
                 ? formatTimeRemaining(product.auction_start_time)
@@ -370,14 +446,58 @@ const MyProductsPage = () => {
                     </View>
                     {isShipping ? (
                       <View style={styles.timeContainer}>
-                        <View style={styles.shippingBadge}>
-                          <AppText
-                            weight="semibold"
-                            style={styles.shippingBadgeText}
+                        {needsShip ? (
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleShip(sellerOrder!);
+                            }}
+                            disabled={shipLoading === product.id}
+                            style={styles.shipButton}
                           >
-                            📦 รอ Verify
-                          </AppText>
-                        </View>
+                            {shipLoading === product.id ? (
+                              <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                              <AppText
+                                weight="bold"
+                                style={styles.shipButtonText}
+                                numberOfLines={1}
+                              >
+                                📦 จัดส่งสินค้า
+                              </AppText>
+                            )}
+                          </TouchableOpacity>
+                        ) : sellerOrder?.status === "shipped" ? (
+                          <View style={styles.shippingBadge}>
+                            <AppText
+                              weight="semibold"
+                              style={styles.shippingBadgeText}
+                            >
+                              📦 จัดส่งแล้ว
+                            </AppText>
+                          </View>
+                        ) : (
+                          <View
+                            style={[
+                              styles.shippingBadge,
+                              {
+                                borderColor: "#CE93D8",
+                                backgroundColor: "#F3E5F5",
+                              },
+                            ]}
+                          >
+                            <AppText
+                              weight="semibold"
+                              style={[
+                                styles.shippingBadgeText,
+                                { color: "#7B1FA2" },
+                              ]}
+                            >
+                              ⏳ รอผู้ซื้อ
+                            </AppText>
+                          </View>
+                        )}
                       </View>
                     ) : (
                       !isEnded && (
@@ -399,7 +519,11 @@ const MyProductsPage = () => {
                     {isShipping ? (
                       <View style={styles.metaItem}>
                         <AppText weight="regular" style={styles.metaText}>
-                          🕐 รอผู้ซื้อยืนยันการรับสินค้า
+                          {needsShip
+                            ? "✅ ผู้ซื้อยืนยันแล้ว กรุณาจัดส่งสินค้า"
+                            : sellerOrder?.status === "shipped"
+                              ? "📦 จัดส่งแล้ว รอผู้ซื้อยืนยันรับสินค้า"
+                              : "⏳ รอผู้ซื้อติดต่อยืนยัน"}
                         </AppText>
                       </View>
                     ) : (
@@ -414,7 +538,7 @@ const MyProductsPage = () => {
                         </View>
                         <View style={styles.metaItem}>
                           <AppText weight="regular" style={styles.metaText}>
-                            👥 {product.bids_count || 0} bids
+                            👥 {product.bids_count || 0} {t("bids")}
                           </AppText>
                         </View>
                       </>
@@ -642,6 +766,19 @@ const styles = StyleSheet.create({
   shippingBadgeText: {
     fontSize: 11,
     color: "#E65100",
+  },
+  shipButton: {
+    backgroundColor: "#7B1FA2",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 110,
+  },
+  shipButtonText: {
+    fontSize: 12,
+    color: "#fff",
   },
 });
 

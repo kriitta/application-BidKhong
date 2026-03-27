@@ -80,6 +80,7 @@ export type {
     ReportTimeline,
     ReportType,
     ResetPasswordRequest,
+    SearchHistoryItem,
     SearchResult,
     Subcategory,
     SubmitReportRequest,

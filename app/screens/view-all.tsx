@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { apiService, getFullImageUrl } from "../../utils/api";
 import { Product } from "../../utils/api/types";
 import { AppText } from "../components/appText";
@@ -20,6 +21,7 @@ import { AppText } from "../components/appText";
 const ViewAllPage = () => {
   const { type } = useLocalSearchParams();
   const router = useRouter();
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
@@ -34,12 +36,12 @@ const ViewAllPage = () => {
   const typeStr = (type as string) || "hot";
   const typeTitle =
     {
-      hot: "Hot Auctions",
-      ending: "Ending Soon",
-      default: "All Product",
-      incoming: "Incoming",
-      recommended: "Recommended",
-    }[typeStr] || "All Auctions";
+      hot: t("hotAuctions"),
+      ending: t("endingSoon"),
+      default: t("allProduct"),
+      incoming: t("incomingAuctions"),
+      recommended: t("recommended"),
+    }[typeStr] || t("allAuctions");
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -104,7 +106,7 @@ const ViewAllPage = () => {
     const now = new Date();
     const end = new Date(endTime);
     const diff = end.getTime() - now.getTime();
-    if (diff <= 0) return "Ended";
+    if (diff <= 0) return t("ended");
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -180,7 +182,7 @@ const ViewAllPage = () => {
             <TextInput
               ref={searchInputRef}
               style={styles.searchInput}
-              placeholder={`Search in ${typeTitle}...`}
+              placeholder={`${t("searchIn")} ${typeTitle}...`}
               placeholderTextColor="#B0B0B0"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -214,7 +216,7 @@ const ViewAllPage = () => {
                 style={styles.cancelText}
                 numberOfLines={1}
               >
-                Cancel
+                {t("cancel")}
               </AppText>
             </TouchableOpacity>
           )}
@@ -273,7 +275,7 @@ const ViewAllPage = () => {
                         numberOfLines={1}
                         style={{ fontSize: 9, color: "#FFF" }}
                       >
-                        AI Pick
+                        {t("aiPick")}
                       </AppText>
                     </View>
                   )}
@@ -343,14 +345,14 @@ const ViewAllPage = () => {
                   style={styles.emptyTitle}
                   numberOfLines={1}
                 >
-                  No Products Found
+                  {t("noProductsFound")}
                 </AppText>
                 <AppText
                   weight="regular"
                   style={styles.emptySubtitle}
                   numberOfLines={2}
                 >
-                  Try adjusting your search
+                  {t("tryAdjustSearch")}
                 </AppText>
               </Animated.View>
             </View>
