@@ -39,6 +39,7 @@ import {
     ReportStatus,
     ResetPasswordRequest,
     SearchResult,
+    ServerNotification,
     Subcategory,
     SubmitReportRequest,
     Transaction,
@@ -48,6 +49,7 @@ import {
     UploadResponse,
     User,
     UserReport,
+    UserWallet,
     WalletBalance,
     WithdrawRequest,
     WonProduct,
@@ -578,9 +580,9 @@ const apiService = {
   // 💳 Wallet
   // ════════════════════════════════════════════════════════
   wallet: {
-    getBalance: async (): Promise<WalletBalance> => {
+    getBalance: async (): Promise<UserWallet> => {
       try {
-        const response = await apiClient.get<ApiResponse<WalletBalance>>(
+        const response = await apiClient.get<ApiResponse<UserWallet>>(
           ENDPOINTS.WALLET.BALANCE,
         );
         return response.data.data;
@@ -1346,6 +1348,40 @@ const apiService = {
         throw new Error(handleApiError(error));
       }
     },
+
+    getWithdrawals: async (status?: string): Promise<any> => {
+      try {
+        const response = await apiClient.get(ENDPOINTS.ADMIN.WITHDRAWALS, {
+          params: status ? { status } : undefined,
+        });
+        return response.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    confirmWithdrawal: async (id: number): Promise<any> => {
+      try {
+        const response = await apiClient.patch(
+          ENDPOINTS.ADMIN.WITHDRAWAL_CONFIRM(id),
+        );
+        return response.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    rejectWithdrawal: async (id: number, adminNote: string): Promise<any> => {
+      try {
+        const response = await apiClient.patch(
+          ENDPOINTS.ADMIN.WITHDRAWAL_REJECT(id),
+          { admin_note: adminNote },
+        );
+        return response.data;
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
   },
 
   // ════════════════════════════════════════════════════════
@@ -1886,6 +1922,43 @@ const apiService = {
         return data.order ?? data.data;
       } catch (error) {
         throw new Error(handleApiError(error));
+      }
+    },
+  },
+
+  // ════════════════════════════════════════════════════════
+  // 🔔 Notification
+  // ════════════════════════════════════════════════════════
+  notification: {
+    /** GET /notifications — ดึงการแจ้งเตือนทั้งหมดของ user ปัจจุบัน */
+    getAll: async (): Promise<ServerNotification[]> => {
+      try {
+        const response = await apiClient.get(ENDPOINTS.NOTIFICATION.LIST);
+        const data = response.data;
+        if (Array.isArray(data)) return data;
+        if (Array.isArray(data?.data)) return data.data;
+        if (Array.isArray(data?.notifications)) return data.notifications;
+        return [];
+      } catch (error) {
+        throw new Error(handleApiError(error));
+      }
+    },
+
+    /** PUT /notifications/:id/read — ทำเครื่องหมายว่าอ่านแล้ว */
+    markRead: async (id: number): Promise<void> => {
+      try {
+        await apiClient.put(ENDPOINTS.NOTIFICATION.READ(id));
+      } catch {
+        // best-effort, ignore errors
+      }
+    },
+
+    /** PUT /notifications/read-all — ทำเครื่องหมายว่าอ่านทั้งหมดแล้ว */
+    markAllRead: async (): Promise<void> => {
+      try {
+        await apiClient.put(ENDPOINTS.NOTIFICATION.READ_ALL);
+      } catch {
+        // best-effort, ignore errors
       }
     },
   },

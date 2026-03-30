@@ -36,8 +36,12 @@ export const authEvents = new SimpleEmitter();
 // - Development (Physical Device): http://<YOUR_LOCAL_IP>:3000/api
 // - Production: https://api.bidkhong.com/api
 // const BASE_URL = "https://anja-floriferous-tanja.ngrok-free.dev/api";
-const BASE_URL = "http://127.0.0.1:8000/api";
-const SERVER_URL = "http://127.0.0.1:8000";
+// Android emulator cannot reach 127.0.0.1 (that's the device itself).
+// Use 10.0.2.2 to reach the host machine from the Android emulator.
+import { Platform } from "react-native";
+const _HOST = Platform.OS === "android" ? "10.0.2.2" : "127.0.0.1";
+const BASE_URL = `http://${_HOST}:8000/api`;
+const SERVER_URL = `http://${_HOST}:8000`;
 
 // ============================================================
 // 🖼️ Image URL Helper — แปลง relative path เป็น full URL
@@ -106,7 +110,7 @@ export const ENDPOINTS = {
 
   // 💳 Wallet
   WALLET: {
-    BALANCE: "/wallet/balance",
+    BALANCE: "/wallet",
     TRANSACTIONS: "/wallet/transactions",
     TOPUP: "/wallet/topup",
     WITHDRAW: "/wallet/withdraw",
@@ -121,7 +125,14 @@ export const ENDPOINTS = {
     PRODUCTS: (id: string) => `/categories/${id}/products`,
   },
 
-  // 🔍 Search
+  // � Notification
+  NOTIFICATION: {
+    LIST: "/notifications",
+    READ: (id: number) => `/notifications/${id}/read`,
+    READ_ALL: "/notifications/read-all",
+  },
+
+  // �🔍 Search
   SEARCH: {
     QUERY: "/search",
     HISTORY: "/search-history",
@@ -167,6 +178,9 @@ export const ENDPOINTS = {
     USER_UNBAN: (id: number) => `/admin/users/${id}/unban`,
     CERTIFICATE_VIEW: (id: number) => `/admin/certificates/${id}`,
     CERTIFICATE_VERIFY: (id: number) => `/admin/certificates/${id}/verify`,
+    WITHDRAWALS: "/admin/withdrawals",
+    WITHDRAWAL_CONFIRM: (id: number) => `/admin/withdrawals/${id}/confirm`,
+    WITHDRAWAL_REJECT: (id: number) => `/admin/withdrawals/${id}/reject`,
   },
 
   // 📸 Upload

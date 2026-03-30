@@ -112,6 +112,8 @@ export const image = {
     recommend: require("./recommend.png"),
     prompay: require("./prompay.jpeg"),
     qr_code: require("./qr_code.png"),
+    kbank: require("./kbank.png"),
+    promptpay: require("./promptpay.png"),
     
     
 };

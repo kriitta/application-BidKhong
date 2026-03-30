@@ -42,17 +42,27 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const HomePage = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { isGuest, isLoggedIn, user, refreshUser } = useAuth();
+  const { isGuest, isLoggedIn, user, refreshUser, updateWallet } = useAuth();
   const { t } = useLanguage();
   const [authModalVisible, setAuthModalVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       if (isLoggedIn && !isGuest) {
-        refreshUser();
+        fetchWalletBalance();
       }
     }, [isLoggedIn, isGuest]),
   );
+
+  /** ดึงยอด wallet realtime จาก /wallet */
+  const fetchWalletBalance = async () => {
+    try {
+      const balance = await apiService.wallet.getBalance();
+      updateWallet(balance);
+    } catch {
+      // ใช้ข้อมูล cache ต่อไปหาก API ล้มเหลว
+    }
+  };
 
   const formatBalance = (amount?: string) => {
     if (!amount) return "฿0";

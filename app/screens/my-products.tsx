@@ -103,32 +103,25 @@ const MyProductsPage = () => {
   // ─── Ship handler ─────────────────────────────────────────
   const handleShip = useCallback(
     (order: Order) => {
-      Alert.alert(
-        "ยืนยันการจัดส่ง",
-        "คุณได้จัดส่งสินค้าให้ผู้ซื้อแล้วใช่ไหม? ผู้ซื้อจะได้รับการแจ้งเตือน",
-        [
-          { text: "ยกเลิก", style: "cancel" },
-          {
-            text: "ยืนยัน",
-            onPress: async () => {
-              setShipLoading(order.product_id);
-              try {
-                await apiService.order.shipOrder(order.id);
-                Alert.alert("สำเร็จ", "แจ้งจัดส่งสินค้าเรียบร้อยแล้ว");
-                // Refresh everything
-                fetchProducts();
-              } catch (error: any) {
-                Alert.alert(
-                  "เกิดข้อผิดพลาด",
-                  error.message || "ไม่สามารถแจ้งจัดส่งได้ กรุณาลองใหม่",
-                );
-              } finally {
-                setShipLoading(null);
-              }
-            },
+      Alert.alert(t("confirmShipTitle"), t("confirmShipMsg"), [
+        { text: t("cancel"), style: "cancel" },
+        {
+          text: t("confirm"),
+          onPress: async () => {
+            setShipLoading(order.product_id);
+            try {
+              await apiService.order.shipOrder(order.id);
+              Alert.alert(t("success"), t("shipSuccessMsg"));
+              // Refresh everything
+              fetchProducts();
+            } catch (error: any) {
+              Alert.alert(t("error"), error.message || t("shipFailedMsg"));
+            } finally {
+              setShipLoading(null);
+            }
           },
-        ],
-      );
+        },
+      ]);
     },
     [fetchProducts],
   );
@@ -356,14 +349,14 @@ const MyProductsPage = () => {
               style={{ width: 160, height: 160 }}
             />
             <AppText weight="bold" style={styles.emptyTitle}>
-              ไม่มีสินค้า
+              {t("noProductsYet")}
             </AppText>
             <AppText weight="regular" style={styles.emptySubtitle}>
               {activeTab === "all"
-                ? "คุณยังไม่มีสินค้าที่วางขาย\nกดปุ่ม Seller เพื่อเริ่มสร้างรายการประมูล"
+                ? t("emptyProductsAll")
                 : activeTab === "shipping"
-                  ? "ไม่มีสินค้าที่รอการยืนยันจากผู้ซื้อ"
-                  : "ไม่มีสินค้าในหมวดนี้"}
+                  ? t("emptyProductsShipping")
+                  : t("emptyProductsCategory")}
             </AppText>
           </View>
         ) : (
@@ -426,10 +419,10 @@ const MyProductsPage = () => {
                     <View>
                       <AppText weight="regular" style={styles.priceLabel}>
                         {isShipping
-                          ? "ราคาขาย"
+                          ? t("priceForSale")
                           : isEnded
-                            ? "ราคาสุดท้าย"
-                            : "ราคาปัจจุบัน"}
+                            ? t("priceFinal")
+                            : t("priceCurrent")}
                       </AppText>
                       <AppText
                         weight="bold"
@@ -464,7 +457,7 @@ const MyProductsPage = () => {
                                 style={styles.shipButtonText}
                                 numberOfLines={1}
                               >
-                                📦 จัดส่งสินค้า
+                                {t("shipProduct")}
                               </AppText>
                             )}
                           </TouchableOpacity>
@@ -474,7 +467,7 @@ const MyProductsPage = () => {
                               weight="semibold"
                               style={styles.shippingBadgeText}
                             >
-                              📦 จัดส่งแล้ว
+                              {t("shippedLabel")}
                             </AppText>
                           </View>
                         ) : (
@@ -494,7 +487,7 @@ const MyProductsPage = () => {
                                 { color: "#7B1FA2" },
                               ]}
                             >
-                              ⏳ รอผู้ซื้อ
+                              {t("waitingBuyerLabel")}
                             </AppText>
                           </View>
                         )}
@@ -504,8 +497,8 @@ const MyProductsPage = () => {
                         <View style={styles.timeContainer}>
                           <AppText weight="regular" style={styles.timeLabel}>
                             {product.tag === "incoming"
-                              ? "เริ่มใน"
-                              : "เหลือเวลา"}
+                              ? t("startsIn")
+                              : t("timeRemaining")}
                           </AppText>
                           <AppText weight="semibold" style={styles.timeValue}>
                             {timeDisplay}
@@ -520,10 +513,10 @@ const MyProductsPage = () => {
                       <View style={styles.metaItem}>
                         <AppText weight="regular" style={styles.metaText}>
                           {needsShip
-                            ? "✅ ผู้ซื้อยืนยันแล้ว กรุณาจัดส่งสินค้า"
+                            ? t("buyerConfirmedPleaseShip")
                             : sellerOrder?.status === "shipped"
-                              ? "📦 จัดส่งแล้ว รอผู้ซื้อยืนยันรับสินค้า"
-                              : "⏳ รอผู้ซื้อติดต่อยืนยัน"}
+                              ? t("shippedWaitingBuyerConfirm")
+                              : t("waitingBuyerContact")}
                         </AppText>
                       </View>
                     ) : (

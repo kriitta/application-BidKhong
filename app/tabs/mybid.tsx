@@ -104,7 +104,7 @@ const MyBidPage = () => {
     if (isNaN(end.getTime())) return timeLeft; // already formatted
     const now = new Date();
     const diff = end.getTime() - now.getTime();
-    if (diff <= 0) return "Ended";
+    if (diff <= 0) return t("ended");
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -139,13 +139,13 @@ const MyBidPage = () => {
     if (!bidModalItem) return;
     const amount = parseFloat(bidAmount);
     if (isNaN(amount) || amount <= 0) {
-      Alert.alert("Invalid Amount", "Please enter a valid bid amount.");
+      Alert.alert(t("invalidBidAmount"), t("invalidBidAmountMsg"));
       return;
     }
     if (amount <= bidModalItem.currentBid) {
       Alert.alert(
-        "Too Low",
-        `Your bid must be higher than the current bid of ${formatPrice(bidModalItem.currentBid)}.`,
+        t("bidTooLowTitle"),
+        `${t("bidTooLowMsg")} ${formatPrice(bidModalItem.currentBid)}.`,
       );
       return;
     }
@@ -155,16 +155,13 @@ const MyBidPage = () => {
         productId: Number(bidModalItem.auctionId),
         price: amount,
       });
-      Alert.alert("Success", "Your bid has been placed!");
+      Alert.alert(t("bidPlaced"), t("bidPlacedMsg"));
       setBidModalVisible(false);
       setBidModalItem(null);
       setBidAmount("");
       fetchData(); // refresh
     } catch (error: any) {
-      Alert.alert(
-        "Bid Failed",
-        error.message || "Failed to place bid. Please try again.",
-      );
+      Alert.alert(t("bidFailed"), error.message || t("genericTryAgain"));
     } finally {
       setBidSubmitting(false);
     }
@@ -372,7 +369,7 @@ const MyBidPage = () => {
                 const isOutbid = bid.status === "Outbid";
                 const statusColor = isOutbid ? "#FF991D" : "#38C500";
                 const buttonColor = isOutbid ? "#FF8D01" : "#46D802";
-                const buttonText = isOutbid ? "Bid Again" : "Increase Bid";
+                const buttonText = isOutbid ? t("bidAgain") : t("increaseBid");
                 const statusIcon = isOutbid
                   ? image.incoming_time
                   : image.bidding;

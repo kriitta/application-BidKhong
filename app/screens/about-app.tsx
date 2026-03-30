@@ -12,13 +12,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { getPublicStats } from "../../utils/api";
 import { AppText } from "../components/appText";
 
 const { width } = Dimensions.get("window");
 
 // ─── Tutorial Steps ─────────────────────────────────────────
-const TUTORIAL_STEPS = [
+const TUTORIAL_STEPS_TH = [
   {
     id: 1,
     icon: "👤",
@@ -28,7 +29,7 @@ const TUTORIAL_STEPS = [
       'เปิดแอป BidKhong แล้วกด "Sign Up" เพื่อสมัครสมาชิก',
       "กรอกข้อมูล: ชื่อ, อีเมล, เบอร์โทร, รหัสผ่าน",
       'หรือกด "Sign In" หากมีบัญชีอยู่แล้ว',
-      'สามารถเข้าใช้งานแบบ "ผู้เยี่ยมชม" ได้ แต่จะไม่สามารถประมูลได้',
+      'เข้าใช้แบบ "ผู้เยี่ยมชม" ได้ แต่จะไม่สามารถประมูลได้',
     ],
     color: "#4A90D9",
     bgColor: "#EBF3FD",
@@ -39,11 +40,10 @@ const TUTORIAL_STEPS = [
     title: "ค้นหาและเลือกดูสินค้า",
     subtitle: "Browse & Search Products",
     steps: [
-      "เลื่อนดูสินค้าบนหน้าแรก (Home) ที่แบ่งเป็นหมวดหมู่",
+      "เลื่อนดูสินค้าบนหน้าแรกที่แบ่งเป็นหมวดหมู่",
       "ใช้ช่องค้นหาเพื่อค้นหาสินค้าที่ต้องการ",
       "กดเลือกหมวดหมู่เพื่อดู Subcategory ย่อย",
       'ดูสินค้าที่กำลัง "Hot 🔥" หรือ "Ending Soon ⏳"',
-      'สินค้า "Incoming" คือสินค้าที่กำลังจะเปิดประมูลเร็วๆนี้',
     ],
     color: "#F5A623",
     bgColor: "#FFF8EB",
@@ -55,10 +55,9 @@ const TUTORIAL_STEPS = [
     subtitle: "Top Up Wallet",
     steps: [
       'ไปที่แท็บ "Wallet" ที่เมนูด้านล่าง',
-      'กดปุ่ม "Deposit" เพื่อเติมเงินเข้ากระเป๋า',
+      'กดปุ่ม "เติมเงิน" เพื่อเพิ่มยอดเงิน',
       "เลือกช่องทางชำระเงิน: QR Code หรือ Mobile Banking",
-      "ระบุจำนวนเงินที่ต้องการเติม",
-      "ยืนยันการเติมเงิน — ยอดเงินจะอัปเดตทันที",
+      "ยืนยันการเติมเงิน — ยอดจะอัปเดตทันที",
     ],
     color: "#7ED321",
     bgColor: "#F0FAE8",
@@ -66,15 +65,14 @@ const TUTORIAL_STEPS = [
   {
     id: 4,
     icon: "🏷️",
-    title: "วางราคาประมูล (Place Bid)",
+    title: "วางราคาประมูล",
     subtitle: "Place a Bid on Products",
     steps: [
       "กดเข้าไปดูรายละเอียดสินค้าที่ต้องการ",
       'ดูราคาปัจจุบัน (Current Bid) และ "Minimum Bid Increment"',
       'กดปุ่ม "Place Bid" แล้วระบุราคาที่ต้องการเสนอ',
       "ราคาต้องมากกว่าราคาปัจจุบัน + Minimum Increment",
-      'หรือกด "Buy Now" เพื่อซื้อทันทีในราคาที่กำหนด',
-      "⚠️ ต้องเข้าสู่ระบบก่อนจึงจะสามารถประมูลได้",
+      "⚠️ ต้องเข้าสู่ระบบก่อนจึงจะประมูลได้",
     ],
     color: "#D0021B",
     bgColor: "#FDECEE",
@@ -85,11 +83,10 @@ const TUTORIAL_STEPS = [
     title: "ติดตามการประมูล",
     subtitle: "Track Your Bids",
     steps: [
-      'ไปที่แท็บ "My Bid" เพื่อดูรายการประมูลทั้งหมดของคุณ',
-      '"Bidding" — สินค้าที่คุณกำลังประมูลอยู่',
-      '"Won" — สินค้าที่คุณชนะการประมูล 🎉',
+      'ไปที่แท็บ "My Bid" เพื่อดูรายการประมูลทั้งหมด',
+      '"Bidding" — สินค้าที่คุณกำลังประมูล',
+      '"Won" — สินค้าที่คุณชนะ 🎉',
       '"Lost" — สินค้าที่คุณไม่ได้ชนะ',
-      "ดูเวลาที่เหลือของการประมูลแต่ละรายการ",
     ],
     color: "#9013FE",
     bgColor: "#F3ECFE",
@@ -97,14 +94,12 @@ const TUTORIAL_STEPS = [
   {
     id: 6,
     icon: "✅",
-    title: "ยืนยันรับสินค้า (Verify Product)",
+    title: "ยืนยันรับสินค้า",
     subtitle: "Verify & Receive Won Products",
     steps: [
       'เมื่อชนะประมูล สินค้าจะอยู่ในสถานะ "Won"',
       "⏰ คุณมีเวลา 24 ชั่วโมง ในการยืนยันสินค้า",
       'กด "Verify" เพื่อยืนยันว่าต้องการรับสินค้า',
-      'สถานะจะเปลี่ยนเป็น "Verified" — รอรับสินค้า',
-      'เมื่อได้รับสินค้าแล้ว กด "Received" เพื่อยืนยัน',
       "❌ หากไม่ยืนยันภายใน 24 ชม. สินค้าจะถูกยกเลิกอัตโนมัติ",
     ],
     color: "#417505",
@@ -113,16 +108,15 @@ const TUTORIAL_STEPS = [
   {
     id: 7,
     icon: "📦",
-    title: "ขายสินค้า (Seller)",
+    title: "ขายสินค้า",
     subtitle: "List Your Products for Auction",
     steps: [
       'ไปที่แท็บ "Seller" ที่เมนูด้านล่าง',
       'กด "Create Auction" เพื่อลงประกาศขาย',
-      "อัปโหลดรูปสินค้า (สูงสุด 5 รูป)",
+      "อัปโหลดรูปสินค้า (สูงสุด 8 รูป)",
       "กรอกรายละเอียด: ชื่อ, คำอธิบาย, หมวดหมู่",
       "ตั้งราคาเริ่มต้น (Starting Bid) และราคาซื้อทันที (Buy Now)",
       "กำหนดวันเวลาเริ่ม-สิ้นสุดการประมูล",
-      'กด "Publish" เพื่อเผยแพร่',
     ],
     color: "#E67E22",
     bgColor: "#FDF2E6",
@@ -130,14 +124,13 @@ const TUTORIAL_STEPS = [
   {
     id: 8,
     icon: "💸",
-    title: "ถอนเงิน (Withdraw)",
+    title: "ถอนเงิน",
     subtitle: "Withdraw Funds from Wallet",
     steps: [
       'ไปที่แท็บ "Wallet"',
-      'กดปุ่ม "Withdraw"',
+      'กดปุ่ม "ถอนเงิน"',
       "ระบุจำนวนเงินที่ต้องการถอน",
       "ใส่ข้อมูลบัญชีธนาคารปลายทาง",
-      "ยืนยันการถอนเงิน",
       "เงินจะโอนเข้าบัญชีภายใน 1-3 วันทำการ",
     ],
     color: "#BD10E0",
@@ -145,8 +138,127 @@ const TUTORIAL_STEPS = [
   },
 ];
 
+const TUTORIAL_STEPS_EN = [
+  {
+    id: 1,
+    icon: "👤",
+    title: "Register / Sign In",
+    subtitle: "Account Registration & Login",
+    steps: [
+      'Open BidKhong and tap "Sign Up" to create an account',
+      "Fill in: name, email, phone, password",
+      'Or tap "Sign In" if you already have an account',
+      'You can browse as a "Guest" but cannot bid',
+    ],
+    color: "#4A90D9",
+    bgColor: "#EBF3FD",
+  },
+  {
+    id: 2,
+    icon: "🔍",
+    title: "Browse & Search",
+    subtitle: "Browse & Search Products",
+    steps: [
+      "Scroll through products on the Home tab by category",
+      "Use the search bar to find what you want",
+      "Tap a category to browse subcategories",
+      'See "Hot 🔥" and "Ending Soon ⏳" items',
+    ],
+    color: "#F5A623",
+    bgColor: "#FFF8EB",
+  },
+  {
+    id: 3,
+    icon: "💰",
+    title: "Top Up Wallet",
+    subtitle: "Top Up Your Wallet",
+    steps: [
+      'Go to the "Wallet" tab',
+      'Tap "Top Up" to add funds',
+      "Choose a payment method: QR Code or Mobile Banking",
+      "Confirm — your balance updates instantly",
+    ],
+    color: "#7ED321",
+    bgColor: "#F0FAE8",
+  },
+  {
+    id: 4,
+    icon: "🏷️",
+    title: "Place a Bid",
+    subtitle: "Place a Bid on Products",
+    steps: [
+      "Open the product you want to bid on",
+      'Check the Current Bid and "Minimum Bid Increment"',
+      'Tap "Place Bid" and enter your price',
+      "Your bid must exceed current bid + increment",
+      "⚠️ You must be signed in to bid",
+    ],
+    color: "#D0021B",
+    bgColor: "#FDECEE",
+  },
+  {
+    id: 5,
+    icon: "⏱️",
+    title: "Track Your Bids",
+    subtitle: "Track Your Bids",
+    steps: [
+      'Go to the "My Bid" tab to view all bids',
+      '"Bidding" — items you are currently bidding on',
+      '"Won" — items you have won 🎉',
+      '"Lost" — items you did not win',
+    ],
+    color: "#9013FE",
+    bgColor: "#F3ECFE",
+  },
+  {
+    id: 6,
+    icon: "✅",
+    title: "Verify Receipt",
+    subtitle: "Verify & Receive Won Products",
+    steps: [
+      'When you win, the item status becomes "Won"',
+      "⏰ You have 24 hours to verify the item",
+      'Tap "Verify" to confirm you want to receive it',
+      "❌ If not verified within 24 hrs, the order is auto-cancelled",
+    ],
+    color: "#417505",
+    bgColor: "#EDF7E0",
+  },
+  {
+    id: 7,
+    icon: "📦",
+    title: "Sell a Product",
+    subtitle: "List Your Products for Auction",
+    steps: [
+      'Go to the "Seller" tab',
+      'Tap "Create Auction" to list a product',
+      "Upload product photos (up to 8)",
+      "Fill in: title, description, category",
+      "Set a starting bid and optional Buy Now price",
+      "Set start & end date/time for the auction",
+    ],
+    color: "#E67E22",
+    bgColor: "#FDF2E6",
+  },
+  {
+    id: 8,
+    icon: "💸",
+    title: "Withdraw Funds",
+    subtitle: "Withdraw Funds from Wallet",
+    steps: [
+      'Go to the "Wallet" tab',
+      'Tap "Withdraw"',
+      "Enter the amount to withdraw",
+      "Enter your bank account details",
+      "Funds transferred within 1–3 business days",
+    ],
+    color: "#BD10E0",
+    bgColor: "#F8E8FD",
+  },
+];
+
 // ─── FAQ ─────────────────────────────────────────────────────
-const FAQ_ITEMS = [
+const FAQ_ITEMS_TH = [
   {
     q: "ถ้าชนะประมูลแล้วไม่ยืนยันจะเกิดอะไรขึ้น?",
     a: "หากไม่ยืนยันภายใน 24 ชั่วโมง สินค้าจะถูกยกเลิกอัตโนมัติ (Expired) และอาจถูกระงับสิทธิ์การประมูลในอนาคต",
@@ -157,7 +269,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Buy Now ต่างจาก Place Bid อย่างไร?",
-    a: "Place Bid คือการเสนอราคาประมูลแข่งกับคนอื่น ส่วน Buy Now คือซื้อทันทีในราคาที่ผู้ขายกำหนดไว้โดยไม่ต้องรอ",
+    a: "Place Bid คือการเสนอราคาแข่งกับคนอื่น ส่วน Buy Now คือซื้อทันทีในราคาที่ผู้ขายกำหนดไว้โดยไม่ต้องรอ",
   },
   {
     q: "Minimum Bid Increment คืออะไร?",
@@ -165,19 +277,71 @@ const FAQ_ITEMS = [
   },
   {
     q: "สินค้า Incoming คืออะไร?",
-    a: "คือสินค้าที่กำลังจะเปิดประมูลเร็วๆนี้ คุณสามารถดูรายละเอียดล่วงหน้าได้แต่ยังไม่สามารถประมูลได้จนกว่าจะถึงเวลา",
+    a: "คือสินค้าที่กำลังจะเปิดประมูลเร็วๆนี้ คุณสามารถดูรายละเอียดล่วงหน้าได้แต่ยังประมูลไม่ได้จนกว่าจะถึงเวลา",
   },
   {
     q: "จะเปลี่ยนรหัสผ่านได้อย่างไร?",
-    a: "ไปที่ Profile > Edit Profile เพื่อเปลี่ยนรหัสผ่านและข้อมูลส่วนตัว (ฟีเจอร์นี้จะมาในเร็วๆนี้)",
+    a: "ไปที่ Profile > Edit Profile เพื่อเปลี่ยนรหัสผ่านและข้อมูลส่วนตัว",
+  },
+];
+
+const FAQ_ITEMS_EN = [
+  {
+    q: "What happens if I win but don't verify?",
+    a: "If you don't verify within 24 hours, the order is automatically cancelled (Expired) and your bidding privileges may be suspended.",
+  },
+  {
+    q: "What can a Guest user do?",
+    a: "Guests can browse products, search, and view categories, but cannot bid, buy, or use the Wallet.",
+  },
+  {
+    q: "What is the difference between Buy Now and Place Bid?",
+    a: "Place Bid enters you into a competitive auction. Buy Now lets you purchase the item immediately at the seller's fixed price.",
+  },
+  {
+    q: "What is Minimum Bid Increment?",
+    a: "It's the minimum amount you must add to the current bid. E.g., if current bid is ฿1,000 and increment is ฿100, you must bid at least ฿1,100.",
+  },
+  {
+    q: "What are Incoming products?",
+    a: "These are products whose auction hasn't started yet. You can view details but cannot bid until the auction opens.",
+  },
+  {
+    q: "How do I change my password?",
+    a: "Go to Profile > Edit Profile to update your password and personal information.",
   },
 ];
 
 // ─── Component ───────────────────────────────────────────────
 const AboutAppPage = () => {
   const router = useRouter();
+  const { t, lang } = useLanguage();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const tutorialSteps = lang === "th" ? TUTORIAL_STEPS_TH : TUTORIAL_STEPS_EN;
+  const faqItems = lang === "th" ? FAQ_ITEMS_TH : FAQ_ITEMS_EN;
+  const features =
+    lang === "th"
+      ? [
+          { icon: "🔐", title: "ปลอดภัย", desc: "ระบบล็อกอินปลอดภัย" },
+          { icon: "⏰", title: "Real-time", desc: "นับถอยหลังแบบเรียลไทม์" },
+          { icon: "💳", title: "Wallet", desc: "กระเป๋าเงินในตัว" },
+          { icon: "📱", title: "ง่ายต่อการใช้", desc: "UI สวยงาม ใช้ง่าย" },
+          { icon: "🔔", title: "แจ้งเตือน", desc: "แจ้งเมื่อชนะประมูล" },
+          { icon: "🏪", title: "ขายง่าย", desc: "ลงขายได้ในไม่กี่ขั้นตอน" },
+        ]
+      : [
+          { icon: "🔐", title: "Secure", desc: "Safe login system" },
+          { icon: "⏰", title: "Real-time", desc: "Live countdown timers" },
+          { icon: "💳", title: "Wallet", desc: "Built-in wallet" },
+          { icon: "📱", title: "Easy to Use", desc: "Beautiful, intuitive UI" },
+          { icon: "🔔", title: "Notifications", desc: "Alerts when you win" },
+          {
+            icon: "🏪",
+            title: "Sell Easily",
+            desc: "List in just a few steps",
+          },
+        ];
   const [totalUsers, setTotalUsers] = useState<number | null>(null);
   const [totalProducts, setTotalProducts] = useState<number | null>(null);
 
@@ -211,7 +375,7 @@ const AboutAppPage = () => {
             numberOfLines={1}
             adjustsFontSizeToFit
           >
-            About BidKhong
+            {t("aboutTitle")}
           </AppText>
           <View style={{ width: 40 }} />
         </SafeAreaView>
@@ -239,12 +403,11 @@ const AboutAppPage = () => {
             BidKhong
           </AppText>
           <AppText weight="regular" style={styles.appVersion} numberOfLines={1}>
-            Version 1.0.0
+            {t("aboutVersion")}
           </AppText>
           <View style={styles.appDescContainer}>
             <AppText weight="regular" style={styles.appDesc}>
-              แพลตฟอร์มประมูลสินค้าออนไลน์ที่ให้คุณซื้อขายสินค้าได้ง่าย สะดวก
-              ปลอดภัย พร้อมระบบ Wallet และการยืนยันสินค้าอัตโนมัติ
+              {t("aboutAppDesc")}
             </AppText>
           </View>
 
@@ -264,7 +427,7 @@ const AboutAppPage = () => {
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
-                ผู้ใช้งาน
+                {t("aboutStatUsers")}
               </AppText>
             </View>
             <View style={styles.statDivider} />
@@ -282,7 +445,7 @@ const AboutAppPage = () => {
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
-                สินค้า
+                {t("aboutStatProducts")}
               </AppText>
             </View>
             <View style={styles.statDivider} />
@@ -300,7 +463,7 @@ const AboutAppPage = () => {
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
-                ปลอดภัย
+                {t("aboutStatSafe")}
               </AppText>
             </View>
           </View>
@@ -314,18 +477,18 @@ const AboutAppPage = () => {
               style={styles.sectionTitle}
               numberOfLines={1}
             >
-              📖 วิธีใช้งาน BidKhong
+              {t("aboutHowToUse")}
             </AppText>
             <AppText
               weight="regular"
               style={styles.sectionSubtitle}
               numberOfLines={1}
             >
-              ขั้นตอนการใช้งานทั้งหมด
+              {t("aboutHowToUseSub")}
             </AppText>
           </View>
 
-          {TUTORIAL_STEPS.map((step, index) => (
+          {tutorialSteps.map((step, index) => (
             <View key={step.id} style={styles.stepCard}>
               {/* Step Number Badge */}
               <View style={styles.stepNumberRow}>
@@ -337,7 +500,7 @@ const AboutAppPage = () => {
                     {step.id}
                   </AppText>
                 </LinearGradient>
-                {index < TUTORIAL_STEPS.length - 1 && (
+                {index < tutorialSteps.length - 1 && (
                   <View
                     style={[
                       styles.stepLine,
@@ -403,23 +566,12 @@ const AboutAppPage = () => {
               style={styles.sectionTitle}
               numberOfLines={1}
             >
-              ⭐ ฟีเจอร์เด่น
+              {t("aboutFeatureTitle")}
             </AppText>
           </View>
 
           <View style={styles.featuresGrid}>
-            {[
-              { icon: "🔐", title: "ปลอดภัย", desc: "ระบบล็อกอินปลอดภัย" },
-              {
-                icon: "⏰",
-                title: "Real-time",
-                desc: "นับถอยหลังแบบเรียลไทม์",
-              },
-              { icon: "💳", title: "Wallet", desc: "กระเป๋าเงินในตัว" },
-              { icon: "📱", title: "ง่ายต่อการใช้", desc: "UI สวยงาม ใช้ง่าย" },
-              { icon: "🔔", title: "แจ้งเตือน", desc: "แจ้งเมื่อชนะประมูล" },
-              { icon: "🏪", title: "ขายง่าย", desc: "ลงขายได้ในไม่กี่ขั้นตอน" },
-            ].map((feat, i) => (
+            {features.map((feat, i) => (
               <View key={i} style={styles.featureCard}>
                 <AppText style={styles.featureIcon}>{feat.icon}</AppText>
                 <AppText
@@ -449,11 +601,11 @@ const AboutAppPage = () => {
               style={styles.sectionTitle}
               numberOfLines={1}
             >
-              ❓ คำถามที่พบบ่อย (FAQ)
+              {t("aboutFaqSection")}
             </AppText>
           </View>
 
-          {FAQ_ITEMS.map((faq, index) => (
+          {faqItems.map((faq, index) => (
             <TouchableOpacity
               key={index}
               style={styles.faqCard}
@@ -504,14 +656,14 @@ const AboutAppPage = () => {
             style={styles.footerGradient}
           >
             <AppText weight="bold" style={styles.footerTitle} numberOfLines={1}>
-              ต้องการความช่วยเหลือ?
+              {t("needHelp")}
             </AppText>
             <AppText
               weight="regular"
               style={styles.footerDesc}
               numberOfLines={1}
             >
-              ติดต่อทีมสนับสนุนของเราได้ตลอด 24 ชั่วโมง
+              {t("contactSupportDesc")}
             </AppText>
 
             <View style={styles.contactCards}>

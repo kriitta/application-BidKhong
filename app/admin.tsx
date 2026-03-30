@@ -19,8 +19,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { apiService, getFullImageUrl } from "../utils/api";
 import { AdminStats, Product, User } from "../utils/api/types";
+import type { TranslationKeys } from "../utils/translations";
 import { AppText } from "./components/appText";
 import ImageViewerModal from "./components/ImageViewerModal";
 
@@ -91,8 +93,10 @@ type AdminUser = {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────
-const formatPrice = (n: number | string) => {
+const formatPrice = (n: number | string | null | undefined) => {
+  if (n === null || n === undefined) return "฿0";
   const num = typeof n === "string" ? parseFloat(n) : n;
+  if (isNaN(num)) return "฿0";
   return "฿" + num.toLocaleString("en-US", { maximumFractionDigits: 0 });
 };
 
@@ -122,16 +126,19 @@ const getReportStatusColor = (s: string) => {
   }
 };
 
-const getReportStatusLabel = (s: string) => {
+const getReportStatusLabel = (
+  s: string,
+  t: (key: keyof TranslationKeys) => string,
+) => {
   switch (s) {
     case "pending":
-      return "รอดำเนินการ";
+      return t("reportPending");
     case "reviewing":
-      return "กำลังตรวจสอบ";
+      return t("reportReviewing");
     case "resolved":
-      return "แก้ไขแล้ว";
+      return t("reportResolved");
     case "dismissed":
-      return "ยกเลิก";
+      return t("reportDismissed");
     default:
       return s;
   }
@@ -156,20 +163,23 @@ const getReportTypeIcon = (
   }
 };
 
-const getReportTypeLabel = (t: string) => {
-  switch (t) {
+const getReportTypeLabel = (
+  type: string,
+  t: (key: keyof TranslationKeys) => string,
+) => {
+  switch (type) {
     case "scam":
-      return "หลอกลวง";
+      return t("reportTypeScam");
     case "fake_product":
-      return "สินค้าปลอม";
+      return t("reportTypeFakeProduct");
     case "harassment":
-      return "คุกคาม";
+      return t("reportTypeHarassment");
     case "inappropriate_content":
-      return "เนื้อหาไม่เหมาะสม";
+      return t("reportTypeInappropriate");
     case "other":
-      return "อื่นๆ";
+      return t("reportTypeOther");
     default:
-      return t.replace(/_/g, " ");
+      return type.replace(/_/g, " ");
   }
 };
 
@@ -197,11 +207,12 @@ const getRemainingBanDays = (bannedUntil?: string | null): number | null => {
 const AdminScreen = () => {
   const router = useRouter();
   const { logout: contextLogout } = useAuth();
+  const { t } = useLanguage();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"pending" | "reports" | "users">(
-    "pending",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "pending" | "reports" | "users" | "withdrawals"
+  >("pending");
 
   // Pending products state
   const [pendingProducts, setPendingProducts] = useState<Product[]>([]);
@@ -257,12 +268,93 @@ const AdminScreen = () => {
   // Dashboard stats from API
   const [dashboardStats, setDashboardStats] = useState<AdminStats | null>(null);
 
+  // Withdrawals state
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
+  const [wdFilter, setWdFilter] = useState<
+    "pending" | "confirmed" | "rejected" | ""
+  >("pending");
+  const [wdDetailVisible, setWdDetailVisible] = useState(false);
+  const [selectedWd, setSelectedWd] = useState<any | null>(null);
+  const [wdRejectVisible, setWdRejectVisible] = useState(false);
+  const [wdRejectNote, setWdRejectNote] = useState("");
+  const [wdActionLoading, setWdActionLoading] = useState(false);
+
   const fetchDashboardStats = async () => {
     try {
       const stats = await apiService.admin.getStats();
       setDashboardStats(stats);
     } catch (e: any) {
       console.error("Failed to fetch admin stats:", e.message);
+    }
+  };
+
+  const fetchWithdrawals = async (status?: string) => {
+    try {
+      setWithdrawalsLoading(true);
+      const response = await apiService.admin.getWithdrawals(
+        status || undefined,
+      );
+      const data = response as any;
+      let list: any[] = [];
+      if (Array.isArray(data)) {
+        list = data;
+      } else if (data?.data && Array.isArray(data.data)) {
+        list = data.data;
+      }
+      setWithdrawals(list);
+    } catch (e: any) {
+      console.error("Failed to fetch withdrawals:", e.message);
+    } finally {
+      setWithdrawalsLoading(false);
+    }
+  };
+
+  const handleConfirmWithdrawal = async (id: number) => {
+    Alert.alert(t("adminConfirmWithdrawTitle"), t("adminConfirmWithdrawMsg"), [
+      { text: t("cancel"), style: "cancel" },
+      {
+        text: t("confirm"),
+        style: "default",
+        onPress: async () => {
+          try {
+            setWdActionLoading(true);
+            await apiService.admin.confirmWithdrawal(id);
+            Alert.alert(t("success"), t("adminWithdrawConfirmed"));
+            setWdDetailVisible(false);
+            setSelectedWd(null);
+            fetchWithdrawals(wdFilter);
+          } catch (e: any) {
+            Alert.alert(t("error"), e.message || t("adminCannotConfirm"));
+          } finally {
+            setWdActionLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleRejectWithdrawal = async () => {
+    if (!wdRejectNote.trim()) {
+      Alert.alert(t("adminEnterReason"), t("adminSpecifyRejectReason"));
+      return;
+    }
+    try {
+      setWdActionLoading(true);
+      await apiService.admin.rejectWithdrawal(
+        selectedWd.id,
+        wdRejectNote.trim(),
+      );
+      Alert.alert(t("success"), t("adminWithdrawRejected"));
+      setWdRejectVisible(false);
+      setWdRejectNote("");
+      setWdDetailVisible(false);
+      setSelectedWd(null);
+      fetchWithdrawals(wdFilter);
+    } catch (e: any) {
+      Alert.alert(t("error"), e.message || t("adminCannotReject"));
+    } finally {
+      setWdActionLoading(false);
     }
   };
 
@@ -284,6 +376,8 @@ const AdminScreen = () => {
       fetchUsers();
       // Fetch pending products
       fetchPendingProducts();
+      // Fetch withdrawals
+      fetchWithdrawals("pending");
     };
     loadUser();
   }, []);
@@ -389,12 +483,12 @@ const AdminScreen = () => {
 
   const handleBanUser = async () => {
     if (!selectedUser || !banReason.trim()) {
-      Alert.alert("ข้อผิดพลาด", "กรุณากรอกเหตุผลในการแบน");
+      Alert.alert(t("error"), t("adminEnterBanReason"));
       return;
     }
     const days = parseInt(banDuration, 10);
     if (isNaN(days) || days <= 0) {
-      Alert.alert("ข้อผิดพลาด", "กรุณากรอกจำนวนวันที่ถูกต้อง");
+      Alert.alert(t("error"), t("adminEnterValidDays"));
       return;
     }
     setBanLoading(true);
@@ -439,61 +533,71 @@ const AdminScreen = () => {
       setBanReason("");
       setBanDuration("7");
       setBanLoading(false);
-      Alert.alert("สำเร็จ", `แบนผู้ใช้ ${userName} เรียบร้อยแล้ว`);
+      Alert.alert(
+        t("success"),
+        t("adminBanSuccess").replace("{name}", userName),
+      );
     } catch (error: any) {
       setBanLoading(false);
-      Alert.alert("ผิดพลาด", error.message || "ไม่สามารถแบนผู้ใช้ได้");
+      Alert.alert(t("error"), error.message || t("adminCannotBan"));
     }
   };
 
   const handleUnbanUser = async (u: AdminUser) => {
-    Alert.alert("ยืนยัน", `ปลดแบนผู้ใช้ "${u.name}"?`, [
-      { text: "ยกเลิก" },
-      {
-        text: "ยืนยัน",
-        onPress: async () => {
-          try {
-            await apiService.admin.unbanUser(u.id);
-            Alert.alert("สำเร็จ", `ปลดแบนผู้ใช้ ${u.name} เรียบร้อยแล้ว`);
-            // Optimistically update users list
-            setUsers((prev) =>
-              prev.map((user) =>
-                user.id === u.id
-                  ? {
-                      ...user,
-                      is_banned: false,
-                      banned_until: null,
-                      ban_reason: null,
-                    }
-                  : user,
-              ),
-            );
-            // Update selectedUser so detail modal reflects unban immediately
-            if (selectedUser?.id === u.id) {
-              setSelectedUser((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      is_banned: false,
-                      banned_until: null,
-                      ban_reason: null,
-                    }
-                  : prev,
+    Alert.alert(
+      t("confirm"),
+      t("adminUnbanConfirmMsg").replace("{name}", u.name),
+      [
+        { text: t("cancel") },
+        {
+          text: t("confirm"),
+          onPress: async () => {
+            try {
+              await apiService.admin.unbanUser(u.id);
+              Alert.alert(
+                t("success"),
+                t("adminUnbanSuccess").replace("{name}", u.name),
               );
+              // Optimistically update users list
+              setUsers((prev) =>
+                prev.map((user) =>
+                  user.id === u.id
+                    ? {
+                        ...user,
+                        is_banned: false,
+                        banned_until: null,
+                        ban_reason: null,
+                      }
+                    : user,
+                ),
+              );
+              // Update selectedUser so detail modal reflects unban immediately
+              if (selectedUser?.id === u.id) {
+                setSelectedUser((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        is_banned: false,
+                        banned_until: null,
+                        ban_reason: null,
+                      }
+                    : prev,
+                );
+              }
+            } catch (error: any) {
+              Alert.alert(t("error"), error.message || t("adminCannotUnban"));
             }
-          } catch (error: any) {
-            Alert.alert("ผิดพลาด", error.message || "ไม่สามารถปลดแบนผู้ใช้ได้");
-          }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   const handleLogout = async () => {
-    Alert.alert("ออกจากระบบ", "คุณแน่ใจที่ต้องการออกจากระบบหรือไม่?", [
-      { text: "ยกเลิก" },
+    Alert.alert(t("logoutConfirmTitle"), t("logoutConfirmMessage"), [
+      { text: t("cancel") },
       {
-        text: "ออกจากระบบ",
+        text: t("logoutConfirmYes"),
         style: "destructive",
         onPress: async () => {
           await contextLogout();
@@ -505,7 +609,7 @@ const AdminScreen = () => {
 
   const handleRejectProduct = async () => {
     if (!selectedProduct || !rejectReason.trim()) {
-      Alert.alert("ข้อผิดพลาด", "กรุณากรอกเหตุผลในการปฏิเสธ");
+      Alert.alert(t("error"), t("adminEnterRejectReason"));
       return;
     }
     setRejectLoading(true);
@@ -522,11 +626,11 @@ const AdminScreen = () => {
       setRejectReason("");
       setProductModalVisible(false);
       setSelectedProduct(null);
-      Alert.alert("สำเร็จ", "ปฏิเสธสินค้าเรียบร้อยแล้ว");
+      Alert.alert(t("success"), t("adminProductRejected"));
       fetchPendingProducts();
       fetchDashboardStats();
     } catch (error: any) {
-      Alert.alert("ผิดพลาด", error.message || "ไม่สามารถปฏิเสธสินค้าได้");
+      Alert.alert(t("error"), error.message || t("adminCannotRejectProduct"));
     } finally {
       setRejectLoading(false);
     }
@@ -534,12 +638,12 @@ const AdminScreen = () => {
 
   const handleApproveProduct = (product: Product) => {
     Alert.alert(
-      "อนุมัติสินค้า",
-      `อนุมัติ "${product.name}" ให้เข้าสู่ระบบประมูล?`,
+      t("adminApproveProduct"),
+      t("adminApproveConfirmMsg").replace("{name}", product.name),
       [
-        { text: "ยกเลิก" },
+        { text: t("cancel") },
         {
-          text: "อนุมัติ",
+          text: t("approve"),
           onPress: async () => {
             setApproveLoading(true);
             try {
@@ -550,14 +654,11 @@ const AdminScreen = () => {
               );
               setProductModalVisible(false);
               setSelectedProduct(null);
-              Alert.alert("สำเร็จ", "อนุมัติสินค้าเรียบร้อยแล้ว");
+              Alert.alert(t("success"), t("adminProductApproved"));
               fetchPendingProducts();
               fetchDashboardStats();
             } catch (error: any) {
-              Alert.alert(
-                "ผิดพลาด",
-                error.message || "ไม่สามารถอนุมัติสินค้าได้",
-              );
+              Alert.alert(t("error"), error.message || t("adminCannotApprove"));
             } finally {
               setApproveLoading(false);
             }
@@ -589,15 +690,13 @@ const AdminScreen = () => {
       setCertAction(null);
       setCertRejectNote("");
       Alert.alert(
-        "สำเร็จ",
-        status === "approved"
-          ? "อนุมัติใบรับรองเรียบร้อยแล้ว"
-          : "ปฏิเสธใบรับรองเรียบร้อยแล้ว",
+        t("success"),
+        status === "approved" ? t("adminCertApproved") : t("adminCertRejected"),
       );
       fetchPendingProducts();
       fetchDashboardStats();
     } catch (error: any) {
-      Alert.alert("ผิดพลาด", error.message || "ไม่สามารถดำเนินการใบรับรองได้");
+      Alert.alert(t("error"), error.message || t("adminCannotProcessCert"));
     } finally {
       setCertVerifyLoading(false);
     }
@@ -620,12 +719,12 @@ const AdminScreen = () => {
 
   const handleUpdateReportStatus = (report: ApiReport, newStatus: string) => {
     Alert.alert(
-      "เปลี่ยนสถานะ",
-      `เปลี่ยนสถานะเป็น "${getReportStatusLabel(newStatus)}"?${adminNote.trim() ? `\n\nหมายเหตุ: ${adminNote.trim()}` : ""}`,
+      t("adminChangeStatus"),
+      `${t("adminChangeStatusMsg").replace("{status}", getReportStatusLabel(newStatus, t))}${adminNote.trim() ? `\n\n${t("adminNoteLabel")}: ${adminNote.trim()}` : ""}`,
       [
-        { text: "ยกเลิก" },
+        { text: t("cancel") },
         {
-          text: "ยืนยัน",
+          text: t("confirm"),
           onPress: async () => {
             setStatusLoading(true);
             try {
@@ -639,7 +738,7 @@ const AdminScreen = () => {
                 setReports((prev) => prev.filter((r) => r.id !== report.id));
                 setAdminNote("");
                 setReportModalVisible(false);
-                Alert.alert("สำเร็จ", "อัปเดตสถานะเรียบร้อยแล้ว");
+                Alert.alert(t("success"), t("adminStatusUpdated"));
               } else {
                 // Update local state for other status changes
                 setReports((prev) =>
@@ -663,13 +762,13 @@ const AdminScreen = () => {
                     : prev,
                 );
                 setAdminNote("");
-                Alert.alert("สำเร็จ", "อัปเดตสถานะเรียบร้อยแล้ว");
+                Alert.alert(t("success"), t("adminStatusUpdated"));
               }
               fetchReports(); // refresh list
             } catch (error: any) {
               Alert.alert(
-                "ผิดพลาด",
-                error.message || "ไม่สามารถอัปเดตสถานะได้",
+                t("error"),
+                error.message || t("adminCannotUpdateStatus"),
               );
             } finally {
               setStatusLoading(false);
@@ -752,16 +851,28 @@ const AdminScreen = () => {
             </View>
             <View style={styles.statCard}>
               <AppText weight="bold" style={styles.statNumber}>
-                {dashboardStats?.total_products ?? 0}
+                {dashboardStats?.active_auctions ?? 0}
               </AppText>
               <AppText weight="regular" style={styles.statLabel}>
-                Products
+                Auctions
+              </AppText>
+            </View>
+            <View style={styles.statCard}>
+              <AppText weight="bold" style={styles.statNumber}>
+                {dashboardStats?.pending_withdrawals ?? 0}
+              </AppText>
+              <AppText weight="regular" style={styles.statLabel}>
+                Withdrawals
               </AppText>
             </View>
           </View>
 
           {/* Tab Switcher */}
-          <View style={styles.tabRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabRow}
+          >
             <TouchableOpacity
               style={[styles.tab, activeTab === "pending" && styles.tabActive]}
               onPress={() => setActiveTab("pending")}
@@ -773,7 +884,24 @@ const AdminScreen = () => {
                   activeTab === "pending" && styles.tabTextActive,
                 ]}
               >
-                Pending ({pendingProducts.length})
+                {t("pending")} ({pendingProducts.length})
+              </AppText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === "withdrawals" && styles.tabActive,
+              ]}
+              onPress={() => setActiveTab("withdrawals")}
+            >
+              <AppText
+                weight="semibold"
+                style={[
+                  styles.tabText,
+                  activeTab === "withdrawals" && styles.tabTextActive,
+                ]}
+              >
+                {t("adminWithdrawals")} ({withdrawals.length})
               </AppText>
             </TouchableOpacity>
             <TouchableOpacity
@@ -787,7 +915,7 @@ const AdminScreen = () => {
                   activeTab === "reports" && styles.tabTextActive,
                 ]}
               >
-                Reports ({reports.length})
+                {t("adminReports")} ({reports.length})
               </AppText>
             </TouchableOpacity>
             <TouchableOpacity
@@ -801,10 +929,10 @@ const AdminScreen = () => {
                   activeTab === "users" && styles.tabTextActive,
                 ]}
               >
-                Users ({users.length})
+                {t("adminUsers")} ({users.length})
               </AppText>
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         </SafeAreaView>
       </LinearGradient>
 
@@ -835,10 +963,10 @@ const AdminScreen = () => {
                   style={{ marginBottom: 12 }}
                 />
                 <AppText weight="semibold" style={styles.emptyTitle}>
-                  ไม่มีสินค้ารออนุมัติ
+                  {t("adminNoPendingProducts")}
                 </AppText>
                 <AppText weight="regular" style={styles.emptySub}>
-                  สินค้าทั้งหมดได้รับการตรวจสอบแล้ว
+                  {t("adminAllApproved")}
                 </AppText>
               </View>
             ) : (
@@ -904,7 +1032,7 @@ const AdminScreen = () => {
                           style={styles.productCardSeller}
                           numberOfLines={1}
                         >
-                          {product.user?.name || "Unknown Seller"}
+                          {product.user?.name || t("unknownUser")}
                         </AppText>
                       </View>
                       <View style={styles.productCardPrices}>
@@ -1009,10 +1137,10 @@ const AdminScreen = () => {
                   style={{ marginBottom: 12 }}
                 />
                 <AppText weight="semibold" style={styles.emptyTitle}>
-                  ไม่มีรายงานปัญหา
+                  {t("adminNoReports")}
                 </AppText>
                 <AppText weight="regular" style={styles.emptySub}>
-                  ยังไม่มีผู้ใช้แจ้งปัญหาเข้ามา
+                  {t("adminNoReportsSub")}
                 </AppText>
               </View>
             ) : reportsLoading ? (
@@ -1045,14 +1173,14 @@ const AdminScreen = () => {
                           style={styles.reportTitle}
                           numberOfLines={1}
                         >
-                          {getReportTypeLabel(report.type)}
+                          {getReportTypeLabel(report.type, t)}
                         </AppText>
                         <AppText
                           weight="regular"
                           style={styles.reportTypeBadgeText}
                         >
                           {report.report_code} •{" "}
-                          {report.reporter?.name || "Unknown"}
+                          {report.reporter?.name || t("unknownUser")}
                         </AppText>
                       </View>
                     </View>
@@ -1072,7 +1200,7 @@ const AdminScreen = () => {
                           { color: getReportStatusColor(report.status) },
                         ]}
                       >
-                        {getReportStatusLabel(report.status)}
+                        {getReportStatusLabel(report.status, t)}
                       </AppText>
                     </View>
                   </View>
@@ -1130,7 +1258,7 @@ const AdminScreen = () => {
                 <Ionicons name="search" size={18} color="#9CA3AF" />
                 <TextInput
                   style={styles.userSearchText}
-                  placeholder="ค้นหาชื่อหรืออีเมล..."
+                  placeholder={t("adminSearchUserPlaceholder")}
                   placeholderTextColor="#9CA3AF"
                   value={searchQuery}
                   onChangeText={setSearchQuery}
@@ -1161,10 +1289,10 @@ const AdminScreen = () => {
                   style={{ marginBottom: 12 }}
                 />
                 <AppText weight="semibold" style={styles.emptyTitle}>
-                  ไม่มีผู้ใช้
+                  {t("adminNoUsers")}
                 </AppText>
                 <AppText weight="regular" style={styles.emptySub}>
-                  ยังไม่มีผู้ใช้ในระบบ
+                  {t("adminNoUsersSub")}
                 </AppText>
               </View>
             ) : (
@@ -1271,7 +1399,8 @@ const AdminScreen = () => {
                               weight="regular"
                               style={{ fontSize: 11, color: "#9CA3AF" }}
                             >
-                              สมัครเมื่อ {formatReportDate(u.created_at)}
+                              {t("adminJoinedLabel")}{" "}
+                              {formatReportDate(u.created_at)}
                             </AppText>
                           </View>
                         )}
@@ -1295,7 +1424,7 @@ const AdminScreen = () => {
                                   }}
                                   numberOfLines={1}
                                 >
-                                  เหตุผล: {u.ban_reason}
+                                  {t("adminBanReasonPrefix")}: {u.ban_reason}
                                 </AppText>
                               )}
                               <View
@@ -1321,10 +1450,14 @@ const AdminScreen = () => {
                                     const remaining = getRemainingBanDays(
                                       u.banned_until,
                                     );
-                                    if (remaining === null) return "แบนถาวร";
+                                    if (remaining === null)
+                                      return t("adminBanPermanent");
                                     if (remaining === 0)
-                                      return "หมดอายุแบนแล้ว";
-                                    return `เหลือ ${remaining} วัน`;
+                                      return t("adminBanExpired");
+                                    return t("adminBanDaysLeft").replace(
+                                      "{n}",
+                                      String(remaining),
+                                    );
                                   })()}
                                 </AppText>
                               </View>
@@ -1351,7 +1484,7 @@ const AdminScreen = () => {
                             weight="semibold"
                             style={{ fontSize: 11, color: "#FFF" }}
                           >
-                            ปลดแบน
+                            {t("adminUnbanBtn")}
                           </AppText>
                         </TouchableOpacity>
                       ) : (
@@ -1366,8 +1499,514 @@ const AdminScreen = () => {
                 ))
             )}
           </>
+        ) : activeTab === "withdrawals" ? (
+          /* ─── WITHDRAWALS TAB ─────────────────────────── */
+          <>
+            {/* Status Filter */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, marginBottom: 14 }}
+            >
+              {(
+                [
+                  { key: "pending", label: t("adminWdFilterPending") },
+                  { key: "confirmed", label: t("adminWdFilterConfirmed") },
+                  { key: "rejected", label: t("adminWdFilterRejected") },
+                  { key: "", label: t("txTypeAll") },
+                ] as const
+              ).map((f) => (
+                <TouchableOpacity
+                  key={f.key}
+                  onPress={() => {
+                    setWdFilter(f.key);
+                    fetchWithdrawals(f.key);
+                  }}
+                  style={{
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                    backgroundColor: wdFilter === f.key ? "#003994" : "#F2F4F7",
+                  }}
+                >
+                  <AppText
+                    weight="semibold"
+                    style={{
+                      fontSize: 12,
+                      color: wdFilter === f.key ? "#FFF" : "#666",
+                    }}
+                  >
+                    {f.label}
+                  </AppText>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {withdrawalsLoading ? (
+              <View style={{ alignItems: "center", paddingVertical: 40 }}>
+                <LottieView
+                  source={require("../assets/animations/loading.json")}
+                  autoPlay
+                  loop
+                  style={{ width: 80, height: 80 }}
+                />
+              </View>
+            ) : withdrawals.length === 0 ? (
+              <View style={{ alignItems: "center", paddingVertical: 40 }}>
+                <LottieView
+                  source={require("../assets/animations/empty.json")}
+                  autoPlay
+                  loop
+                  style={{ width: 120, height: 120 }}
+                />
+                <AppText
+                  weight="medium"
+                  style={{ color: "#9CA3AF", marginTop: 8 }}
+                >
+                  {t("noWithdrawals")}
+                </AppText>
+              </View>
+            ) : (
+              withdrawals.map((wd) => {
+                const statusColor =
+                  wd.withdraw_status === "pending"
+                    ? "#F59E0B"
+                    : wd.withdraw_status === "confirmed"
+                      ? "#22C55E"
+                      : "#EF4444";
+                const statusLabel =
+                  wd.withdraw_status === "pending"
+                    ? t("reportPending")
+                    : wd.withdraw_status === "confirmed"
+                      ? t("approved")
+                      : t("rejected");
+                return (
+                  <TouchableOpacity
+                    key={wd.id}
+                    style={styles.wdCard}
+                    onPress={() => {
+                      setSelectedWd(wd);
+                      setWdDetailVisible(true);
+                    }}
+                  >
+                    <View style={styles.wdCardTop}>
+                      <View style={{ flex: 1 }}>
+                        <AppText
+                          weight="semibold"
+                          style={{ fontSize: 14, color: "#111" }}
+                          numberOfLines={1}
+                        >
+                          {wd.user?.name || `User #${wd.user_id}`}
+                        </AppText>
+                        <AppText
+                          weight="regular"
+                          style={{
+                            fontSize: 11,
+                            color: "#777",
+                            marginTop: 2,
+                          }}
+                          numberOfLines={1}
+                        >
+                          {wd.user?.email || ""}
+                          {wd.user?.phone ? ` • ${wd.user.phone}` : ""}
+                        </AppText>
+                      </View>
+                      <View
+                        style={[
+                          styles.wdStatusBadge,
+                          { backgroundColor: statusColor + "18" },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.wdStatusDot,
+                            { backgroundColor: statusColor },
+                          ]}
+                        />
+                        <AppText
+                          weight="semibold"
+                          style={{
+                            fontSize: 11,
+                            color: statusColor,
+                          }}
+                        >
+                          {statusLabel}
+                        </AppText>
+                      </View>
+                    </View>
+
+                    <View style={styles.wdCardBody}>
+                      <View style={styles.wdInfoRow}>
+                        <AppText weight="regular" style={styles.wdInfoLabel}>
+                          {t("adminWdAmountLabel")}
+                        </AppText>
+                        <AppText
+                          weight="bold"
+                          style={{
+                            fontSize: 15,
+                            color: "#003994",
+                          }}
+                        >
+                          {formatPrice(wd.amount)}
+                        </AppText>
+                      </View>
+                      <View style={styles.wdInfoRow}>
+                        <AppText weight="regular" style={styles.wdInfoLabel}>
+                          {t("adminWdBankLabel")}
+                        </AppText>
+                        <AppText
+                          weight="medium"
+                          style={{ fontSize: 13, color: "#333" }}
+                          numberOfLines={1}
+                        >
+                          {wd.bank_code?.toUpperCase?.() || "-"}
+                        </AppText>
+                      </View>
+                      <View style={styles.wdInfoRow}>
+                        <AppText weight="regular" style={styles.wdInfoLabel}>
+                          {t("adminWdAccountLabel")}
+                        </AppText>
+                        <AppText
+                          weight="medium"
+                          style={{ fontSize: 13, color: "#333" }}
+                        >
+                          {wd.account_number || "-"}
+                        </AppText>
+                      </View>
+                      {wd.created_at && (
+                        <View style={styles.wdInfoRow}>
+                          <AppText weight="regular" style={styles.wdInfoLabel}>
+                            {t("adminWdDateLabel")}
+                          </AppText>
+                          <AppText
+                            weight="regular"
+                            style={{ fontSize: 12, color: "#888" }}
+                          >
+                            {formatDateTime(wd.created_at)}
+                          </AppText>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </>
         ) : null}
       </ScrollView>
+
+      {/* ─── Withdrawal Detail Modal ──────────────────── */}
+      <Modal
+        visible={wdDetailVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setWdDetailVisible(false)}
+      >
+        <View style={styles.wdModalOverlay}>
+          <View style={styles.wdModalContent}>
+            {selectedWd && (
+              <>
+                <View style={styles.wdModalHeader}>
+                  <AppText
+                    weight="bold"
+                    style={{ fontSize: 17, color: "#111" }}
+                  >
+                    {t("adminWdDetails")}
+                  </AppText>
+                  <TouchableOpacity
+                    onPress={() => setWdDetailVisible(false)}
+                    disabled={wdActionLoading}
+                  >
+                    <Ionicons name="close" size={24} color="#666" />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView
+                  style={{ maxHeight: 400 }}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {/* User Info */}
+                  <View style={styles.wdDetailSection}>
+                    <AppText
+                      weight="semibold"
+                      style={styles.wdDetailSectionTitle}
+                    >
+                      {t("adminUserInfoLabel")}
+                    </AppText>
+                    <View style={styles.wdDetailRow}>
+                      <AppText weight="regular" style={styles.wdDetailLabel}>
+                        {t("adminNameLabel")}
+                      </AppText>
+                      <AppText weight="medium" style={styles.wdDetailValue}>
+                        {selectedWd.user?.name || `User #${selectedWd.user_id}`}
+                      </AppText>
+                    </View>
+                    <View style={styles.wdDetailRow}>
+                      <AppText weight="regular" style={styles.wdDetailLabel}>
+                        {t("adminEmailLabel")}
+                      </AppText>
+                      <AppText weight="medium" style={styles.wdDetailValue}>
+                        {selectedWd.user?.email || "-"}
+                      </AppText>
+                    </View>
+                    {selectedWd.user?.phone && (
+                      <View style={styles.wdDetailRow}>
+                        <AppText weight="regular" style={styles.wdDetailLabel}>
+                          {t("adminPhoneLabel")}
+                        </AppText>
+                        <AppText weight="medium" style={styles.wdDetailValue}>
+                          {selectedWd.user.phone}
+                        </AppText>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Bank Info */}
+                  <View style={styles.wdDetailSection}>
+                    <AppText
+                      weight="semibold"
+                      style={styles.wdDetailSectionTitle}
+                    >
+                      {t("adminAccountInfoLabel")}
+                    </AppText>
+                    <View style={styles.wdDetailRow}>
+                      <AppText weight="regular" style={styles.wdDetailLabel}>
+                        {t("adminAmountLabel")}
+                      </AppText>
+                      <AppText
+                        weight="bold"
+                        style={{
+                          fontSize: 16,
+                          color: "#003994",
+                        }}
+                      >
+                        {formatPrice(selectedWd.amount)}
+                      </AppText>
+                    </View>
+                    <View style={styles.wdDetailRow}>
+                      <AppText weight="regular" style={styles.wdDetailLabel}>
+                        {t("adminBankLabel")}
+                      </AppText>
+                      <AppText weight="medium" style={styles.wdDetailValue}>
+                        {selectedWd.bank_code?.toUpperCase?.() || "-"}
+                      </AppText>
+                    </View>
+                    <View style={styles.wdDetailRow}>
+                      <AppText weight="regular" style={styles.wdDetailLabel}>
+                        {t("adminAccountNumberLabel")}
+                      </AppText>
+                      <AppText weight="medium" style={styles.wdDetailValue}>
+                        {selectedWd.account_number || "-"}
+                      </AppText>
+                    </View>
+                    <View style={styles.wdDetailRow}>
+                      <AppText weight="regular" style={styles.wdDetailLabel}>
+                        {t("adminAccountHolderLabel")}
+                      </AppText>
+                      <AppText weight="medium" style={styles.wdDetailValue}>
+                        {selectedWd.account_name || "-"}
+                      </AppText>
+                    </View>
+                    <View style={styles.wdDetailRow}>
+                      <AppText weight="regular" style={styles.wdDetailLabel}>
+                        {t("adminStatusLabel")}
+                      </AppText>
+                      <View
+                        style={[
+                          styles.wdStatusBadge,
+                          {
+                            backgroundColor:
+                              (selectedWd.withdraw_status === "pending"
+                                ? "#F59E0B"
+                                : selectedWd.withdraw_status === "confirmed"
+                                  ? "#22C55E"
+                                  : "#EF4444") + "18",
+                          },
+                        ]}
+                      >
+                        <AppText
+                          weight="semibold"
+                          style={{
+                            fontSize: 12,
+                            color:
+                              selectedWd.withdraw_status === "pending"
+                                ? "#F59E0B"
+                                : selectedWd.withdraw_status === "confirmed"
+                                  ? "#22C55E"
+                                  : "#EF4444",
+                          }}
+                        >
+                          {selectedWd.withdraw_status === "pending"
+                            ? t("reportPending")
+                            : selectedWd.withdraw_status === "confirmed"
+                              ? t("approved")
+                              : t("rejected")}
+                        </AppText>
+                      </View>
+                    </View>
+                    {selectedWd.created_at && (
+                      <View style={styles.wdDetailRow}>
+                        <AppText weight="regular" style={styles.wdDetailLabel}>
+                          {t("adminWdDateRequested")}
+                        </AppText>
+                        <AppText
+                          weight="regular"
+                          style={{ fontSize: 12, color: "#888" }}
+                        >
+                          {formatDateTime(selectedWd.created_at)}
+                        </AppText>
+                      </View>
+                    )}
+                    {selectedWd.admin_note && (
+                      <View style={styles.wdDetailRow}>
+                        <AppText weight="regular" style={styles.wdDetailLabel}>
+                          {t("adminNoteLabel")}
+                        </AppText>
+                        <AppText
+                          weight="regular"
+                          style={{
+                            fontSize: 12,
+                            color: "#DC2626",
+                            flex: 1,
+                            textAlign: "right",
+                          }}
+                        >
+                          {selectedWd.admin_note}
+                        </AppText>
+                      </View>
+                    )}
+                  </View>
+                </ScrollView>
+
+                {/* Action Buttons / Reject Form — only for pending */}
+                {selectedWd.withdraw_status === "pending" && (
+                  <View>
+                    {wdRejectVisible ? (
+                      /* Inline reject form */
+                      <View style={styles.wdInlineReject}>
+                        <AppText
+                          weight="semibold"
+                          style={{
+                            fontSize: 14,
+                            color: "#DC2626",
+                            marginBottom: 6,
+                          }}
+                        >
+                          {t("adminWdRejectLabel")}
+                        </AppText>
+                        <AppText
+                          weight="regular"
+                          style={{
+                            fontSize: 12,
+                            color: "#888",
+                            marginBottom: 8,
+                          }}
+                        >
+                          {t("adminWdReturnNote")}
+                        </AppText>
+                        <TextInput
+                          style={styles.wdRejectInput}
+                          placeholder={t("adminRejectReasonPlaceholder")}
+                          placeholderTextColor="#9CA3AF"
+                          value={wdRejectNote}
+                          onChangeText={setWdRejectNote}
+                          multiline
+                          numberOfLines={3}
+                          textAlignVertical="top"
+                          editable={!wdActionLoading}
+                          autoFocus
+                        />
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            gap: 10,
+                            marginTop: 12,
+                          }}
+                        >
+                          <TouchableOpacity
+                            style={styles.wdCancelBtn}
+                            onPress={() => {
+                              setWdRejectVisible(false);
+                              setWdRejectNote("");
+                            }}
+                            disabled={wdActionLoading}
+                          >
+                            <AppText
+                              weight="semibold"
+                              style={{ fontSize: 14, color: "#666" }}
+                            >
+                              {t("cancel")}
+                            </AppText>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.wdRejectBtn}
+                            onPress={handleRejectWithdrawal}
+                            disabled={wdActionLoading}
+                          >
+                            {wdActionLoading ? (
+                              <ActivityIndicator size="small" color="#FFF" />
+                            ) : (
+                              <AppText
+                                weight="semibold"
+                                style={{ fontSize: 14, color: "#FFF" }}
+                              >
+                                {t("adminConfirmReject")}
+                              </AppText>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={styles.wdActionRow}>
+                        <TouchableOpacity
+                          style={styles.wdRejectBtn}
+                          onPress={() => setWdRejectVisible(true)}
+                          disabled={wdActionLoading}
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={18}
+                            color="#FFF"
+                          />
+                          <AppText
+                            weight="semibold"
+                            style={{ fontSize: 14, color: "#FFF" }}
+                          >
+                            {t("reject")}
+                          </AppText>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.wdConfirmBtn}
+                          onPress={() => handleConfirmWithdrawal(selectedWd.id)}
+                          disabled={wdActionLoading}
+                        >
+                          {wdActionLoading ? (
+                            <ActivityIndicator size="small" color="#FFF" />
+                          ) : (
+                            <>
+                              <Ionicons
+                                name="checkmark-circle"
+                                size={18}
+                                color="#FFF"
+                              />
+                              <AppText
+                                weight="semibold"
+                                style={{ fontSize: 14, color: "#FFF" }}
+                              >
+                                {t("adminWdConfirmTransfer")}
+                              </AppText>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* ─── Product Detail Modal ─────────────────────── */}
       <Modal
@@ -1489,7 +2128,7 @@ const AdminScreen = () => {
                   )}
                   <View style={{ flex: 1 }}>
                     <AppText weight="semibold" style={styles.sellerName}>
-                      {selectedProduct.user?.name || "Unknown Seller"}
+                      {selectedProduct.user?.name || t("unknownUser")}
                     </AppText>
                     <AppText weight="regular" style={styles.sellerEmail}>
                       {selectedProduct.user?.email || "-"}
@@ -1554,7 +2193,7 @@ const AdminScreen = () => {
                   <View style={styles.labelRow}>
                     <Ionicons name="document-text" size={16} color="#111827" />
                     <AppText weight="semibold" style={styles.detailLabel}>
-                      รายละเอียดสินค้า
+                      {t("adminProductDetails")}
                     </AppText>
                   </View>
                   <AppText weight="regular" style={styles.detailText}>
@@ -1569,7 +2208,8 @@ const AdminScreen = () => {
                       <View style={styles.labelRow}>
                         <Ionicons name="images" size={16} color="#111827" />
                         <AppText weight="semibold" style={styles.detailLabel}>
-                          รูปภาพเพิ่มเติม ({selectedProduct.images.length})
+                          {t("adminAdditionalImages")} (
+                          {selectedProduct.images.length})
                         </AppText>
                       </View>
                       <ScrollView
@@ -1675,7 +2315,7 @@ const AdminScreen = () => {
                             },
                           ]}
                         >
-                          ใบรับรอง / Certificate
+                          {t("adminCertLabel")} / Certificate
                         </AppText>
                       </View>
                       <View
@@ -1706,10 +2346,10 @@ const AdminScreen = () => {
                           }}
                         >
                           {selectedProduct.certificate.status === "approved"
-                            ? "✅ อนุมัติแล้ว"
+                            ? t("adminCertStatusApproved")
                             : selectedProduct.certificate.status === "rejected"
-                              ? "❌ ปฏิเสธแล้ว"
-                              : "⏳ รอตรวจสอบ"}
+                              ? t("adminCertStatusRejected")
+                              : t("adminCertStatusPending")}
                         </AppText>
                       </View>
                     </View>
@@ -1725,7 +2365,7 @@ const AdminScreen = () => {
                     >
                       📎{" "}
                       {selectedProduct.certificate.original_name ||
-                        "มีใบรับรองแนบ"}
+                        t("adminHasCertificate")}
                     </AppText>
 
                     {/* Certificate Image Inline */}
@@ -1776,12 +2416,12 @@ const AdminScreen = () => {
                           }}
                           onPress={() => {
                             Alert.alert(
-                              "อนุมัติใบรับรอง",
-                              "ยืนยันอนุมัติใบรับรองนี้? สินค้าจะได้รับ badge Certified ✅",
+                              t("adminConfirmCertTitle"),
+                              t("adminConfirmCertMsg"),
                               [
-                                { text: "ยกเลิก" },
+                                { text: t("cancel") },
                                 {
-                                  text: "อนุมัติ",
+                                  text: t("approve"),
                                   onPress: () =>
                                     handleVerifyCertificate("approved"),
                                 },
@@ -1798,7 +2438,7 @@ const AdminScreen = () => {
                             weight="semibold"
                             style={{ fontSize: 13, color: "#FFF" }}
                           >
-                            อนุมัติ Cert
+                            {t("adminCertApproveBtn")}
                           </AppText>
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -1823,7 +2463,7 @@ const AdminScreen = () => {
                             weight="semibold"
                             style={{ fontSize: 13, color: "#FFF" }}
                           >
-                            ปฏิเสธ Cert
+                            {t("adminCertRejectBtn")}
                           </AppText>
                         </TouchableOpacity>
                       </View>
@@ -1842,7 +2482,7 @@ const AdminScreen = () => {
                           ]}
                           value={certRejectNote}
                           onChangeText={setCertRejectNote}
-                          placeholder="ระบุเหตุผล (ไม่จำเป็น)..."
+                          placeholder={t("adminOptionalReasonPlaceholder")}
                           placeholderTextColor="#9CA3AF"
                           multiline
                           maxLength={1000}
@@ -1870,7 +2510,7 @@ const AdminScreen = () => {
                               weight="semibold"
                               style={{ fontSize: 13, color: "#6B7280" }}
                             >
-                              ยกเลิก
+                              {t("cancel")}
                             </AppText>
                           </TouchableOpacity>
                           <TouchableOpacity
@@ -1889,8 +2529,8 @@ const AdminScreen = () => {
                               style={{ fontSize: 13, color: "#FFF" }}
                             >
                               {certVerifyLoading
-                                ? "กำลังดำเนินการ..."
-                                : "ยืนยันปฏิเสธ"}
+                                ? t("processing")
+                                : t("adminConfirmReject")}
                             </AppText>
                           </TouchableOpacity>
                         </View>
@@ -1916,7 +2556,7 @@ const AdminScreen = () => {
                               marginBottom: 2,
                             }}
                           >
-                            เหตุผลที่ปฏิเสธ:
+                            {t("adminCertRejectionReason")}
                           </AppText>
                           <AppText
                             weight="regular"
@@ -1934,7 +2574,7 @@ const AdminScreen = () => {
                     <View style={styles.labelRow}>
                       <Ionicons name="pricetag" size={12} color="#9CA3AF" />
                       <AppText weight="regular" style={styles.detailItemLabel}>
-                        หมวดหมู่
+                        {t("adminCategoryLabel")}
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
@@ -1945,7 +2585,7 @@ const AdminScreen = () => {
                     <View style={styles.labelRow}>
                       <Ionicons name="layers" size={12} color="#9CA3AF" />
                       <AppText weight="regular" style={styles.detailItemLabel}>
-                        หมวดย่อย
+                        {t("adminSubcategoryLabel")}
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
@@ -1956,7 +2596,7 @@ const AdminScreen = () => {
                     <View style={styles.labelRow}>
                       <Ionicons name="location" size={12} color="#9CA3AF" />
                       <AppText weight="regular" style={styles.detailItemLabel}>
-                        ที่ตั้ง
+                        {t("adminLocationLabel")}
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
@@ -1967,7 +2607,7 @@ const AdminScreen = () => {
                     <View style={styles.labelRow}>
                       <Ionicons name="calendar" size={12} color="#9CA3AF" />
                       <AppText weight="regular" style={styles.detailItemLabel}>
-                        วันที่ส่ง
+                        {t("adminSubmittedDate")}
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
@@ -1978,7 +2618,7 @@ const AdminScreen = () => {
                     <View style={styles.labelRow}>
                       <Ionicons name="time" size={12} color="#9CA3AF" />
                       <AppText weight="regular" style={styles.detailItemLabel}>
-                        เริ่มประมูล
+                        {t("adminAuctionStart")}
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
@@ -1989,7 +2629,7 @@ const AdminScreen = () => {
                     <View style={styles.labelRow}>
                       <Ionicons name="time" size={12} color="#9CA3AF" />
                       <AppText weight="regular" style={styles.detailItemLabel}>
-                        สิ้นสุดประมูล
+                        {t("adminAuctionEnd")}
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
@@ -2017,7 +2657,10 @@ const AdminScreen = () => {
                         weight="semibold"
                         style={[styles.detailLabel, { color: "#1E40AF" }]}
                       >
-                        จำนวนการเสนอราคา: {selectedProduct.bids_count}
+                        {t("adminBidCount").replace(
+                          "{n}",
+                          String(selectedProduct.bids_count),
+                        )}
                       </AppText>
                     </View>
                   </View>
@@ -2046,7 +2689,7 @@ const AdminScreen = () => {
                           color="#FFF"
                         />
                         <AppText weight="semibold" style={styles.actionBtnText}>
-                          อนุมัติสินค้า
+                          {t("adminApproveProduct")}
                         </AppText>
                       </View>
                     </LinearGradient>
@@ -2071,7 +2714,7 @@ const AdminScreen = () => {
                       >
                         <Ionicons name="close-circle" size={18} color="#FFF" />
                         <AppText weight="semibold" style={styles.actionBtnText}>
-                          ปฏิเสธสินค้า
+                          {t("adminRejectProduct")}
                         </AppText>
                       </View>
                     </LinearGradient>
@@ -2101,26 +2744,26 @@ const AdminScreen = () => {
                     weight="bold"
                     style={{ fontSize: 18, color: "#111827", marginBottom: 4 }}
                   >
-                    ปฏิเสธสินค้า
+                    {t("adminRejectProduct")}
                   </AppText>
                   <AppText
                     weight="regular"
                     style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}
                   >
-                    กรุณาระบุเหตุผลในการปฏิเสธสินค้า "{selectedProduct?.name}"
+                    {t("adminRejectProductReason")} "{selectedProduct?.name}"
                   </AppText>
 
                   <AppText
                     weight="semibold"
                     style={{ fontSize: 13, color: "#374151", marginBottom: 6 }}
                   >
-                    เหตุผล (จำเป็น)
+                    {t("adminEnterReason")}
                   </AppText>
                   <TextInput
                     style={styles.replyInput}
                     value={rejectReason}
                     onChangeText={setRejectReason}
-                    placeholder="ระบุเหตุผลในการปฏิเสธ..."
+                    placeholder={t("adminRejectReasonPlaceholder")}
                     placeholderTextColor="#9CA3AF"
                     multiline
                     maxLength={1000}
@@ -2155,7 +2798,7 @@ const AdminScreen = () => {
                         weight="semibold"
                         style={{ fontSize: 14, color: "#6B7280" }}
                       >
-                        ยกเลิก
+                        {t("cancel")}
                       </AppText>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -2175,7 +2818,7 @@ const AdminScreen = () => {
                         weight="semibold"
                         style={{ fontSize: 14, color: "#FFF" }}
                       >
-                        {rejectLoading ? "กำลังดำเนินการ..." : "ปฏิเสธ"}
+                        {rejectLoading ? t("processing") : t("reject")}
                       </AppText>
                     </TouchableOpacity>
                   </View>
@@ -2205,7 +2848,7 @@ const AdminScreen = () => {
                 </AppText>
               </TouchableOpacity>
               <AppText weight="bold" style={styles.modalTitle}>
-                ใบรับรอง
+                {t("adminCertLabel")}
               </AppText>
               <TouchableOpacity
                 onPress={() => {
@@ -2254,7 +2897,7 @@ const AdminScreen = () => {
                         marginTop: 12,
                       }}
                     >
-                      ไม่สามารถโหลดใบรับรองได้
+                      {t("adminCertLoadFailed")}
                     </AppText>
                   </View>
                 );
@@ -2338,8 +2981,9 @@ const AdminScreen = () => {
                       marginBottom: 20,
                     }}
                   >
-                    ไฟล์นี้เป็น PDF ไม่สามารถแสดงในแอปได้{"\n"}
-                    กดปุ่มด้านล่างเพื่อเปิดดู
+                    {t("adminPdfNote")}
+                    {"\n"}
+                    {t("adminPdfOpenNote")}
                   </AppText>
                   <TouchableOpacity
                     style={{
@@ -2358,7 +3002,7 @@ const AdminScreen = () => {
                       weight="semibold"
                       style={{ fontSize: 14, color: "#FFF" }}
                     >
-                      เปิดไฟล์
+                      {t("adminOpenFile")}
                     </AppText>
                   </TouchableOpacity>
                 </View>
@@ -2392,12 +3036,12 @@ const AdminScreen = () => {
                   disabled={certVerifyLoading}
                   onPress={() => {
                     Alert.alert(
-                      "อนุมัติใบรับรอง",
-                      "ยืนยันอนุมัติใบรับรองนี้?",
+                      t("adminConfirmCertTitle"),
+                      t("adminConfirmCertMsgShort"),
                       [
-                        { text: "ยกเลิก" },
+                        { text: t("cancel") },
                         {
-                          text: "อนุมัติ",
+                          text: t("approve"),
                           onPress: () => {
                             handleVerifyCertificate("approved");
                             setCertModalVisible(false);
@@ -2420,7 +3064,7 @@ const AdminScreen = () => {
                         weight="semibold"
                         style={{ fontSize: 15, color: "#FFF" }}
                       >
-                        อนุมัติใบรับรอง
+                        {t("adminConfirmCertTitle")}
                       </AppText>
                     </>
                   )}
@@ -2446,7 +3090,7 @@ const AdminScreen = () => {
                     weight="semibold"
                     style={{ fontSize: 15, color: "#FFF" }}
                   >
-                    ปฏิเสธใบรับรอง
+                    {t("adminCertRejectBtnLabel")}
                   </AppText>
                 </TouchableOpacity>
               </View>
@@ -2474,7 +3118,7 @@ const AdminScreen = () => {
                   </AppText>
                 </TouchableOpacity>
                 <AppText weight="bold" style={styles.modalTitle}>
-                  รายละเอียดรายงาน
+                  {t("reportDetailTitle")}
                 </AppText>
                 <View style={{ width: 36 }} />
               </View>
@@ -2495,7 +3139,7 @@ const AdminScreen = () => {
                     />
                   </View>
                   <AppText weight="bold" style={styles.reportModalTitle}>
-                    {getReportTypeLabel(selectedReport.type)}
+                    {getReportTypeLabel(selectedReport.type, t)}
                   </AppText>
                   <View style={styles.reportModalBadges}>
                     <View
@@ -2516,7 +3160,7 @@ const AdminScreen = () => {
                           },
                         ]}
                       >
-                        {getReportStatusLabel(selectedReport.status)}
+                        {getReportStatusLabel(selectedReport.status, t)}
                       </AppText>
                     </View>
                   </View>
@@ -2529,7 +3173,7 @@ const AdminScreen = () => {
                   </View>
                   <View style={{ flex: 1 }}>
                     <AppText weight="semibold" style={styles.sellerName}>
-                      {selectedReport.reporter?.name || "Unknown"}
+                      {selectedReport.reporter?.name || t("unknownUser")}
                     </AppText>
                     <AppText weight="regular" style={styles.sellerEmail}>
                       {selectedReport.reporter?.email || "-"}
@@ -2562,7 +3206,7 @@ const AdminScreen = () => {
                           marginBottom: 2,
                         }}
                       >
-                        ผู้ถูกรายงาน
+                        {t("adminReportedUserLabel")}
                       </AppText>
                       <AppText weight="semibold" style={styles.sellerName}>
                         {selectedReport.reported_user.name}
@@ -2579,7 +3223,7 @@ const AdminScreen = () => {
                   <View style={styles.labelRow}>
                     <Ionicons name="clipboard" size={16} color="#111827" />
                     <AppText weight="semibold" style={styles.detailLabel}>
-                      รายละเอียดปัญหา
+                      {t("adminReportDescLabel")}
                     </AppText>
                   </View>
                   <AppText weight="regular" style={styles.detailText}>
@@ -2594,7 +3238,10 @@ const AdminScreen = () => {
                       <View style={styles.labelRow}>
                         <Ionicons name="images" size={16} color="#111827" />
                         <AppText weight="semibold" style={styles.detailLabel}>
-                          หลักฐาน ({selectedReport.evidence_images.length} รูป)
+                          {t("adminEvidenceLabel").replace(
+                            "{n}",
+                            String(selectedReport.evidence_images.length),
+                          )}
                         </AppText>
                       </View>
                       <ScrollView
@@ -2639,18 +3286,18 @@ const AdminScreen = () => {
                     <View style={styles.labelRow}>
                       <Ionicons name="folder" size={12} color="#9CA3AF" />
                       <AppText weight="regular" style={styles.detailItemLabel}>
-                        ประเภท
+                        {t("adminTypeLabel")}
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
-                      {getReportTypeLabel(selectedReport.type)}
+                      {getReportTypeLabel(selectedReport.type, t)}
                     </AppText>
                   </View>
                   <View style={styles.detailItem}>
                     <View style={styles.labelRow}>
                       <Ionicons name="calendar" size={12} color="#9CA3AF" />
                       <AppText weight="regular" style={styles.detailItemLabel}>
-                        วันที่แจ้ง
+                        {t("adminReportDateLabel")}
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
@@ -2665,7 +3312,7 @@ const AdminScreen = () => {
                           weight="regular"
                           style={styles.detailItemLabel}
                         >
-                          สินค้าที่เกี่ยวข้อง
+                          {t("adminRelatedProduct")}
                         </AppText>
                       </View>
                       <AppText weight="semibold" style={styles.detailItemValue}>
@@ -2677,7 +3324,7 @@ const AdminScreen = () => {
                     <View style={styles.labelRow}>
                       <Ionicons name="finger-print" size={12} color="#9CA3AF" />
                       <AppText weight="regular" style={styles.detailItemLabel}>
-                        รหัสรายงาน
+                        {t("adminReportCodeLabel")}
                       </AppText>
                     </View>
                     <AppText weight="semibold" style={styles.detailItemValue}>
@@ -2693,7 +3340,7 @@ const AdminScreen = () => {
                       <View style={styles.labelRow}>
                         <Ionicons name="time" size={16} color="#111827" />
                         <AppText weight="semibold" style={styles.detailLabel}>
-                          ไทม์ไลน์
+                          {t("adminTimelineLabel")}
                         </AppText>
                       </View>
                       {selectedReport.timeline.map((t, idx) => (
@@ -2755,7 +3402,7 @@ const AdminScreen = () => {
                         weight="semibold"
                         style={[styles.detailLabel, { color: "#22C55E" }]}
                       >
-                        ข้อความตอบกลับจากแอดมิน
+                        {t("adminReplyLabel")}
                       </AppText>
                     </View>
                     <AppText
@@ -2774,7 +3421,7 @@ const AdminScreen = () => {
                         weight="regular"
                         style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}
                       >
-                        ตอบเมื่อ:{" "}
+                        {t("adminRepliedAtLabel")}{" "}
                         {formatReportDate(selectedReport.admin_reply_at)}
                       </AppText>
                     )}
@@ -2786,7 +3433,7 @@ const AdminScreen = () => {
                   <View style={styles.labelRow}>
                     <Ionicons name="sync" size={16} color="#111827" />
                     <AppText weight="semibold" style={styles.detailLabel}>
-                      เปลี่ยนสถานะ
+                      {t("adminChangeStatus")}
                     </AppText>
                   </View>
                   {selectedReport.order_id ? (
@@ -2811,15 +3458,14 @@ const AdminScreen = () => {
                         weight="regular"
                         style={{ fontSize: 13, color: "#92400E", flex: 1 }}
                       >
-                        รายงานนี้มาจาก dispute คำสั่งซื้อ สถานะจัดการผ่านระบบ
-                        order โดยอัตโนมัติ
+                        {t("adminDisputeNote")}
                       </AppText>
                     </View>
                   ) : (
                     <>
                       <TextInput
                         style={[styles.replyInput, { marginBottom: 12 }]}
-                        placeholder="หมายเหตุจากแอดมิน (ไม่บังคับ)..."
+                        placeholder={t("adminNoteOptional")}
                         placeholderTextColor="#999"
                         multiline
                         numberOfLines={3}
@@ -2864,7 +3510,7 @@ const AdminScreen = () => {
                                     : getReportStatusColor(st),
                               }}
                             >
-                              {getReportStatusLabel(st)}
+                              {getReportStatusLabel(st, t)}
                             </AppText>
                           </TouchableOpacity>
                         ))}
@@ -3001,7 +3647,7 @@ const AdminScreen = () => {
                   <View style={styles.labelRow}>
                     <Ionicons name="person-circle" size={16} color="#111827" />
                     <AppText weight="semibold" style={styles.detailLabel}>
-                      ข้อมูลติดต่อ
+                      {t("adminContactInfoLabel")}
                     </AppText>
                   </View>
                   <View style={styles.detailGrid}>
@@ -3012,7 +3658,7 @@ const AdminScreen = () => {
                           weight="regular"
                           style={styles.detailItemLabel}
                         >
-                          อีเมล
+                          {t("adminEmailLabel")}
                         </AppText>
                       </View>
                       <AppText
@@ -3030,7 +3676,7 @@ const AdminScreen = () => {
                           weight="regular"
                           style={styles.detailItemLabel}
                         >
-                          เบอร์โทร
+                          {t("adminPhoneLabel")}
                         </AppText>
                       </View>
                       <AppText weight="semibold" style={styles.detailItemValue}>
@@ -3048,7 +3694,7 @@ const AdminScreen = () => {
                           weight="regular"
                           style={styles.detailItemLabel}
                         >
-                          บทบาท
+                          {t("adminRoleLabel")}
                         </AppText>
                       </View>
                       <AppText weight="semibold" style={styles.detailItemValue}>
@@ -3062,7 +3708,7 @@ const AdminScreen = () => {
                           weight="regular"
                           style={styles.detailItemLabel}
                         >
-                          สมัครเมื่อ
+                          {t("adminJoinedLabel")}
                         </AppText>
                       </View>
                       <AppText weight="semibold" style={styles.detailItemValue}>
@@ -3078,7 +3724,7 @@ const AdminScreen = () => {
                     <View style={styles.labelRow}>
                       <Ionicons name="stats-chart" size={16} color="#111827" />
                       <AppText weight="semibold" style={styles.detailLabel}>
-                        สถิติ
+                        {t("adminStatsLabel")}
                       </AppText>
                     </View>
                     <View style={styles.detailGrid}>
@@ -3087,7 +3733,7 @@ const AdminScreen = () => {
                           weight="regular"
                           style={styles.detailItemLabel}
                         >
-                          สินค้า
+                          {t("adminProductsLabel")}
                         </AppText>
                         <AppText
                           weight="bold"
@@ -3104,7 +3750,7 @@ const AdminScreen = () => {
                           weight="regular"
                           style={styles.detailItemLabel}
                         >
-                          ออเดอร์
+                          {t("adminOrdersLabel")}
                         </AppText>
                         <AppText
                           weight="bold"
@@ -3121,7 +3767,7 @@ const AdminScreen = () => {
                           weight="regular"
                           style={styles.detailItemLabel}
                         >
-                          รายงาน
+                          {t("adminReportsCountLabel")}
                         </AppText>
                         <AppText
                           weight="bold"
@@ -3138,7 +3784,7 @@ const AdminScreen = () => {
                           weight="regular"
                           style={styles.detailItemLabel}
                         >
-                          ถูกรายงาน
+                          {t("adminReportedByLabel")}
                         </AppText>
                         <AppText
                           weight="bold"
@@ -3160,7 +3806,7 @@ const AdminScreen = () => {
                     <View style={styles.labelRow}>
                       <Ionicons name="wallet" size={16} color="#111827" />
                       <AppText weight="semibold" style={styles.detailLabel}>
-                        กระเป๋าเงิน
+                        {t("adminWalletLabel")}
                       </AppText>
                     </View>
                     <View
@@ -3182,7 +3828,7 @@ const AdminScreen = () => {
                           weight="regular"
                           style={{ fontSize: 11, color: "#9CA3AF" }}
                         >
-                          ยอดคงเหลือ
+                          {t("adminBalanceLabel")}
                         </AppText>
                         <AppText
                           weight="bold"
@@ -3230,7 +3876,7 @@ const AdminScreen = () => {
                             marginBottom: 0,
                           }}
                         >
-                          ถูกระงับการใช้งาน
+                          {t("adminBannedLabel")}
                         </AppText>
                       </View>
                       {(() => {
@@ -3251,10 +3897,13 @@ const AdminScreen = () => {
                               style={{ fontSize: 11, color: "#FFF" }}
                             >
                               {remaining === null
-                                ? "ถาวร"
+                                ? t("adminBanPermanentShort")
                                 : remaining === 0
-                                  ? "หมดอายุ"
-                                  : `เหลือ ${remaining} วัน`}
+                                  ? t("adminBanExpiredShort")
+                                  : t("adminBanDaysLeft").replace(
+                                      "{n}",
+                                      String(remaining),
+                                    )}
                             </AppText>
                           </View>
                         );
@@ -3278,7 +3927,7 @@ const AdminScreen = () => {
                             marginBottom: 4,
                           }}
                         >
-                          เหตุผลในการแบน
+                          {t("adminBanReasonLabel")}
                         </AppText>
                         <AppText
                           weight="regular"
@@ -3309,7 +3958,7 @@ const AdminScreen = () => {
                               marginBottom: 2,
                             }}
                           >
-                            แบนถึงวันที่
+                            {t("adminBanUntilLabel")}
                           </AppText>
                           <AppText
                             weight="semibold"
@@ -3335,7 +3984,7 @@ const AdminScreen = () => {
                         style={styles.actionGradient}
                       >
                         <AppText weight="semibold" style={styles.actionBtnText}>
-                          ปลดแบนผู้ใช้
+                          {t("adminUnbanBtn")}
                         </AppText>
                       </LinearGradient>
                     </TouchableOpacity>
@@ -3353,7 +4002,7 @@ const AdminScreen = () => {
                         style={styles.actionGradient}
                       >
                         <AppText weight="semibold" style={styles.actionBtnText}>
-                          แบนผู้ใช้
+                          {t("adminBanUserBtn")}
                         </AppText>
                       </LinearGradient>
                     </TouchableOpacity>
@@ -3370,7 +4019,7 @@ const AdminScreen = () => {
                     weight="bold"
                     style={{ fontSize: 18, color: "#111827", marginBottom: 4 }}
                   >
-                    แบนผู้ใช้
+                    {t("adminBanUserBtn")}
                   </AppText>
                   <AppText
                     weight="regular"
@@ -3383,11 +4032,11 @@ const AdminScreen = () => {
                     weight="medium"
                     style={{ fontSize: 13, color: "#374151", marginBottom: 6 }}
                   >
-                    เหตุผลในการแบน *
+                    {t("adminBanReasonLabel")} *
                   </AppText>
                   <TextInput
                     style={[styles.replyInput, { minHeight: 80 }]}
-                    placeholder="กรอกเหตุผลในการแบน..."
+                    placeholder={t("adminBanReasonPlaceholder")}
                     placeholderTextColor="#9CA3AF"
                     multiline
                     value={banReason}
@@ -3398,7 +4047,7 @@ const AdminScreen = () => {
                     weight="medium"
                     style={{ fontSize: 13, color: "#374151", marginBottom: 6 }}
                   >
-                    จำนวนวัน
+                    {t("adminBanDurationLabel")}
                   </AppText>
                   <View
                     style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}
@@ -3422,7 +4071,7 @@ const AdminScreen = () => {
                             color: banDuration === d ? "#FFF" : "#6B7280",
                           }}
                         >
-                          {d} วัน
+                          {d} {t("days")}
                         </AppText>
                       </TouchableOpacity>
                     ))}
@@ -3443,7 +4092,7 @@ const AdminScreen = () => {
                         weight="semibold"
                         style={{ fontSize: 14, color: "#6B7280" }}
                       >
-                        ยกเลิก
+                        {t("cancel")}
                       </AppText>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -3462,7 +4111,7 @@ const AdminScreen = () => {
                         weight="semibold"
                         style={{ fontSize: 14, color: "#FFF" }}
                       >
-                        {banLoading ? "กำลังดำเนินการ..." : "ยืนยันแบน"}
+                        {banLoading ? t("processing") : t("adminConfirmBan")}
                       </AppText>
                     </TouchableOpacity>
                   </View>
@@ -3545,10 +4194,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     marginBottom: 0,
+    paddingHorizontal: 0,
   },
   tab: {
-    flex: 1,
+    minWidth: 80,
     paddingVertical: 12,
+    paddingHorizontal: 14,
     alignItems: "center",
     borderTopLeftRadius: 14,
     borderTopRightRadius: 14,
@@ -4126,6 +4777,145 @@ const styles = StyleSheet.create({
     padding: 24,
     width: "100%",
     maxWidth: 400,
+  },
+
+  // ─── Withdrawal Styles ─────────────────────────────
+  wdCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  wdCardTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  wdCardBody: {
+    gap: 6,
+  },
+  wdInfoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  wdInfoLabel: {
+    fontSize: 12,
+    color: "#888",
+  },
+  wdStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  wdStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  wdModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  wdModalContent: {
+    backgroundColor: "#FFF",
+    borderRadius: 20,
+    padding: 20,
+    width: "100%",
+    maxWidth: 420,
+  },
+  wdModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  wdDetailSection: {
+    marginBottom: 16,
+  },
+  wdDetailSectionTitle: {
+    fontSize: 14,
+    color: "#003994",
+    marginBottom: 10,
+  },
+  wdDetailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#F0F0F0",
+  },
+  wdDetailLabel: {
+    fontSize: 13,
+    color: "#888",
+  },
+  wdDetailValue: {
+    fontSize: 13,
+    color: "#333",
+  },
+  wdActionRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 16,
+  },
+  wdRejectBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    backgroundColor: "#DC2626",
+    borderRadius: 10,
+  },
+  wdConfirmBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    backgroundColor: "#22C55E",
+    borderRadius: 10,
+  },
+  wdCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    backgroundColor: "#F2F4F7",
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  wdRejectInput: {
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
+    color: "#333",
+    backgroundColor: "#FAFAFA",
+    minHeight: 80,
+  },
+  wdInlineReject: {
+    marginTop: 16,
+    padding: 14,
+    backgroundColor: "#FFF5F5",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FFCCCC",
   },
 });
 

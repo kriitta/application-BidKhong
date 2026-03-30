@@ -109,7 +109,7 @@ const ProfilePage = () => {
 
           {/* User Info */}
           <AppText weight="bold" numberOfLines={1} style={styles.userName}>
-            {user?.name || "Unknown User"}
+            {user?.name || t("unknownUser")}
           </AppText>
 
           <View style={styles.infoRow}>

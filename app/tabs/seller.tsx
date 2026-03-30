@@ -273,16 +273,13 @@ const SellerPage = () => {
   // ─── Image Picker ───
   const handleAddPhoto = async () => {
     if (photos.length >= 8) {
-      Alert.alert("Maximum Photos", "You can upload up to 8 photos.");
+      Alert.alert(t("maxPhotosTitle"), t("maxPhotosMsg"));
       return;
     }
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        "Permission Required",
-        "Please allow access to your photo library.",
-      );
+      Alert.alert(t("permissionRequired"), t("permissionPhotoMsg"));
       return;
     }
 
@@ -306,10 +303,7 @@ const SellerPage = () => {
   const handlePickCertificate = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        "Permission Required",
-        "Please allow access to your photo library.",
-      );
+      Alert.alert(t("permissionRequired"), t("permissionPhotoMsg"));
       return;
     }
 
@@ -587,7 +581,9 @@ const SellerPage = () => {
                         <Image source={{ uri }} style={styles.photoImage} />
                         {index === 0 && (
                           <View style={styles.coverBadge}>
-                            <Text style={styles.coverText}>Cover</Text>
+                            <AppText style={styles.coverText}>
+                              {t("cover")}
+                            </AppText>
                           </View>
                         )}
                         <TouchableOpacity

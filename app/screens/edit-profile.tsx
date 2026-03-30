@@ -411,7 +411,7 @@ const EditProfilePage = () => {
                   style={styles.textInput}
                   value={fullName}
                   onChangeText={setFullName}
-                  placeholder="Enter your full name"
+                  placeholder={t("enterFullName")}
                   placeholderTextColor="#C0C0C0"
                   autoCorrect={false}
                 />
@@ -457,7 +457,7 @@ const EditProfilePage = () => {
                   style={styles.textInput}
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
-                  placeholder="Enter your phone number"
+                  placeholder={t("enterPhone")}
                   placeholderTextColor="#C0C0C0"
                   keyboardType="phone-pad"
                 />
@@ -569,7 +569,7 @@ const EditProfilePage = () => {
                           style={styles.textInput}
                           value={resetToken}
                           onChangeText={setResetToken}
-                          placeholder="Enter the token received via email"
+                          placeholder={t("enterTokenEmail")}
                           placeholderTextColor="#C0C0C0"
                           autoCapitalize="none"
                           autoCorrect={false}
@@ -595,7 +595,7 @@ const EditProfilePage = () => {
                           style={[styles.textInput, { flex: 1 }]}
                           value={newPassword}
                           onChangeText={setNewPassword}
-                          placeholder="Enter your new password (at least 6 characters)"
+                          placeholder={t("enterNewPassword")}
                           placeholderTextColor="#C0C0C0"
                           secureTextEntry={!showNewPw}
                           autoCapitalize="none"
@@ -637,7 +637,7 @@ const EditProfilePage = () => {
                           style={[styles.textInput, { flex: 1 }]}
                           value={confirmPassword}
                           onChangeText={setConfirmPassword}
-                          placeholder="Re-enter your new password"
+                          placeholder={t("reenterNewPassword")}
                           placeholderTextColor="#C0C0C0"
                           secureTextEntry={!showConfirmPw}
                           autoCapitalize="none"

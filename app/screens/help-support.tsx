@@ -27,8 +27,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { AppText } from "../components/appText";
 
-// FAQ Data
-const FAQ_DATA = [
+// FAQ Data (Thai)
+const FAQ_DATA_TH = [
   {
     id: 1,
     question: "วิธีการประมูลสินค้าทำอย่างไร?",
@@ -73,31 +73,75 @@ const FAQ_DATA = [
   },
 ];
 
-// Report types (matching API ReportType)
-const REPORT_TYPES: { id: ReportType; label: string; color: string }[] = [
-  { id: "scam", label: "🚨 หลอกลวง (Scam)", color: "#EF4444" },
-  { id: "fake_product", label: "📦 สินค้าปลอม", color: "#F59E0B" },
-  { id: "harassment", label: "😡 คุกคาม", color: "#EC4899" },
+const FAQ_DATA_EN = [
   {
-    id: "inappropriate_content",
-    label: "⚠️ เนื้อหาไม่เหมาะสม",
-    color: "#3B82F6",
+    id: 1,
+    question: "How do I bid on a product?",
+    answer:
+      "Select the product you want to bid on, tap 'Bid', enter your price (must exceed current price by Min Bid Increment), then confirm. You\'ll be notified if someone outbids you.",
   },
-  { id: "other", label: "📝 อื่นๆ", color: "#6B7280" },
+  {
+    id: 2,
+    question: "I won an auction — what's next?",
+    answer:
+      'Go to "My Bid", select the winning item, tap "Confirm Receipt" to start verification. You have 24 hours to confirm. If not confirmed in time, the order is automatically cancelled.',
+  },
+  {
+    id: 3,
+    question: "How do I top up my Wallet?",
+    answer:
+      'Go to the Wallet page, tap "Top Up", select the amount and pay via a supported method (PromptPay, credit/debit card). Funds arrive within 1–5 minutes.',
+  },
+  {
+    id: 4,
+    question: "How do I withdraw from my Wallet?",
+    answer:
+      'Go to the Wallet page, tap "Withdraw", enter the amount and destination bank account. Funds transfer within 1–3 business days (minimum ฿100).',
+  },
+  {
+    id: 5,
+    question: "What if the item I received doesn't match the description?",
+    answer:
+      'Tap "Report Issue" on the product detail page, or contact support via the channels below. The team will review and respond within 24–48 hours.',
+  },
+  {
+    id: 6,
+    question: "Can I cancel a bid?",
+    answer:
+      "Bids cannot be cancelled after confirmation. Please review the price and details carefully before bidding.",
+  },
+  {
+    id: 7,
+    question: "How do I become a seller?",
+    answer:
+      'Go to the "Seller" page and tap "List Product", fill in product details, upload photos, set a starting price and duration. The product must be approved by an admin before the auction opens.',
+  },
 ];
 
-// Helper: get display info from report type
-const getReportTypeInfo = (type: ReportType) => {
-  const found = REPORT_TYPES.find((t) => t.id === type);
-  return {
-    label: found?.label || "📝 อื่นๆ",
-    color: found?.color || "#6B7280",
-  };
-};
+// Report types (matching API ReportType)
 
 const HelpSupportPage = () => {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const faqData = lang === "th" ? FAQ_DATA_TH : FAQ_DATA_EN;
+  const reportTypes: { id: ReportType; label: string; color: string }[] = [
+    { id: "scam", label: t("reportTypeScam"), color: "#EF4444" },
+    { id: "fake_product", label: t("reportTypeFakeProduct"), color: "#F59E0B" },
+    { id: "harassment", label: t("reportTypeHarassment"), color: "#EC4899" },
+    {
+      id: "inappropriate_content",
+      label: t("reportTypeInappropriate"),
+      color: "#3B82F6",
+    },
+    { id: "other", label: t("reportTypeOther"), color: "#6B7280" },
+  ];
+  const getReportTypeInfo = (type: ReportType) => {
+    const found = reportTypes.find((rt) => rt.id === type);
+    return {
+      label: found?.label || t("reportTypeOther"),
+      color: found?.color || "#6B7280",
+    };
+  };
   const [activeTab, setActiveTab] = useState<"faq" | "report" | "status">(
     "faq",
   );
@@ -155,7 +199,7 @@ const HelpSupportPage = () => {
   // ── Image picker for evidence ──
   const pickEvidenceImage = async () => {
     if (evidenceImages.length >= 5) {
-      Alert.alert("จำกัดจำนวน", "สามารถแนบรูปหลักฐานได้สูงสุด 5 รูป");
+      Alert.alert(t("maxEvidenceTitle"), t("maxEvidenceMsg"));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -199,15 +243,15 @@ const HelpSupportPage = () => {
     Keyboard.dismiss();
 
     if (!selectedType) {
-      Alert.alert("ข้อผิดพลาด", "กรุณาเลือกประเภทปัญหา");
+      Alert.alert(t("error"), t("errSelectReportType"));
       return;
     }
     if (!reportedUserId.trim()) {
-      Alert.alert("ข้อผิดพลาด", "กรุณากรอก ID ผู้ใช้ที่ต้องการรายงาน");
+      Alert.alert(t("error"), t("errEnterReportedUser"));
       return;
     }
     if (!reportDescription.trim()) {
-      Alert.alert("ข้อผิดพลาด", "กรุณากรอกรายละเอียดปัญหา");
+      Alert.alert(t("error"), t("errEnterReportDesc"));
       return;
     }
 
@@ -235,7 +279,7 @@ const HelpSupportPage = () => {
         fetchReports();
       }, 2500);
     } catch (error: any) {
-      Alert.alert("เกิดข้อผิดพลาด", error.message || "ไม่สามารถส่งรายงานได้");
+      Alert.alert(t("error"), error.message || t("reportSubmitFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -245,28 +289,28 @@ const HelpSupportPage = () => {
     switch (status) {
       case "pending":
         return {
-          label: "รอดำเนินการ",
+          label: t("reportPending"),
           color: "#F59E0B",
           bg: "#FEF3C7",
           icon: "⏳",
         };
       case "reviewing":
         return {
-          label: "กำลังตรวจสอบ",
+          label: t("reportReviewing"),
           color: "#3B82F6",
           bg: "#EFF6FF",
           icon: "🔄",
         };
       case "resolved":
         return {
-          label: "แก้ไขแล้ว",
+          label: t("reportResolved"),
           color: "#22C55E",
           bg: "#F0FDF4",
           icon: "✅",
         };
       default:
         return {
-          label: "ไม่ทราบสถานะ",
+          label: t("reportUnknown"),
           color: "#9CA3AF",
           bg: "#F3F4F6",
           icon: "❓",
@@ -303,18 +347,18 @@ const HelpSupportPage = () => {
           style={styles.sectionTitle}
           numberOfLines={1}
         >
-          คำถามที่พบบ่อย
+          {t("faqTitle")}
         </AppText>
         <AppText
           weight="regular"
           style={styles.sectionSubtitle}
           numberOfLines={1}
         >
-          กดที่คำถามเพื่อดูคำตอบ
+          {t("faqSubtitle")}
         </AppText>
       </View>
 
-      {FAQ_DATA.map((item) => (
+      {faqData.map((item) => (
         <TouchableOpacity
           key={item.id}
           style={[
@@ -368,14 +412,14 @@ const HelpSupportPage = () => {
           style={styles.sectionTitle}
           numberOfLines={1}
         >
-          แจ้งปัญหา / ข้อเสนอแนะ
+          {t("reportSectionTitle")}
         </AppText>
         <AppText
           weight="regular"
           style={styles.sectionSubtitle}
           numberOfLines={1}
         >
-          ทีมงานจะตอบกลับภายใน 24-48 ชั่วโมง
+          {t("reportResponseTime")}
         </AppText>
       </View>
 
@@ -385,7 +429,7 @@ const HelpSupportPage = () => {
           ประเภทปัญหา
         </AppText>
         <View style={styles.reportTypes}>
-          {REPORT_TYPES.map((type) => (
+          {reportTypes.map((type) => (
             <TouchableOpacity
               key={type.id}
               style={[
@@ -414,13 +458,13 @@ const HelpSupportPage = () => {
       {/* Report Form */}
       <View style={styles.reportCard}>
         <AppText weight="medium" style={styles.reportLabel} numberOfLines={1}>
-          ID ผู้ใช้ที่ต้องการรายงาน *
+          {t("reportedUserIdLabel")}
         </AppText>
         <TextInput
           style={styles.reportInput}
           value={reportedUserId}
           onChangeText={setReportedUserId}
-          placeholder="กรอก ID ผู้ใช้ที่ต้องการรายงาน"
+          placeholder={t("enterReportedUserId")}
           placeholderTextColor="#C0C0C0"
           keyboardType="number-pad"
         />
@@ -430,13 +474,13 @@ const HelpSupportPage = () => {
           style={[styles.reportLabel, { marginTop: 16 }]}
           numberOfLines={1}
         >
-          ID สินค้า (ถ้ามี)
+          {t("reportProductIdLabel")}
         </AppText>
         <TextInput
           style={styles.reportInput}
           value={reportedProductId}
           onChangeText={setReportedProductId}
-          placeholder="กรอก ID สินค้าที่เกี่ยวข้อง (ไม่บังคับ)"
+          placeholder={t("enterReportedProductId")}
           placeholderTextColor="#C0C0C0"
           keyboardType="number-pad"
         />
@@ -445,13 +489,13 @@ const HelpSupportPage = () => {
           weight="medium"
           style={[styles.reportLabel, { marginTop: 16 }]}
         >
-          รายละเอียด *
+          {t("reportDescLabel")}
         </AppText>
         <TextInput
           style={[styles.reportInput, styles.reportTextArea]}
           value={reportDescription}
           onChangeText={setReportDescription}
-          placeholder="อธิบายปัญหาหรือเหตุผลในการรายงาน..."
+          placeholder={t("reportDescPlaceholder")}
           placeholderTextColor="#C0C0C0"
           multiline
           numberOfLines={5}
@@ -534,14 +578,14 @@ const HelpSupportPage = () => {
           style={styles.sectionTitle}
           numberOfLines={1}
         >
-          สถานะการแจ้งปัญหา
+          {t("reportStatusTitle")}
         </AppText>
         <AppText
           weight="regular"
           style={styles.sectionSubtitle}
           numberOfLines={1}
         >
-          ติดตามสถานะรายงานที่คุณส่งไป
+          {t("reportStatusSub")}
         </AppText>
       </View>
 
@@ -723,7 +767,7 @@ const HelpSupportPage = () => {
                   style={styles.tapHintText}
                   numberOfLines={1}
                 >
-                  กดเพื่อดูรายละเอียด →
+                  {t("tapForDetails")}
                 </AppText>
               </View>
             </TouchableOpacity>
@@ -751,7 +795,7 @@ const HelpSupportPage = () => {
             <View style={styles.modalHeader}>
               <View>
                 <AppText weight="bold" style={styles.modalHeaderTitle}>
-                  รายละเอียดรายงาน
+                  {t("reportDetailTitle")}
                 </AppText>
                 <AppText weight="regular" style={styles.modalHeaderId}>
                   {selectedReport.report_code || `RPT-${selectedReport.id}`}

@@ -10,37 +10,72 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { AppText } from "./appText";
 
 interface HistoryFilterModalProps {
   visible: boolean;
   onClose: () => void;
-  onApply?: (month: number, year: number) => void;
+  onApply?: (month: number | null, year: number, type: string | null) => void;
+  onReset?: () => void;
 }
 
 export function HistoryFilterModal({
   visible,
   onClose,
   onApply,
+  onReset,
 }: HistoryFilterModalProps) {
   const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(
+  const { t } = useLanguage();
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(
     currentDate.getMonth() + 1,
   );
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  const [selectedType, setSelectedType] = useState<string | null>(null);
+
+  const transactionTypes = [
+    { id: null, label: t("txTypeAll"), emoji: "📋" },
+    { id: "deposit", label: t("txTypeDeposit"), emoji: "💳" },
+    { id: "withdraw", label: t("txTypeWithdraw"), emoji: "💸" },
+    { id: "won", label: t("txTypeWon"), emoji: "🏆" },
+    { id: "bid", label: t("txTypeBid"), emoji: "🔨" },
+    { id: "refund", label: t("txTypeRefund"), emoji: "↩️" },
+  ];
+  const monthKeys = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ] as const;
+  const months = monthKeys.map((k, i) => ({
+    id: i + 1,
+    name: t(`month${k}` as any),
+    short: t(`month${k}S` as any),
+  }));
   const [overlayOpacity] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(0));
 
+  const years = Array.from({ length: 6 }, (_, i) => {
+    const year = currentDate.getFullYear() - 2 + i;
+    return year;
+  });
+
   useEffect(() => {
     if (visible) {
-      // Background fades in instantly
       Animated.timing(overlayOpacity, {
         toValue: 1,
         duration: 150,
         useNativeDriver: true,
       }).start();
-
-      // Bottom sheet slides up with smooth spring
       Animated.spring(slideAnim, {
         toValue: 1,
         damping: 20,
@@ -52,7 +87,6 @@ export function HistoryFilterModal({
         useNativeDriver: true,
       }).start();
     } else {
-      // Reset animations when closing
       Animated.parallel([
         Animated.timing(overlayOpacity, {
           toValue: 0,
@@ -68,34 +102,17 @@ export function HistoryFilterModal({
     }
   }, [visible]);
 
-  const months = [
-    { id: 1, name: "January", short: "Jan" },
-    { id: 2, name: "February", short: "Feb" },
-    { id: 3, name: "March", short: "Mar" },
-    { id: 4, name: "April", short: "Apr" },
-    { id: 5, name: "May", short: "May" },
-    { id: 6, name: "June", short: "Jun" },
-    { id: 7, name: "July", short: "Jul" },
-    { id: 8, name: "August", short: "Aug" },
-    { id: 9, name: "September", short: "Sep" },
-    { id: 10, name: "October", short: "Oct" },
-    { id: 11, name: "November", short: "Nov" },
-    { id: 12, name: "December", short: "Dec" },
-  ];
-
-  const years = Array.from({ length: 6 }, (_, i) => {
-    const year = currentDate.getFullYear() - 2 + i;
-    return year;
-  });
-
   const handleApply = () => {
-    onApply?.(selectedMonth, selectedYear);
+    onApply?.(selectedMonth, selectedYear, selectedType);
     onClose();
   };
 
   const handleReset = () => {
-    setSelectedMonth(currentDate.getMonth() + 1);
+    setSelectedMonth(null);
     setSelectedYear(currentDate.getFullYear());
+    setSelectedType(null);
+    onReset?.();
+    onClose();
   };
 
   return (
@@ -151,10 +168,10 @@ export function HistoryFilterModal({
                 numberOfLines={1}
                 style={styles.headerTitle}
               >
-                Filter History
+                {t("filterHistory")}
               </AppText>
               <AppText numberOfLines={1} style={styles.headerSubtitle}>
-                Select period to view
+                {t("filterPeriodSubtitle")}
               </AppText>
             </View>
 
@@ -163,14 +180,14 @@ export function HistoryFilterModal({
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}
             >
-              {/* Year Selection - Moved to top for better flow */}
+              {/* Year Selection */}
               <View style={styles.section}>
                 <AppText
                   weight="semibold"
                   numberOfLines={1}
                   style={styles.sectionTitle}
                 >
-                  YEAR
+                  {t("yearLabel")}
                 </AppText>
                 <View style={styles.yearGrid}>
                   {years.map((year) => (
@@ -198,16 +215,36 @@ export function HistoryFilterModal({
                 </View>
               </View>
 
-              {/* Month Selection - Grid layout for better visibility */}
+              {/* Month Selection */}
               <View style={styles.section}>
                 <AppText
                   weight="semibold"
                   numberOfLines={1}
                   style={styles.sectionTitle}
                 >
-                  MONTH
+                  {t("monthLabel")}
                 </AppText>
                 <View style={styles.monthGrid}>
+                  {/* All months option */}
+                  <TouchableOpacity
+                    onPress={() => setSelectedMonth(null)}
+                    style={[
+                      styles.monthButton,
+                      selectedMonth === null && styles.monthButtonActive,
+                    ]}
+                    activeOpacity={0.7}
+                  >
+                    <AppText
+                      weight={selectedMonth === null ? "bold" : "medium"}
+                      numberOfLines={1}
+                      style={[
+                        styles.monthButtonText,
+                        selectedMonth === null && styles.monthButtonTextActive,
+                      ]}
+                    >
+                      {t("allMonths")}
+                    </AppText>
+                  </TouchableOpacity>
                   {months.map((month) => (
                     <TouchableOpacity
                       key={month.id}
@@ -234,7 +271,7 @@ export function HistoryFilterModal({
                 </View>
               </View>
 
-              {/* Selected Display - Simplified */}
+              {/* Selected Display */}
               <View style={styles.selectedBox}>
                 <View style={styles.selectedIcon}>
                   <AppText style={styles.iconText}>📅</AppText>
@@ -245,15 +282,19 @@ export function HistoryFilterModal({
                     numberOfLines={1}
                     style={styles.selectedLabel}
                   >
-                    Selected Period
+                    {t("selectedFilter")}
                   </AppText>
                   <AppText
                     weight="bold"
                     numberOfLines={1}
                     style={styles.selectedValue}
                   >
-                    {months.find((m) => m.id === selectedMonth)?.name}{" "}
-                    {selectedYear}
+                    {selectedMonth
+                      ? `${months.find((m) => m.id === selectedMonth)?.name} ${selectedYear}`
+                      : `${t("allYearPrefix")} ${selectedYear}`}
+                    {selectedType
+                      ? ` · ${transactionTypes.find((t) => t.id === selectedType)?.label}`
+                      : ""}
                   </AppText>
                 </View>
               </View>
@@ -271,7 +312,7 @@ export function HistoryFilterModal({
                   numberOfLines={1}
                   style={styles.resetButtonText}
                 >
-                  Reset
+                  {t("clear")}
                 </AppText>
               </TouchableOpacity>
 
@@ -291,7 +332,7 @@ export function HistoryFilterModal({
                     numberOfLines={1}
                     style={styles.applyButtonText}
                   >
-                    Apply Filter
+                    {t("applyFilter")}
                   </AppText>
                 </LinearGradient>
               </TouchableOpacity>
@@ -421,6 +462,33 @@ const styles = StyleSheet.create({
   monthButtonTextActive: {
     color: "#0087F5",
     fontWeight: 600,
+  },
+  typeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  typeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 20,
+    backgroundColor: "#F3F4F6",
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  typeButtonActive: {
+    backgroundColor: "#D4ECFF",
+    borderColor: "#0087F5",
+  },
+  typeButtonText: {
+    fontSize: 13,
+    color: "#374151",
+  },
+  typeButtonTextActive: {
+    color: "#0087F5",
   },
   selectedBox: {
     flexDirection: "row",

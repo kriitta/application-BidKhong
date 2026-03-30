@@ -3,9 +3,11 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import LottieView from "lottie-react-native";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Alert,
+  Animated,
+  Clipboard,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -16,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { apiService } from "../../utils/api";
 import { AppText } from "./appText";
 import { AppTextInput } from "./appTextInput";
@@ -34,36 +37,52 @@ const BANK_ACCOUNTS = [
     id: "kbank",
     name: "ธนาคารกสิกรไทย",
     nameEn: "Kasikornbank",
-    color: "#138F2D",
-    accountNo: "068-8-12345-6",
-    accountName: "บริษัท บิดไม่โกง จำกัด",
+    logo: image.kbank,
+    accountNo: "083-2-72499-8",
+    accountName: "ณัฐดนัย เอกสันติ",
+    copyLabel: "เลขบัญชี",
+    copyValue: "0832724998",
   },
   {
-    id: "scb",
-    name: "ธนาคารไทยพาณิชย์",
-    nameEn: "SCB",
-    color: "#4E2A82",
-    accountNo: "405-1-67890-2",
-    accountName: "บริษัท บิดไม่โกง จำกัด",
-  },
-  {
-    id: "bbl",
-    name: "ธนาคารกรุงเทพ",
-    nameEn: "Bangkok Bank",
-    color: "#1E3A8A",
-    accountNo: "123-4-56789-0",
-    accountName: "บริษัท บิดไม่โกง จำกัด",
+    id: "promptpay",
+    name: "พร้อมเพย์",
+    nameEn: "PromptPay",
+    logo: image.promptpay,
+    accountNo: "096-883-2228",
+    accountName: "ณัฐดนัย เอกสันติ",
+    copyLabel: "เลขพร้อมเพย์",
+    copyValue: "0968832228",
   },
 ];
 
 export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
-  const [amount, setAmount] = useState("0");
+  const { t } = useLanguage();
+  const [amount, setAmount] = useState("");
   const [selectedMethod, setSelectedMethod] = useState("mobilebanking");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
   const [slipUri, setSlipUri] = useState<string | null>(null);
   const [slipMimeType, setSlipMimeType] = useState<string>("image/jpeg");
   const [submitting, setSubmitting] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    Animated.sequence([
+      Animated.timing(toastOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.delay(1500),
+      Animated.timing(toastOpacity, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   const quickAmounts = [
     { label: "฿500", value: 500 },
@@ -99,13 +118,15 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
 
   const handleCustomAmount = (text: string) => {
     const numericOnly = text.replace(/[^0-9]/g, "");
-    setAmount(numericOnly || "0");
+    // Remove leading zeros, allow empty string
+    const cleaned = numericOnly.replace(/^0+/, "");
+    setAmount(cleaned);
   };
 
   const handleProceedToPayment = () => {
     const numAmount = parseInt(amount) || 0;
     if (numAmount <= 0) {
-      Alert.alert("Error", "กรุณาเลือกหรือกรอกจำนวนเงินที่ต้องการเติม");
+      Alert.alert(t("error"), t("errEnterTopUpAmount"));
       return;
     }
     setStep(2);
@@ -114,10 +135,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
   const handlePickSlip = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        "Permission Required",
-        "กรุณาอนุญาตให้เข้าถึงคลังรูปภาพของคุณ",
-      );
+      Alert.alert(t("permissionRequired"), t("permissionPhotoMsg"));
       return;
     }
 
@@ -150,17 +168,14 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
       handleReset();
       onClose();
     } catch (error: any) {
-      Alert.alert(
-        "เกิดข้อผิดพลาด",
-        error.message || "ไม่สามารถส่งสลิปได้ กรุณาลองใหม่อีกครั้ง",
-      );
+      Alert.alert(t("error"), error.message || t("slipSubmitFailed"));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleReset = () => {
-    setAmount("0");
+    setAmount("");
     setSelectedMethod("mobilebanking");
     setStep(1);
     setSlipUri(null);
@@ -196,10 +211,10 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
           {/* QR Code Display */}
           <View style={styles.paymentInfoCard}>
             <AppText weight="semibold" style={styles.paymentInfoTitle}>
-              Scan QR Code to Pay
+              {t("scanQrToPay")}
             </AppText>
             <AppText weight="regular" style={styles.paymentInfoSub}>
-              สแกน QR Code เพื่อชำระเงิน
+              {t("scanQrSub")}
             </AppText>
 
             <View style={styles.qrContainer}>
@@ -214,7 +229,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
 
             <View style={styles.paymentAmountRow}>
               <AppText weight="regular" style={styles.paymentAmountLabel}>
-                Amount to pay
+                {t("amountToPay")}
               </AppText>
               <AppText weight="bold" style={styles.paymentAmountValue}>
                 {formatDisplayAmount(amount)}
@@ -233,15 +248,15 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
       <>
         <View style={styles.paymentInfoCard}>
           <AppText weight="semibold" style={styles.paymentInfoTitle}>
-            Transfer via Mobile Banking
+            {t("transferViaMobileBanking")}
           </AppText>
           <AppText weight="regular" style={styles.paymentInfoSub}>
-            โอนเงินผ่าน Mobile Banking ไปยังบัญชีด้านล่าง
+            {t("transferViaMobileBankingSub")}
           </AppText>
 
           <View style={styles.paymentAmountRow}>
             <AppText weight="regular" style={styles.paymentAmountLabel}>
-              Amount to pay
+              {t("amountToPay")}
             </AppText>
             <AppText weight="bold" style={styles.paymentAmountValue}>
               {formatDisplayAmount(amount)}
@@ -252,21 +267,16 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
         {/* Bank accounts list */}
         <View style={styles.section}>
           <AppText weight="medium" style={styles.sectionTitle}>
-            Select Bank to Transfer
+            {t("selectBankToTransfer")}
           </AppText>
           {BANK_ACCOUNTS.map((bank) => (
             <View key={bank.id} style={styles.bankCard}>
               <View style={styles.bankHeader}>
-                <View
-                  style={[
-                    styles.bankLogoCircle,
-                    { backgroundColor: bank.color },
-                  ]}
-                >
-                  <AppText weight="bold" style={styles.bankLogoText}>
-                    {bank.nameEn.charAt(0)}
-                  </AppText>
-                </View>
+                <Image
+                  source={bank.logo}
+                  style={styles.bankLogoImage}
+                  resizeMode="contain"
+                />
                 <View style={styles.bankNameCol}>
                   <AppText weight="semibold" style={styles.bankName}>
                     {bank.name}
@@ -280,15 +290,30 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
               <View style={styles.bankDetailsRow}>
                 <View style={styles.bankDetailItem}>
                   <AppText weight="regular" style={styles.bankDetailLabel}>
-                    Account No.
+                    {bank.copyLabel}
                   </AppText>
-                  <AppText weight="bold" style={styles.bankDetailValue}>
-                    {bank.accountNo}
-                  </AppText>
+                  <TouchableOpacity
+                    style={styles.copyRow}
+                    onPress={() => {
+                      Clipboard.setString(bank.copyValue);
+                      showToast(`คัดลอกเลขเรียบร้อยแล้ว`);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <AppText weight="bold" style={styles.bankDetailValue}>
+                      {bank.accountNo}
+                    </AppText>
+                    <Ionicons
+                      name="copy-outline"
+                      size={16}
+                      color="#3B82F6"
+                      style={{ marginLeft: 6 }}
+                    />
+                  </TouchableOpacity>
                 </View>
                 <View style={styles.bankDetailItem}>
                   <AppText weight="regular" style={styles.bankDetailLabel}>
-                    Account Name
+                    {t("accountNameLabel")}
                   </AppText>
                   <AppText weight="semibold" style={styles.bankDetailValue}>
                     {bank.accountName}
@@ -309,7 +334,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
   const renderSlipUpload = () => (
     <View style={styles.section}>
       <AppText weight="medium" style={styles.sectionTitle}>
-        Upload Payment Slip
+        {t("uploadPaymentSlip")}
       </AppText>
 
       {slipUri ? (
@@ -331,7 +356,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
           >
             <Ionicons name="camera-outline" size={16} color="#3B82F6" />
             <AppText weight="medium" style={styles.slipChangeBtnText}>
-              Change Image
+              {t("change")}
             </AppText>
           </TouchableOpacity>
         </View>
@@ -341,10 +366,10 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
             <Ionicons name="cloud-upload-outline" size={28} color="#3B82F6" />
           </View>
           <AppText weight="semibold" style={styles.slipUploadText}>
-            Tap to Upload Slip
+            {t("tapToUploadSlip")}
           </AppText>
           <AppText weight="regular" style={styles.slipUploadSub}>
-            รองรับไฟล์ JPG, PNG
+            {t("supportedFormats")}
           </AppText>
         </TouchableOpacity>
       )}
@@ -385,7 +410,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
               numberOfLines={1}
               style={styles.headerTitle}
             >
-              {step === 1 ? "Top Up Wallet" : "Payment Details"}
+              {step === 1 ? t("topUpWallet") : t("paymentDetails")}
             </AppText>
             <TouchableOpacity onPress={handleClose}>
               <AppText weight="bold" style={styles.closeButton}>
@@ -411,7 +436,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
                     numberOfLines={1}
                     style={styles.sectionTitle}
                   >
-                    Select Amount
+                    {t("selectAmount")}
                   </AppText>
                   <View style={styles.amountsGrid}>
                     {quickAmounts.map((qa, idx) => {
@@ -460,7 +485,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
                     numberOfLines={1}
                     style={styles.sectionTitle}
                   >
-                    Or Enter Custom Amount
+                    {t("enterCustomAmount")}
                   </AppText>
                   <View style={styles.customAmountWrapper}>
                     <AppText style={styles.currencySymbol}>฿</AppText>
@@ -482,7 +507,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
                     numberOfLines={1}
                     style={styles.sectionTitle}
                   >
-                    Payment Method
+                    {t("paymentMethod")}
                   </AppText>
                   <View style={styles.methodsContainer}>
                     {paymentMethods.map((method) => (
@@ -570,7 +595,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
                       adjustsFontSizeToFit
                       style={styles.confirmButtonTextDisabled}
                     >
-                      Select Amount & Payment Method
+                      {t("selectAmountAndMethod")}
                     </AppText>
                   </View>
                 )}
@@ -605,7 +630,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
                         numberOfLines={1}
                         style={styles.confirmButtonText}
                       >
-                        {submitting ? "Submitting..." : "Confirm & Submit Slip"}
+                        {submitting ? t("processing") : t("confirmSubmitSlip")}
                       </AppText>
                     </View>
                   </LinearGradient>
@@ -616,7 +641,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
                       numberOfLines={1}
                       style={styles.confirmButtonTextDisabled}
                     >
-                      Upload Slip to Continue
+                      {t("uploadSlipToContinue")}
                     </AppText>
                   </View>
                 )}
@@ -637,11 +662,22 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
               style={{ width: 100, height: 100 }}
             />
             <AppText weight="medium" style={styles.loadingText}>
-              Submitting slip...
+              {t("processing")}
             </AppText>
           </View>
         </View>
       )}
+
+      {/* Copy Toast */}
+      <Animated.View
+        style={[styles.toast, { opacity: toastOpacity }]}
+        pointerEvents="none"
+      >
+        <Ionicons name="checkmark-circle" size={16} color="#FFF" />
+        <AppText weight="medium" style={styles.toastText}>
+          {toastMsg}
+        </AppText>
+      </Animated.View>
     </Modal>
   );
 }
@@ -925,17 +961,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  bankLogoCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    justifyContent: "center",
-    alignItems: "center",
+  bankLogoImage: {
+    width: 46,
+    height: 46,
+    borderRadius: 10,
     marginRight: 12,
-  },
-  bankLogoText: {
-    fontSize: 18,
-    color: "#FFF",
+    backgroundColor: "#F3F4F6",
   },
   bankNameCol: {
     flex: 1,
@@ -967,6 +998,10 @@ const styles = StyleSheet.create({
   bankDetailValue: {
     fontSize: 13,
     color: "#111827",
+  },
+  copyRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   // ─── Slip Upload ───
@@ -1048,5 +1083,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#333",
     marginTop: 8,
+  },
+  toast: {
+    position: "absolute",
+    bottom: 120,
+    alignSelf: "center",
+    backgroundColor: "rgba(30,30,30,0.88)",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  toastText: {
+    fontSize: 13,
+    color: "#FFF",
   },
 });

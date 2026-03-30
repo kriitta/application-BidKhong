@@ -2,6 +2,20 @@
 // 📋 Shared Types — ใช้ร่วมกันทั้ง App
 // ============================================================
 
+// ─── Server Notification ──────────────────────────────────────
+
+export interface ServerNotification {
+  id: number;
+  user_id: number;
+  type: string; // e.g. "outbid", "won", "bid_placed", etc.
+  title: string;
+  message: string;
+  data?: Record<string, any>; // extra payload (product_id, etc.)
+  is_read: boolean | 0 | 1;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── Auth ─────────────────────────────────────────────────────
 
 export interface UserWallet {
@@ -114,6 +128,7 @@ export interface ProductBid {
     id: number;
     name: string;
     phone_number?: string;
+    profile_image?: string | null;
   };
 }
 
@@ -555,6 +570,7 @@ export interface AdminStats {
   open_disputes: number;
   pending_reports: number;
   pending_certificates: number;
+  pending_withdrawals: number;
   recent_orders: any[];
 }
 

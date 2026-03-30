@@ -24,7 +24,7 @@ import { WithdrawModal } from "../components/WithdrawModal";
 const WalletPage = () => {
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
-  const { user, refreshUser, updateWallet } = useAuth();
+  const { user, updateWallet } = useAuth();
   const { t, lang } = useLanguage();
 
   const [disablePointer, setDisablePointer] = useState(false);
@@ -37,6 +37,7 @@ const WalletPage = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
   const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
   const HEADER_MAX_HEIGHT = Math.min(
@@ -48,25 +49,65 @@ const WalletPage = () => {
 
   useFocusEffect(
     useCallback(() => {
-      refreshUser();
+      fetchWalletBalance();
       fetchTransactions();
     }, []),
   );
+
+  /** ดึงยอด wallet realtime จาก /wallet */
+  const fetchWalletBalance = async () => {
+    try {
+      const balance = await apiService.wallet.getBalance();
+      updateWallet(balance);
+    } catch {
+      // ใช้ข้อมูล cache ต่อไปหาก API ล้มเหลว
+    }
+  };
 
   /** ดึง transactions จาก API */
   const fetchTransactions = async (
     month?: number | null,
     year?: number | null,
+    type?: string | null,
   ) => {
     try {
       setTransLoading(true);
       const params: any = {};
       if (month) params.month = month;
       if (year) params.year = year;
+      if (type) params.type = type;
       const data = await apiService.wallet.getTransactions(
         Object.keys(params).length > 0 ? params : undefined,
       );
-      setTransactions(data);
+
+      // Client-side filter as fallback (in case API ignores filter params)
+      let filtered = Array.isArray(data) ? data : [];
+      if (month || year || type) {
+        filtered = filtered.filter((tx: any) => {
+          const dateStr = tx.created_at || tx.date;
+          if ((month || year) && dateStr) {
+            const txDate = new Date(dateStr);
+            if (year && txDate.getFullYear() !== year) return false;
+            if (month && txDate.getMonth() + 1 !== month) return false;
+          }
+          if (type) {
+            const txType = tx.type || "";
+            // Map aliases to match filter
+            const typeAliases: Record<string, string[]> = {
+              deposit: ["deposit", "topup", "top_up"],
+              withdraw: ["withdraw", "withdrawal"],
+              won: ["won", "purchase", "bid_won"],
+              bid: ["bid"],
+              refund: ["refund"],
+            };
+            const matchTypes = typeAliases[type] || [type];
+            if (!matchTypes.includes(txType)) return false;
+          }
+          return true;
+        });
+      }
+
+      setTransactions(filtered);
     } catch (error: any) {
       console.error("Failed to fetch transactions:", error.message);
     } finally {
@@ -77,8 +118,8 @@ const WalletPage = () => {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    refreshUser();
-    fetchTransactions(selectedMonth, selectedYear);
+    fetchWalletBalance();
+    fetchTransactions(selectedMonth, selectedYear, selectedType);
   };
 
   /** แปลง API transaction เป็นรูปแบบ UI */
@@ -96,41 +137,41 @@ const WalletPage = () => {
       case "deposit":
       case "topup":
       case "top_up":
-        title = tx.description || "Top Up";
+        title = tx.description || t("topUp");
         icon = image.topup;
         bgColor = "#D4F5DD";
         break;
       case "withdraw":
       case "withdrawal":
-        title = tx.description || "Withdraw";
+        title = tx.description || t("withdraw");
         icon = image.withdraw_trans;
         bgColor = "#FFE5E5";
         break;
       case "won":
       case "purchase":
       case "bid_won":
-        title = tx.description || "Won Auction";
+        title = tx.description || t("wonAuction");
         icon = image.won_auction;
         bgColor = "#FFE5E5";
         break;
       case "bid":
-        title = tx.description || "Bid Placed";
+        title = tx.description || t("bidPlacedTx");
         icon = image.won_auction;
         bgColor = "#FFF3E0";
         break;
       case "refund":
-        title = tx.description || "Refund";
+        title = tx.description || t("refundTx");
         icon = image.topup;
         bgColor = "#D4F5DD";
         break;
       case "sale":
       case "earning":
-        title = tx.description || "Sale Earning";
+        title = tx.description || t("saleEarningTx");
         icon = image.topup;
         bgColor = "#D4F5DD";
         break;
       default:
-        title = tx.description || type || "Transaction";
+        title = tx.description || type || t("transactionTx");
         break;
     }
 
@@ -387,14 +428,17 @@ const WalletPage = () => {
             >
               {selectedMonth && selectedYear
                 ? `${t("transactionHistory")} - ${new Date(selectedYear, selectedMonth - 1).toLocaleDateString(lang === "th" ? "th-TH" : "en-US", { month: "long", year: "numeric" })}`
-                : t("transactionHistory")}
+                : selectedYear
+                  ? `${t("transactionHistory")} - ${selectedYear}`
+                  : t("transactionHistory")}
             </AppText>
-            {selectedMonth && selectedYear && (
+            {(selectedMonth || selectedYear || selectedType) && (
               <TouchableOpacity
                 onPress={() => {
                   setSelectedMonth(null);
                   setSelectedYear(null);
-                  fetchTransactions(null, null);
+                  setSelectedType(null);
+                  fetchTransactions(null, null, null);
                 }}
                 style={{
                   backgroundColor: "#FFE5E5",
@@ -413,6 +457,42 @@ const WalletPage = () => {
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Active type filter chip */}
+          {selectedType && (
+            <View
+              style={{
+                flexDirection: "row",
+                paddingHorizontal: 4,
+                marginBottom: 10,
+              }}
+            >
+              <View
+                style={{
+                  backgroundColor: "#D4ECFF",
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <AppText
+                  weight="medium"
+                  style={{ fontSize: 11, color: "#0087F5" }}
+                >
+                  {[
+                    { id: "deposit", label: "💳 เติมเงิน" },
+                    { id: "withdraw", label: "💸 ถอนเงิน" },
+                    { id: "won", label: "🏆 ชนะประมูล" },
+                    { id: "bid", label: "🔨 วางเดิมพัน" },
+                    { id: "refund", label: "↩️ คืนเงิน" },
+                  ].find((t) => t.id === selectedType)?.label ?? selectedType}
+                </AppText>
+              </View>
+            </View>
+          )}
 
           <View style={styles.transactionsList}>
             {transLoading ? (
@@ -507,7 +587,7 @@ const WalletPage = () => {
               balance_pending: String(nb.pending ?? nb.balance_pending ?? ""),
             });
           }
-          fetchTransactions(selectedMonth, selectedYear);
+          fetchTransactions(selectedMonth, selectedYear, selectedType);
         }}
       />
 
@@ -515,29 +595,18 @@ const WalletPage = () => {
       <WithdrawModal
         visible={withdrawModalVisible}
         onClose={() => setWithdrawModalVisible(false)}
-        onConfirm={async (amount, bank, accountNumber, accountName) => {
-          try {
-            const result: any = await apiService.wallet.withdraw({
-              amount,
-              bank_name: bank,
-              account_number: accountNumber,
-              account_name: accountName,
-            } as any);
-            // อัปเดต wallet จาก response โดยตรง
-            const nb = result?.newBalance || result?.wallet;
-            if (nb) {
-              updateWallet({
-                balance_available: String(
-                  nb.available ?? nb.balance_available ?? "",
-                ),
-                balance_total: String(nb.total ?? nb.balance_total ?? ""),
-                balance_pending: String(nb.pending ?? nb.balance_pending ?? ""),
-              });
-            }
-          } catch {
-            // Withdraw อาจ error ได้ แต่ UI ปิด modal ไปแล้ว
+        onSuccess={(result) => {
+          const nb = result?.newBalance || result?.wallet;
+          if (nb) {
+            updateWallet({
+              balance_available: String(
+                nb.available ?? nb.balance_available ?? "",
+              ),
+              balance_total: String(nb.total ?? nb.balance_total ?? ""),
+              balance_pending: String(nb.pending ?? nb.balance_pending ?? ""),
+            });
           }
-          fetchTransactions(selectedMonth, selectedYear);
+          fetchTransactions(selectedMonth, selectedYear, selectedType);
         }}
       />
 
@@ -545,10 +614,17 @@ const WalletPage = () => {
       <HistoryFilterModal
         visible={historyFilterModalVisible}
         onClose={() => setHistoryFilterModalVisible(false)}
-        onApply={(month, year) => {
+        onApply={(month, year, type) => {
           setSelectedMonth(month);
           setSelectedYear(year);
-          fetchTransactions(month, year);
+          setSelectedType(type);
+          fetchTransactions(month, year, type);
+        }}
+        onReset={() => {
+          setSelectedMonth(null);
+          setSelectedYear(null);
+          setSelectedType(null);
+          fetchTransactions(null, null, null);
         }}
       />
     </View>

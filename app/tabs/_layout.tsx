@@ -1,13 +1,27 @@
 import { Tabs } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Image } from "react-native";
 import { image } from "../../assets/images";
+import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useOutbidChecker } from "../../hooks/useOutbidChecker";
+import { requestNotificationPermissions } from "../../utils/notificationService";
 import { CustomTabBar } from "../components/customTabBar";
 
 export default function TabLayout() {
   const [modalVisible, setModalVisible] = useState(false);
   const { t } = useLanguage();
+  const { isLoggedIn } = useAuth();
+
+  // Request notification permission once when user is logged in
+  useEffect(() => {
+    if (isLoggedIn) {
+      requestNotificationPermissions().catch(() => {});
+    }
+  }, [isLoggedIn]);
+
+  // Poll for outbid status changes and fire local notifications
+  useOutbidChecker();
 
   return (
     <>

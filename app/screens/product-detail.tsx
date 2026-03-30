@@ -38,7 +38,7 @@ const ProductDetailPage = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const imageScrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
-  const { isGuest, user } = useAuth();
+  const { isGuest, user, updateWallet, refreshUser } = useAuth();
   const [authModalVisible, setAuthModalVisible] = useState(false);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
@@ -57,40 +57,79 @@ const ProductDetailPage = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // ─── ref to track latest product (used inside polling closure) ───
+  const productRef = useRef<Product | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  /**
+   * Fetches product detail + bid history.
+   * silent=true → don't show loading spinner (used by polling).
+   */
+  const fetchProductData = async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      const id = Number(productId);
+      if (!id) return;
+      const data = await apiService.product.getProduct(id);
+      setProduct(data);
+      productRef.current = data;
+      // Fetch bid history + seller ratings in parallel
+      const sellerId = data.user?.id || data.user_id;
+      await Promise.all([
+        apiService.product
+          .getProductBids(id)
+          .then((bids) => setBidHistory(bids))
+          .catch(() => {}),
+        !silent && sellerId
+          ? apiService.order
+              .getSellerRatings(sellerId)
+              .then((res) =>
+                setSellerRating({
+                  average: res.summary.average_rating,
+                  total: res.summary.total_reviews,
+                }),
+              )
+              .catch(() => {})
+          : Promise.resolve(),
+      ]);
+    } catch (error: any) {
+      if (!silent) console.error("Failed to fetch product:", error.message);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  // ─── Initial load ─────────────────────────────────────────
   useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        setLoading(true);
-        const id = Number(productId);
-        if (!id) return;
-        const data = await apiService.product.getProduct(id);
-        setProduct(data);
-        // Fetch bid history + seller ratings in parallel
-        const sellerId = data.user?.id || data.user_id;
-        await Promise.all([
-          apiService.product
-            .getProductBids(id)
-            .then((bids) => setBidHistory(bids))
-            .catch(() => {}),
-          sellerId
-            ? apiService.order
-                .getSellerRatings(sellerId)
-                .then((res) =>
-                  setSellerRating({
-                    average: res.summary.average_rating,
-                    total: res.summary.total_reviews,
-                  }),
-                )
-                .catch(() => {})
-            : Promise.resolve(),
-        ]);
-      } catch (error: any) {
-        console.error("Failed to fetch product:", error.message);
-      } finally {
-        setLoading(false);
-      }
+    fetchProductData(false);
+  }, [productId]);
+
+  // ─── Polling — refresh every 5s while auction is active ───
+  useEffect(() => {
+    const POLL_MS = 5_000;
+
+    const startPolling = () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      pollTimerRef.current = setInterval(() => {
+        const p = productRef.current;
+        // Stop polling once auction has ended
+        if (
+          p &&
+          (p.status === "completed" ||
+            p.status === "ended" ||
+            new Date(p.auction_end_time) < new Date())
+        ) {
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          return;
+        }
+        fetchProductData(true);
+      }, POLL_MS);
     };
-    fetchProduct();
+
+    startPolling();
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
   }, [productId]);
 
   /** ดึงรูป product เป็น array เพื่อแสดง carousel */
@@ -181,51 +220,60 @@ const ProductDetailPage = () => {
     const amount = parseFloat(bidAmount);
     if (!amount || isNaN(amount)) {
       Alert.alert(
-        "กรุณาใส่จำนวนเงิน",
-        `ขั้นต่ำ ฿${minBidAmount.toLocaleString("en-US")}`,
+        t("enterBidAmountErr"),
+        `${t("minBidLabel")} ฿${minBidAmount.toLocaleString("en-US")}`,
       );
       return;
     }
     if (amount < minBidAmount) {
       Alert.alert(
-        "ราคาต่ำเกินไป",
-        `กรุณาบิดขั้นต่ำ ฿${minBidAmount.toLocaleString("en-US")}`,
+        t("bidTooLowErr"),
+        `${t("bidMinRequired")} ฿${minBidAmount.toLocaleString("en-US")}`,
       );
       return;
     }
 
     Alert.alert(
-      "ยืนยันการบิด",
-      `คุณต้องการบิดราคา ฿${amount.toLocaleString("en-US")} ใช่ไหม?`,
+      t("confirmBidTitle"),
+      `${t("confirmBidMsg")} ฿${amount.toLocaleString("en-US")}?`,
       [
-        { text: "ยกเลิก" },
+        { text: t("cancel") },
         {
-          text: "ยืนยัน",
+          text: t("confirm"),
           onPress: async () => {
             setBidLoading(true);
             try {
-              await apiService.bid.placeBid({
+              const bidResult = await apiService.bid.placeBid({
                 productId: product.id,
                 price: amount,
               });
+              // Use wallet data from bid response if available, otherwise fetch fresh
+              const walletFromResponse =
+                bidResult?.data?.wallet ||
+                bidResult?.wallet ||
+                bidResult?.data?.user?.wallet;
+              if (walletFromResponse) {
+                updateWallet(walletFromResponse);
+              } else {
+                // Fetch updated balance (includes balance_pending)
+                try {
+                  const balance = await apiService.wallet.getBalance();
+                  updateWallet(balance);
+                } catch (_) {}
+              }
+              // Also sync full user to ensure all fields are consistent
+              refreshUser().catch(() => {});
               Alert.alert(
-                "บิดสำเร็จ! 🎉",
-                `คุณบิดราคา ฿${amount.toLocaleString("en-US")} เรียบร้อยแล้ว`,
+                t("bidPlaced"),
+                `${t("bidPlacedMsg")} ฿${amount.toLocaleString("en-US")}`,
               );
               setBidAmount("");
-              // Refresh product data + bid history
-              const updated = await apiService.product.getProduct(product.id);
-              setProduct(updated);
-              try {
-                const bids = await apiService.product.getProductBids(
-                  product.id,
-                );
-                setBidHistory(bids);
-              } catch (_) {}
+              // Refresh product data + bid history (silent — no spinner)
+              fetchProductData(true);
             } catch (error: any) {
               Alert.alert(
-                "บิดไม่สำเร็จ",
-                error.message || "เกิดข้อผิดพลาด กรุณาลองใหม่",
+                t("bidFailed"),
+                error.message || t("genericTryAgain"),
               );
             } finally {
               setBidLoading(false);
@@ -244,26 +292,42 @@ const ProductDetailPage = () => {
     if (!product) return;
 
     Alert.alert(
-      "ยืนยัน Buy Now",
-      `คุณต้องการซื้อสินค้านี้ในราคา ฿${buyNowPrice.toLocaleString("en-US")} ใช่ไหม?`,
+      t("confirmBuyNowTitle"),
+      `${t("confirmBidMsg")} ฿${buyNowPrice.toLocaleString("en-US")}?`,
       [
-        { text: "ยกเลิก" },
+        { text: t("cancel") },
         {
-          text: "ซื้อเลย",
+          text: t("buyNowActionBtn"),
           onPress: async () => {
             setBuyNowLoading(true);
             try {
-              await apiService.bid.buyNow({ productId: product.id });
-              Alert.alert("ซื้อสำเร็จ! 🎉", "คุณได้รับสินค้านี้เรียบร้อยแล้ว", [
+              const buyResult = await apiService.bid.buyNow({
+                productId: product.id,
+              });
+              // Use wallet data from response if available, otherwise fetch fresh
+              const walletFromResponse =
+                buyResult?.data?.wallet ||
+                buyResult?.wallet ||
+                buyResult?.data?.user?.wallet;
+              if (walletFromResponse) {
+                updateWallet(walletFromResponse);
+              } else {
+                try {
+                  const balance = await apiService.wallet.getBalance();
+                  updateWallet(balance);
+                } catch (_) {}
+              }
+              refreshUser().catch(() => {});
+              Alert.alert(t("soldBoughtNow"), t("buyNowSuccessMsg"), [
                 {
-                  text: "ตกลง",
+                  text: t("ok"),
                   onPress: () => router.back(),
                 },
               ]);
             } catch (error: any) {
               Alert.alert(
-                "ซื้อไม่สำเร็จ",
-                error.message || "เกิดข้อผิดพลาด กรุณาลองใหม่",
+                t("buyNowFailedTitle"),
+                error.message || t("genericTryAgain"),
               );
             } finally {
               setBuyNowLoading(false);
@@ -1124,25 +1188,39 @@ const ProductDetailPage = () => {
                         flex: 1,
                       }}
                     >
-                      <View
-                        style={[
-                          styles.sellerAvatar,
-                          styles.defaultAvatar,
-                          {
+                      {bid.user?.profile_image ? (
+                        <Image
+                          source={{
+                            uri: getFullImageUrl(bid.user.profile_image)!,
+                          }}
+                          style={{
                             width: 36,
                             height: 36,
                             borderRadius: 18,
                             marginRight: 10,
-                          },
-                        ]}
-                      >
-                        <AppText
-                          weight="bold"
-                          style={{ fontSize: 14, color: "#FFF" }}
+                          }}
+                        />
+                      ) : (
+                        <View
+                          style={[
+                            styles.sellerAvatar,
+                            styles.defaultAvatar,
+                            {
+                              width: 36,
+                              height: 36,
+                              borderRadius: 18,
+                              marginRight: 10,
+                            },
+                          ]}
                         >
-                          {bid.user?.name?.charAt(0).toUpperCase() || "U"}
-                        </AppText>
-                      </View>
+                          <AppText
+                            weight="bold"
+                            style={{ fontSize: 14, color: "#FFF" }}
+                          >
+                            {bid.user?.name?.charAt(0).toUpperCase() || "U"}
+                          </AppText>
+                        </View>
+                      )}
                       <View style={{ flex: 1 }}>
                         <View
                           style={{ flexDirection: "row", alignItems: "center" }}
