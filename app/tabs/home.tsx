@@ -214,7 +214,15 @@ const HomePage = () => {
         );
 
         if (categoriesData.status === "fulfilled") {
-          setCategories(categoriesData.value);
+          // Deduplicate by name (server may return same category with different IDs)
+          const seenNames = new Set<string>();
+          const unique = categoriesData.value.filter((c) => {
+            const key = c.name.trim().toLowerCase();
+            if (seenNames.has(key)) return false;
+            seenNames.add(key);
+            return true;
+          });
+          setCategories(unique);
         } else {
           console.error(
             "Failed to fetch categories:",
@@ -1357,7 +1365,7 @@ const HomePage = () => {
                         </View>
                         <Image
                           source={getProductImage(item)}
-                          style={[styles.auctionImage, { marginBottom: 8 }]}
+                          style={[styles.auctionImage, { marginBottom: 6 }]}
                         />
                         <AppText
                           weight="medium"
@@ -1366,6 +1374,55 @@ const HomePage = () => {
                         >
                           {item.name}
                         </AppText>
+                        {/* Category + Subcategory badges */}
+                        {(item.category?.name || item.subcategory?.name) && (
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              flexWrap: "wrap",
+                              gap: 4,
+                              marginTop: 4,
+                              paddingHorizontal: 4,
+                            }}
+                          >
+                            {item.category?.name && (
+                              <View
+                                style={{
+                                  backgroundColor: "#EEF2FF",
+                                  borderRadius: 4,
+                                  paddingHorizontal: 5,
+                                  paddingVertical: 2,
+                                }}
+                              >
+                                <AppText
+                                  weight="medium"
+                                  numberOfLines={1}
+                                  style={{ fontSize: 9, color: "#4338CA" }}
+                                >
+                                  {item.category.name}
+                                </AppText>
+                              </View>
+                            )}
+                            {item.subcategory?.name && (
+                              <View
+                                style={{
+                                  backgroundColor: "#F0FDF4",
+                                  borderRadius: 4,
+                                  paddingHorizontal: 5,
+                                  paddingVertical: 2,
+                                }}
+                              >
+                                <AppText
+                                  weight="medium"
+                                  numberOfLines={1}
+                                  style={{ fontSize: 9, color: "#15803D" }}
+                                >
+                                  {item.subcategory.name}
+                                </AppText>
+                              </View>
+                            )}
+                          </View>
+                        )}
                       </TouchableOpacity>
                     ))}
                   </ScrollView>

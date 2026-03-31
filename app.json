@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "BidKhong",
+    "displayName": "BidKhong",
     "slug": "BidKhong",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,11 +11,13 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.bidkhong.app",
       "infoPlist": {
         "NSUserNotificationUsageDescription": "We'll notify you when you're outbid on a product."
       }
     },
     "android": {
+      "package": "com.bidkhong.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

@@ -241,7 +241,8 @@ const ViewAllPage = () => {
                   style={styles.auctionCard}
                   onPress={() => handleProductPress(item)}
                 >
-                  {item.tag === "hot" && (
+                  {/* Hot / Ending badges — hidden in recommended view to avoid overlap */}
+                  {typeStr !== "recommended" && item.tag === "hot" && (
                     <View style={styles.hotBadge}>
                       <Image
                         source={image.hot_badge}
@@ -249,7 +250,7 @@ const ViewAllPage = () => {
                       />
                     </View>
                   )}
-                  {item.tag === "ending" && (
+                  {typeStr !== "recommended" && item.tag === "ending" && (
                     <View style={styles.endingBadge}>
                       <Image
                         source={image.ending_badge}
@@ -310,7 +311,7 @@ const ViewAllPage = () => {
                   </View>
                   <Image
                     source={getProductImage(item)}
-                    style={[styles.auctionImage, { marginBottom: 8 }]}
+                    style={[styles.auctionImage, { marginBottom: 6 }]}
                   />
                   <AppText
                     weight="medium"
@@ -319,6 +320,55 @@ const ViewAllPage = () => {
                   >
                     {item.name}
                   </AppText>
+                  {/* Category + Subcategory badges */}
+                  {(item.category?.name || item.subcategory?.name) && (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: 4,
+                        marginTop: 4,
+                        paddingHorizontal: 4,
+                      }}
+                    >
+                      {item.category?.name && (
+                        <View
+                          style={{
+                            backgroundColor: "#EEF2FF",
+                            borderRadius: 4,
+                            paddingHorizontal: 5,
+                            paddingVertical: 2,
+                          }}
+                        >
+                          <AppText
+                            weight="medium"
+                            numberOfLines={1}
+                            style={{ fontSize: 9, color: "#4338CA" }}
+                          >
+                            {item.category.name}
+                          </AppText>
+                        </View>
+                      )}
+                      {item.subcategory?.name && (
+                        <View
+                          style={{
+                            backgroundColor: "#F0FDF4",
+                            borderRadius: 4,
+                            paddingHorizontal: 5,
+                            paddingVertical: 2,
+                          }}
+                        >
+                          <AppText
+                            weight="medium"
+                            numberOfLines={1}
+                            style={{ fontSize: 9, color: "#15803D" }}
+                          >
+                            {item.subcategory.name}
+                          </AppText>
+                        </View>
+                      )}
+                    </View>
+                  )}
                 </TouchableOpacity>
               ))}
             </View>

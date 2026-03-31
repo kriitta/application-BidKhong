@@ -49,6 +49,9 @@ const ProductDetailPage = () => {
     average: number;
     total: number;
   } | null>(null);
+  // New state for category/subcategory names
+  const [categoryName, setCategoryName] = useState<string | null>(null);
+  const [subcategoryName, setSubcategoryName] = useState<string | null>(null);
 
   // ─── Real-time countdown tick (re-render every second) ───
   const [, setTick] = useState(0);
@@ -65,6 +68,7 @@ const ProductDetailPage = () => {
    * Fetches product detail + bid history.
    * silent=true → don't show loading spinner (used by polling).
    */
+
   const fetchProductData = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
@@ -73,6 +77,48 @@ const ProductDetailPage = () => {
       const data = await apiService.product.getProduct(id);
       setProduct(data);
       productRef.current = data;
+
+      // Always try to resolve category/subcategory names
+      // 1. Category
+      if (data.category && data.category.name) {
+        setCategoryName(data.category.name);
+      } else if (data.category_id) {
+        try {
+          const cat = await apiService.category.getCategory(data.category_id);
+          setCategoryName(cat.name);
+        } catch {
+          setCategoryName(null);
+        }
+      } else {
+        setCategoryName(null);
+      }
+      // 2. Subcategory
+      if (data.subcategory && data.subcategory.name) {
+        setSubcategoryName(data.subcategory.name);
+      } else if (data.subcategory_id) {
+        try {
+          // Try to get all subcategories for the category and find the match
+          const cat = data.category_id
+            ? await apiService.category.getCategory(data.category_id)
+            : null;
+          if (cat && cat.subcategories) {
+            const sub = cat.subcategories.find(
+              (s) => s.id === data.subcategory_id,
+            );
+            setSubcategoryName(sub ? sub.name : null);
+          } else {
+            // fallback: fetch all subcategories (less efficient)
+            const allSubs = await apiService.category.getAllSubcategories();
+            const sub = allSubs.find((s) => s.id === data.subcategory_id);
+            setSubcategoryName(sub ? sub.name : null);
+          }
+        } catch {
+          setSubcategoryName(null);
+        }
+      } else {
+        setSubcategoryName(null);
+      }
+
       // Fetch bid history + seller ratings in parallel
       const sellerId = data.user?.id || data.user_id;
       await Promise.all([
@@ -535,19 +581,31 @@ const ProductDetailPage = () => {
               </AppText>
             </View>
           )}
-          {product.category && (
-            <View style={styles.tag}>
-              <AppText weight="medium" style={styles.tagText} numberOfLines={1}>
-                {product.category.name}
-              </AppText>
-            </View>
-          )}
-          {product.subcategory && (
-            <View style={styles.tag}>
-              <AppText weight="medium" style={styles.tagText} numberOfLines={1}>
-                {product.subcategory.name}
-              </AppText>
-            </View>
+          {(categoryName || subcategoryName) && (
+            <>
+              {categoryName && (
+                <View style={styles.tag}>
+                  <AppText
+                    weight="medium"
+                    style={styles.tagText}
+                    numberOfLines={1}
+                  >
+                    {categoryName}
+                  </AppText>
+                </View>
+              )}
+              {subcategoryName && (
+                <View style={styles.tag}>
+                  <AppText
+                    weight="medium"
+                    style={styles.tagText}
+                    numberOfLines={1}
+                  >
+                    {subcategoryName}
+                  </AppText>
+                </View>
+              )}
+            </>
           )}
         </View>
 

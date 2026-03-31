@@ -1,9 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios, {
-    AxiosError,
-    AxiosInstance,
-    AxiosResponse,
-    InternalAxiosRequestConfig,
+  AxiosError,
+  AxiosInstance,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
 } from "axios";
 
 // ============================================================
@@ -38,10 +38,8 @@ export const authEvents = new SimpleEmitter();
 // const BASE_URL = "https://anja-floriferous-tanja.ngrok-free.dev/api";
 // Android emulator cannot reach 127.0.0.1 (that's the device itself).
 // Use 10.0.2.2 to reach the host machine from the Android emulator.
-import { Platform } from "react-native";
-const _HOST = Platform.OS === "android" ? "10.0.2.2" : "127.0.0.1";
-const BASE_URL = `http://${_HOST}:8000/api`;
-const SERVER_URL = `http://${_HOST}:8000`;
+const BASE_URL = "http://159.223.77.192:8000/api";
+const SERVER_URL = "http://159.223.77.192:8000";
 
 // ============================================================
 // 🖼️ Image URL Helper — แปลง relative path เป็น full URL
