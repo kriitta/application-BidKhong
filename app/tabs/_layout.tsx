@@ -1,6 +1,7 @@
 import { Tabs } from "expo-router";
+import { Image } from "expo-image";
 import React, { useEffect, useState } from "react";
-import { Image } from "react-native";
+
 import { image } from "../../assets/images";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";

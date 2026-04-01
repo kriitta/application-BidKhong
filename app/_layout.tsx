@@ -16,13 +16,21 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useRouter, useSegments } from "expo-router";
 import LottieView from "lottie-react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { AppReadyProvider, useAppReady } from "../contexts/AppReadyContext";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { LanguageProvider } from "../contexts/LanguageContext";
 import { tokenManager } from "../utils/api/config";
 import SplashScreen from "./components/SplashScreen";
+
+// Try to load expo-notifications (not available in Expo Go on Android)
+let Notifications: typeof import("expo-notifications") | null = null;
+try {
+  Notifications = require("expo-notifications");
+} catch {
+  // Running in Expo Go — notifications unavailable
+}
 
 // Reactotron — dev only
 if (__DEV__) {
@@ -94,6 +102,89 @@ function RootLayoutInner() {
       }
     }
   }, [ready, isLoggedIn, isGuest, userRole, isBanned, segments]);
+
+  // ── Notification tap handler — navigate to relevant screen ──
+  const notificationResponseRef = useRef<any>(null);
+  useEffect(() => {
+    if (!Notifications) return;
+
+    const handleNotificationTap = (response: any) => {
+      const data = response?.notification?.request?.content?.data;
+      if (!data) return;
+
+      const type = (data.type as string) ?? "";
+      const productId = data.productId as string | undefined;
+
+      // Product-related notifications → go to product detail
+      if (
+        productId &&
+        [
+          "outbid",
+          "won",
+          "auction_lost",
+          "buynow_lost",
+          "buynow_purchased",
+          "new_bid",
+          "ending_soon",
+          "product_approved",
+          "product_rejected",
+          "order_buyer_confirmed",
+          "order_seller_shipped",
+          "order_completed",
+          "order_disputed",
+          "order_cancelled",
+        ].includes(type)
+      ) {
+        router.push({
+          pathname: "/screens/product-detail",
+          params: { productId },
+        });
+        return;
+      }
+
+      // Wallet-related notifications → go to wallet tab
+      if (["deposit", "withdraw"].includes(type)) {
+        router.push("/tabs/wallet");
+        return;
+      }
+
+      // Report notifications → go to help & support
+      if (
+        ["report_pending", "report_reviewing", "report_resolved"].includes(type)
+      ) {
+        router.push("/screens/help-support");
+        return;
+      }
+
+      // Fallback: if we have a productId even for unknown type
+      if (productId) {
+        router.push({
+          pathname: "/screens/product-detail",
+          params: { productId },
+        });
+      }
+    };
+
+    // Handle tap when app is already open
+    const sub = Notifications.addNotificationResponseReceivedListener(
+      handleNotificationTap,
+    );
+
+    // Handle tap that launched the app (cold start)
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (
+        response &&
+        response.actionIdentifier ===
+          Notifications!.DEFAULT_ACTION_IDENTIFIER &&
+        notificationResponseRef.current !== response
+      ) {
+        notificationResponseRef.current = response;
+        handleNotificationTap(response);
+      }
+    });
+
+    return () => sub.remove();
+  }, [ready, router]);
 
   // Render app + splash overlay
   // Stack renders underneath so home.tsx can start fetching API data

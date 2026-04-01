@@ -1,3 +1,5 @@
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, {
@@ -10,7 +12,6 @@ import React, {
 import {
   Animated,
   Dimensions,
-  Image,
   ImageBackground,
   Keyboard,
   Modal,
@@ -45,6 +46,7 @@ const HomePage = () => {
   const { isGuest, isLoggedIn, user, refreshUser, updateWallet } = useAuth();
   const { t } = useLanguage();
   const [authModalVisible, setAuthModalVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
@@ -137,7 +139,7 @@ const HomePage = () => {
     Collectibles: image.collectible,
     Home: image.house,
     Vehicles: image.car,
-    Others: image.other,
+    Others: image.icon,
   };
 
   // ─── Products from API ───
@@ -248,24 +250,31 @@ const HomePage = () => {
           setRecommendations(Array.isArray(recsData) ? recsData : []);
         }
       } finally {
+        setLoading(false);
         markHomeReady();
       }
     };
     fetchInitialData();
   }, []);
 
-  // ─── Polling: refresh products every 15 seconds ───
+  // ─── Polling: refresh products every 30 seconds ───
+  const lastRefreshRef = useRef(Date.now());
   useEffect(() => {
     const interval = setInterval(() => {
       refreshProducts();
-    }, 15000);
+      lastRefreshRef.current = Date.now();
+    }, 30000);
     return () => clearInterval(interval);
   }, [refreshProducts]);
 
-  // ─── Refresh on focus ───
+  // ─── Refresh on focus (skip if recently refreshed) ───
   useFocusEffect(
     useCallback(() => {
-      refreshProducts();
+      // Only refresh if more than 10 seconds since last refresh
+      if (Date.now() - lastRefreshRef.current > 10_000) {
+        refreshProducts();
+        lastRefreshRef.current = Date.now();
+      }
     }, [refreshProducts]),
   );
 
@@ -468,17 +477,47 @@ const HomePage = () => {
   const getBadgeForStatus = (status: string) => {
     switch (status) {
       case "active":
-        return { label: "🔥 Hot", bg: "#FF3B30" };
+        return { label: "Hot", bg: "#FF3B30", icon: "flame" as const };
       case "ending":
-        return { label: "⏰ Ending", bg: "#FF8C00" };
+        return {
+          label: "Ending",
+          bg: "#FF8C00",
+          icon: "alarm-outline" as const,
+        };
       case "incoming":
-        return { label: "🔜 Incoming", bg: "#9B27B0" };
+        return {
+          label: "Incoming",
+          bg: "#9B27B0",
+          icon: "arrow-forward-circle-outline" as const,
+        };
       case "ended":
-        return { label: "✅ Ended", bg: "#6B7280" };
+        return {
+          label: "Ended",
+          bg: "#6B7280",
+          icon: "checkmark-circle-outline" as const,
+        };
       default:
-        return { label: "📦 All", bg: "#4285F4" };
+        return { label: "All", bg: "#4285F4", icon: "cube-outline" as const };
     }
   };
+
+  if (loading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <LottieView
+          source={require("../../assets/animations/loading.json")}
+          autoPlay
+          loop
+          style={{ width: 120, height: 120 }}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -609,7 +648,8 @@ const HomePage = () => {
                       style={s.searchSectionTitle}
                       numberOfLines={1}
                     >
-                      🔥 {t("hotBids")}
+                      <Ionicons name="flame" size={14} color="#FF3B30" />{" "}
+                      {t("hotBids")}
                     </AppText>
                     <ScrollView
                       horizontal
@@ -716,7 +756,11 @@ const HomePage = () => {
                 <View style={s.resultsSection}>
                   {isSearchLoading ? (
                     <View style={s.noResults}>
-                      <AppText style={s.noResultsEmoji}>🔍</AppText>
+                      <Ionicons
+                        name="search-outline"
+                        size={32}
+                        color="#6B7280"
+                      />
                       <AppText
                         weight="regular"
                         style={s.noResultsSub}
@@ -738,7 +782,11 @@ const HomePage = () => {
                       </AppText>
                       {searchResults.length === 0 ? (
                         <View style={s.noResults}>
-                          <AppText style={s.noResultsEmoji}>🔍</AppText>
+                          <Ionicons
+                            name="search-outline"
+                            size={32}
+                            color="#6B7280"
+                          />
                           <AppText
                             weight="semibold"
                             style={s.noResultsTitle}
@@ -788,6 +836,11 @@ const HomePage = () => {
                                       style={s.resultBadgeText}
                                       numberOfLines={1}
                                     >
+                                      <Ionicons
+                                        name={badge.icon}
+                                        size={10}
+                                        color="#FFF"
+                                      />{" "}
                                       {badge.label}
                                     </AppText>
                                   </View>
@@ -797,7 +850,12 @@ const HomePage = () => {
                                       style={s.resultTime}
                                       numberOfLines={1}
                                     >
-                                      ⏱ {item.timeLeft}
+                                      <Ionicons
+                                        name="time-outline"
+                                        size={11}
+                                        color="#6B7280"
+                                      />{" "}
+                                      {item.timeLeft}
                                     </AppText>
                                   )}
                                 </View>
@@ -1006,7 +1064,8 @@ const HomePage = () => {
                     style={styles.searchSectionTitle}
                     numberOfLines={1}
                   >
-                    🔥 {t("hotBids")}
+                    <Ionicons name="flame" size={14} color="#FF3B30" />{" "}
+                    {t("hotBids")}
                   </AppText>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     {hotAuctions.map((item) => (
@@ -1160,6 +1219,7 @@ const HomePage = () => {
                             <Image
                               source={imgSrc}
                               style={styles.productImage}
+                              contentFit="cover"
                             />
                           </View>
                           <AppText
@@ -1956,6 +2016,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     padding: 0,
+    fontFamily: "NotoSansThai_400Regular",
   },
   section: {
     marginTop: 10,
@@ -2284,7 +2345,6 @@ const styles = StyleSheet.create({
   productImage: {
     width: "100%",
     height: "100%",
-    resizeMode: "cover",
   },
   productName: {
     fontSize: 13,
@@ -2497,7 +2557,7 @@ const s = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: "#111",
-    fontFamily: "Poppins_400Regular",
+    fontFamily: "NotoSansThai_400Regular",
     padding: 0,
   },
   clearBtn: {

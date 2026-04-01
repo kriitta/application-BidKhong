@@ -1,5 +1,5 @@
 import React from "react";
-import { TextInput, TextInputProps, StyleSheet } from "react-native";
+import { StyleSheet, TextInput, TextInputProps } from "react-native";
 
 type FontWeight = "light" | "regular" | "medium" | "semibold" | "bold";
 
@@ -7,12 +7,12 @@ interface AppTextInputProps extends TextInputProps {
   weight?: FontWeight;
 }
 
-const fontMap: Record<FontWeight, string> = {
-  light: "Poppins_300Light",
-  regular: "Poppins_400Regular",
-  medium: "Poppins_500Medium",
-  semibold: "Poppins_600SemiBold",
-  bold: "Poppins_700Bold",
+const thaiMap: Record<FontWeight, string> = {
+  light: "NotoSansThai_300Light",
+  regular: "NotoSansThai_400Regular",
+  medium: "NotoSansThai_500Medium",
+  semibold: "NotoSansThai_600SemiBold",
+  bold: "NotoSansThai_700Bold",
 };
 
 export function AppTextInput({
@@ -23,7 +23,7 @@ export function AppTextInput({
   return (
     <TextInput
       {...props}
-      style={[styles.input, { fontFamily: fontMap[weight] }, style]}
+      style={[styles.input, { fontFamily: thaiMap[weight] }, style]}
       placeholderTextColor="#999"
     />
   );

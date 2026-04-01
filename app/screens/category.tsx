@@ -1,11 +1,12 @@
 import { image } from "@/assets/images";
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
-  Image,
   Keyboard,
   ScrollView,
   StyleSheet,
@@ -258,6 +259,7 @@ const CategoryPage = () => {
                         <Image
                           source={SUBCATEGORY_IMAGES[sub.name]}
                           style={styles.cardImage}
+                          contentFit="cover"
                         />
                       ) : (
                         <View
@@ -270,7 +272,11 @@ const CategoryPage = () => {
                             },
                           ]}
                         >
-                          <AppText style={{ fontSize: 32 }}>📦</AppText>
+                          <Ionicons
+                            name="cube-outline"
+                            size={32}
+                            color="#9CA3AF"
+                          />
                         </View>
                       )}
                     </View>
@@ -547,7 +553,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 140,
   },
-  cardImage: { width: "100%", height: "100%", resizeMode: "cover" },
+  cardImage: { width: "100%", height: "100%" },
   cardText: {
     textAlign: "center",
     fontSize: 12,
@@ -591,6 +597,7 @@ const styles = StyleSheet.create({
     paddingRight: 12,
     fontSize: 14,
     color: "#111827",
+    fontFamily: "NotoSansThai_400Regular",
   },
   clearBtn: {
     width: 26,

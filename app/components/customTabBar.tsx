@@ -1,6 +1,7 @@
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { Image } from "expo-image";
 import React, { useState } from "react";
-import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { image } from "../../assets/images";
 import { useAuth } from "../../contexts/AuthContext";
@@ -24,7 +25,7 @@ export function CustomTabBar({
   }
 
   // แท็บที่ guest ใช้ได้
-  const guestAllowedTabs = ["home"];
+  const guestAllowedTabs = ["home", "profile"];
 
   return (
     <>
@@ -89,7 +90,7 @@ export function CustomTabBar({
                 <Image
                   source={iconProps.fallbackImage}
                   style={{ width: 24, height: 24 }}
-                  resizeMode="contain"
+                  contentFit="contain"
                 />
               )}
 
@@ -132,7 +133,7 @@ export function CustomTabBar({
                     height: 32,
                     overflow: "hidden",
                   }}
-                  resizeMode="contain"
+                  contentFit="contain"
                 />
               </View>
             </View>

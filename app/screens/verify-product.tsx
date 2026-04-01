@@ -2,6 +2,8 @@ import { image } from "@/assets/images";
 import { apiService } from "@/utils/api";
 import { getFullImageUrl } from "@/utils/api/config";
 import { Order, OrderStatus } from "@/utils/api/types";
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -12,7 +14,6 @@ import {
   Alert,
   Animated,
   Dimensions,
-  Image,
   Modal,
   RefreshControl,
   ScrollView,
@@ -73,56 +74,56 @@ const getStatusConfig = (status: OrderStatus, t: TFunc) => {
         label: t("statusWon"),
         color: "#FF9500",
         bg: "#FFF3E0",
-        icon: "🏆",
+        icon: "trophy-outline",
       };
     case "confirmed":
       return {
         label: t("statusConfirmed"),
         color: "#2196F3",
         bg: "#E3F2FD",
-        icon: "✅",
+        icon: "checkmark-circle-outline",
       };
     case "shipped":
       return {
         label: t("statusShipped"),
         color: "#7B1FA2",
         bg: "#F3E5F5",
-        icon: "📦",
+        icon: "cube-outline",
       };
     case "completed":
       return {
         label: t("statusCompleted"),
         color: "#4CAF50",
         bg: "#E8F5E9",
-        icon: "🎉",
+        icon: "ribbon-outline",
       };
     case "disputed":
       return {
         label: t("statusDisputed"),
         color: "#E65100",
         bg: "#FFF3E0",
-        icon: "⚠️",
+        icon: "warning-outline",
       };
     case "cancelled":
       return {
         label: t("statusCancelled"),
         color: "#D32F2F",
         bg: "#FFEBEE",
-        icon: "⛔",
+        icon: "close-circle-outline",
       };
     case "expired":
       return {
         label: t("statusExpired"),
         color: "#D32F2F",
         bg: "#FFEBEE",
-        icon: "⛔",
+        icon: "close-circle-outline",
       };
     default:
       return {
         label: t("statusUnknown"),
         color: "#9CA3AF",
         bg: "#F3F4F6",
-        icon: "❓",
+        icon: "help-circle-outline",
       };
   }
 };
@@ -188,7 +189,21 @@ const CountdownTimer = ({
             color: isExpired ? "#D32F2F" : isUrgent ? "#E65100" : "#7B1FA2",
           }}
         >
-          {isExpired ? `⛔ ${t("statusExpired")}` : `⏳ ${timeStr}`}
+          {isExpired ? (
+            <>
+              <Ionicons name="close-circle-outline" size={10} color="#D32F2F" />{" "}
+              {t("statusExpired")}
+            </>
+          ) : (
+            <>
+              <Ionicons
+                name="hourglass-outline"
+                size={10}
+                color={isUrgent ? "#E65100" : "#7B1FA2"}
+              />{" "}
+              {timeStr}
+            </>
+          )}
         </AppText>
       </View>
     );
@@ -737,7 +752,7 @@ const VerifyProductPage = () => {
         }
         setShowReviewModal(false);
         Alert.alert(
-          "ขอบคุณสำหรับรีวิว! 🎉",
+          "ขอบคุณสำหรับรีวิว!",
           `คุณให้คะแนนผู้ขาย ${reviewRating} ดาว`,
         );
       } catch (error: any) {
@@ -866,6 +881,24 @@ const VerifyProductPage = () => {
       (user?.id === selectedOrder.seller_id ? "seller" : "buyer"))
     : "buyer";
 
+  if (loading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <LottieView
+          source={require("@/assets/animations/loading.json")}
+          autoPlay
+          loop
+          style={{ width: 120, height: 120 }}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -929,206 +962,183 @@ const VerifyProductPage = () => {
       </View>
 
       {/* Product List */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <LottieView
-            source={require("@/assets/animations/loading.json")}
-            autoPlay
-            loop
-            style={{ width: 180, height: 180 }}
-          />
-          <AppText weight="medium" style={{ color: "#9CA3AF", marginTop: 8 }}>
-            {t("loadingOrders")}
-          </AppText>
-        </View>
-      ) : (
-        <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 30 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        >
-          {filteredOrders.length === 0 ? (
-            <View style={styles.emptyState}>
-              <LottieView
-                source={require("@/assets/animations/empty.json")}
-                autoPlay
-                loop
-                style={{ width: 180, height: 180 }}
-              />
-              <AppText
-                weight="semibold"
-                style={styles.emptyTitle}
-                numberOfLines={1}
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 30 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {filteredOrders.length === 0 ? (
+          <View style={styles.emptyState}>
+            <LottieView
+              source={require("@/assets/animations/empty.json")}
+              autoPlay
+              loop
+              style={{ width: 180, height: 180 }}
+            />
+            <AppText
+              weight="semibold"
+              style={styles.emptyTitle}
+              numberOfLines={1}
+            >
+              {t("noOrdersFound")}
+            </AppText>
+            <AppText weight="regular" style={styles.emptySub} numberOfLines={2}>
+              {activeTab === "all" ? t("noWonAuctions") : t("noOrdersInStatus")}
+            </AppText>
+          </View>
+        ) : (
+          filteredOrders.map((order) => {
+            const productImage = getOrderProductImage(order);
+            const deadlinePassed =
+              isPendingConfirm(order.status) && isDeadlinePassed(order);
+            const cardRole =
+              order.my_role ??
+              (user?.id === order.seller_id ? "seller" : "buyer");
+            const statusConfig = deadlinePassed
+              ? cardRole === "seller"
+                ? {
+                    label: "สิ้นสุดแล้ว",
+                    color: "#D32F2F",
+                    bg: "#FFEBEE",
+                    icon: "flag-outline",
+                  }
+                : {
+                    label: t("statusExpired"),
+                    color: "#D32F2F",
+                    bg: "#FFEBEE",
+                    icon: "close-circle-outline",
+                  }
+              : getStatusConfig(order.status, t);
+            const isProblem =
+              order.status === "expired" ||
+              order.status === "cancelled" ||
+              order.status === "disputed" ||
+              deadlinePassed;
+            const isConfirmedSeller =
+              order.status === "confirmed" && cardRole === "seller";
+            return (
+              <View
+                key={order.id}
+                style={[styles.productCard, isProblem && { opacity: 0.6 }]}
               >
-                {t("noOrdersFound")}
-              </AppText>
-              <AppText
-                weight="regular"
-                style={styles.emptySub}
-                numberOfLines={2}
-              >
-                {activeTab === "all"
-                  ? t("noWonAuctions")
-                  : t("noOrdersInStatus")}
-              </AppText>
-            </View>
-          ) : (
-            filteredOrders.map((order) => {
-              const productImage = getOrderProductImage(order);
-              const deadlinePassed =
-                isPendingConfirm(order.status) && isDeadlinePassed(order);
-              const cardRole =
-                order.my_role ??
-                (user?.id === order.seller_id ? "seller" : "buyer");
-              const statusConfig = deadlinePassed
-                ? cardRole === "seller"
-                  ? {
-                      label: "สิ้นสุดแล้ว",
-                      color: "#D32F2F",
-                      bg: "#FFEBEE",
-                      icon: "🏁",
-                    }
-                  : {
-                      label: t("statusExpired"),
-                      color: "#D32F2F",
-                      bg: "#FFEBEE",
-                      icon: "⛔",
-                    }
-                : getStatusConfig(order.status, t);
-              const isProblem =
-                order.status === "expired" ||
-                order.status === "cancelled" ||
-                order.status === "disputed" ||
-                deadlinePassed;
-              const isConfirmedSeller =
-                order.status === "confirmed" && cardRole === "seller";
-              return (
-                <View
-                  key={order.id}
-                  style={[styles.productCard, isProblem && { opacity: 0.6 }]}
+                <TouchableOpacity
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    flex: 1,
+                  }}
+                  onPress={() => openOrderDetail(order)}
+                  activeOpacity={0.7}
                 >
-                  <TouchableOpacity
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      flex: 1,
-                    }}
-                    onPress={() => openOrderDetail(order)}
-                    activeOpacity={0.7}
-                  >
-                    {productImage ? (
-                      <Image
-                        source={productImage}
-                        style={styles.productImage}
-                      />
-                    ) : (
-                      <View
-                        style={[
-                          styles.productImage,
-                          {
-                            justifyContent: "center",
-                            alignItems: "center",
-                            backgroundColor: "#F0F0F0",
-                          },
-                        ]}
-                      >
-                        <AppText style={{ fontSize: 28 }}>📦</AppText>
-                      </View>
-                    )}
-                    <View style={styles.productInfo}>
-                      <AppText
-                        weight="semibold"
-                        style={[
-                          styles.productName,
-                          isProblem && {
-                            textDecorationLine: "line-through",
-                            color: "#9CA3AF",
-                          },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {order.product?.name || `Order #${order.id}`}
-                      </AppText>
-                      <AppText
-                        weight="regular"
-                        style={styles.productDate}
-                        numberOfLines={1}
-                      >
-                        {t("wonOn")} {formatDate(order.created_at)}
-                      </AppText>
-                      {isPendingConfirm(order.status) &&
-                        !deadlinePassed &&
-                        order.deadline_at && (
-                          <CountdownTimer
-                            deadlineAt={order.deadline_at}
-                            onExpire={() => fetchOrders()}
-                            size="small"
-                            t={t}
-                          />
-                        )}
-                      {(!isPendingConfirm(order.status) || deadlinePassed) && (
-                        <AppText
-                          weight="bold"
-                          style={styles.productPrice}
-                          numberOfLines={1}
-                          adjustsFontSizeToFit
-                        >
-                          ฿
-                          {parseFloat(order.final_price).toLocaleString(
-                            "en-US",
-                          )}
-                        </AppText>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                  {isConfirmedSeller ? (
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => handleShip(order.id, order.product_id)}
-                      disabled={actionLoading}
-                      style={styles.cardShipButton}
-                    >
-                      {actionLoading ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                        <AppText
-                          weight="bold"
-                          style={styles.cardShipButtonText}
-                          numberOfLines={1}
-                        >
-                          📦 จัดส่ง
-                        </AppText>
-                      )}
-                    </TouchableOpacity>
+                  {productImage ? (
+                    <Image source={productImage} style={styles.productImage} />
                   ) : (
                     <View
                       style={[
-                        styles.statusBadge,
-                        { backgroundColor: statusConfig.bg },
+                        styles.productImage,
+                        {
+                          justifyContent: "center",
+                          alignItems: "center",
+                          backgroundColor: "#F0F0F0",
+                        },
                       ]}
                     >
+                      <Ionicons name="cube-outline" size={28} color="#9CA3AF" />
+                    </View>
+                  )}
+                  <View style={styles.productInfo}>
+                    <AppText
+                      weight="semibold"
+                      style={[
+                        styles.productName,
+                        isProblem && {
+                          textDecorationLine: "line-through",
+                          color: "#9CA3AF",
+                        },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {order.product?.name || `Order #${order.id}`}
+                    </AppText>
+                    <AppText
+                      weight="regular"
+                      style={styles.productDate}
+                      numberOfLines={1}
+                    >
+                      {t("wonOn")} {formatDate(order.created_at)}
+                    </AppText>
+                    {isPendingConfirm(order.status) &&
+                      !deadlinePassed &&
+                      order.deadline_at && (
+                        <CountdownTimer
+                          deadlineAt={order.deadline_at}
+                          onExpire={() => fetchOrders()}
+                          size="small"
+                          t={t}
+                        />
+                      )}
+                    {(!isPendingConfirm(order.status) || deadlinePassed) && (
                       <AppText
-                        weight="semibold"
-                        style={[
-                          styles.statusText,
-                          { color: statusConfig.color },
-                        ]}
+                        weight="bold"
+                        style={styles.productPrice}
                         numberOfLines={1}
                         adjustsFontSizeToFit
                       >
-                        {statusConfig.icon} {statusConfig.label}
+                        ฿{parseFloat(order.final_price).toLocaleString("en-US")}
                       </AppText>
-                    </View>
-                  )}
-                </View>
-              );
-            })
-          )}
-        </ScrollView>
-      )}
+                    )}
+                  </View>
+                </TouchableOpacity>
+                {isConfirmedSeller ? (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => handleShip(order.id, order.product_id)}
+                    disabled={actionLoading}
+                    style={styles.cardShipButton}
+                  >
+                    {actionLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <AppText
+                        weight="bold"
+                        style={styles.cardShipButtonText}
+                        numberOfLines={1}
+                      >
+                        <Ionicons name="cube-outline" size={14} color="#fff" />{" "}
+                        จัดส่ง
+                      </AppText>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: statusConfig.bg },
+                    ]}
+                  >
+                    <AppText
+                      weight="semibold"
+                      style={[styles.statusText, { color: statusConfig.color }]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      <Ionicons
+                        name={statusConfig.icon as any}
+                        size={11}
+                        color={statusConfig.color}
+                      />{" "}
+                      {statusConfig.label}
+                    </AppText>
+                  </View>
+                )}
+              </View>
+            );
+          })
+        )}
+      </ScrollView>
 
       {/* ═══════════════════════════════════════════ */}
       {/* Product Detail Modal */}
@@ -1170,7 +1180,7 @@ const VerifyProductPage = () => {
                   <Image
                     source={getOrderProductImage(selectedOrder)!}
                     style={styles.modalProductImage}
-                    resizeMode="contain"
+                    contentFit="contain"
                   />
                 ) : (
                   <View
@@ -1183,7 +1193,7 @@ const VerifyProductPage = () => {
                       },
                     ]}
                   >
-                    <AppText style={{ fontSize: 48 }}>📦</AppText>
+                    <Ionicons name="cube-outline" size={48} color="#9CA3AF" />
                   </View>
                 )}
                 <AppText
@@ -1491,7 +1501,11 @@ const VerifyProductPage = () => {
                           },
                         ]}
                       >
-                        <AppText style={{ fontSize: 22 }}>👤</AppText>
+                        <Ionicons
+                          name="person-outline"
+                          size={22}
+                          color="#2196F3"
+                        />
                       </View>
                     )}
                     <View style={{ flex: 1 }}>
@@ -1509,9 +1523,9 @@ const VerifyProductPage = () => {
                             style={{
                               width: 14,
                               height: 14,
-                              tintColor: "#6B7280",
                               marginRight: 8,
                             }}
+                            tintColor="#6B7280"
                           />
                           <AppText
                             weight="regular"
@@ -1529,9 +1543,9 @@ const VerifyProductPage = () => {
                             style={{
                               width: 16,
                               height: 12,
-                              tintColor: "#6B7280",
                               marginRight: 8,
                             }}
+                            tintColor="#6B7280"
                           />
                           <AppText
                             weight="regular"
@@ -1557,9 +1571,9 @@ const VerifyProductPage = () => {
                         style={{
                           width: 16,
                           height: 16,
-                          tintColor: "#FF9500",
                           marginRight: 10,
                         }}
+                        tintColor="#FF9500"
                       />
                       <AppText
                         weight="regular"
@@ -1608,7 +1622,15 @@ const VerifyProductPage = () => {
                     <View style={styles.expiredCard}>
                       <View style={styles.expiredIconCircle}>
                         <AppText style={{ fontSize: 32 }}>
-                          {modalMyRole === "seller" ? "🏁" : "⛔"}
+                          <Ionicons
+                            name={
+                              modalMyRole === "seller"
+                                ? "flag-outline"
+                                : "close-circle-outline"
+                            }
+                            size={32}
+                            color="#D32F2F"
+                          />
                         </AppText>
                       </View>
                       <AppText
@@ -1645,7 +1667,11 @@ const VerifyProductPage = () => {
                     return (
                       <View style={styles.shippingCard}>
                         <View style={styles.shippingIconCircle}>
-                          <AppText style={{ fontSize: 28 }}>📦</AppText>
+                          <Ionicons
+                            name="cube-outline"
+                            size={28}
+                            color="#7B1FA2"
+                          />
                         </View>
                         <AppText
                           weight="semibold"
@@ -1698,7 +1724,12 @@ const VerifyProductPage = () => {
                                     style={styles.actionButtonText}
                                     numberOfLines={1}
                                   >
-                                    📦 แจ้งจัดส่งสินค้า
+                                    <Ionicons
+                                      name="cube-outline"
+                                      size={14}
+                                      color="#fff"
+                                    />{" "}
+                                    แจ้งจัดส่งสินค้า
                                   </AppText>
                                 )}
                               </LinearGradient>
@@ -1778,7 +1809,11 @@ const VerifyProductPage = () => {
                 <View style={styles.actionSection}>
                   <View style={styles.completedCard}>
                     <View style={styles.completedIconCircle}>
-                      <AppText style={{ fontSize: 32 }}>🎉</AppText>
+                      <Ionicons
+                        name="ribbon-outline"
+                        size={32}
+                        color="#4CAF50"
+                      />
                     </View>
                     <AppText
                       weight="bold"
@@ -1804,7 +1839,11 @@ const VerifyProductPage = () => {
                     style={[styles.expiredCard, { backgroundColor: "#FFF3E0" }]}
                   >
                     <View style={styles.expiredIconCircle}>
-                      <AppText style={{ fontSize: 32 }}>⚠️</AppText>
+                      <Ionicons
+                        name="warning-outline"
+                        size={32}
+                        color="#E65100"
+                      />
                     </View>
                     <AppText
                       weight="bold"
@@ -1830,7 +1869,11 @@ const VerifyProductPage = () => {
                 <View style={styles.actionSection}>
                   <View style={styles.expiredCard}>
                     <View style={styles.expiredIconCircle}>
-                      <AppText style={{ fontSize: 32 }}>⛔</AppText>
+                      <Ionicons
+                        name="close-circle-outline"
+                        size={32}
+                        color="#D32F2F"
+                      />
                     </View>
                     <AppText
                       weight="bold"
@@ -1976,7 +2019,12 @@ const VerifyProductPage = () => {
       >
         <View style={styles.reviewOverlay}>
           <View style={styles.reviewModal}>
-            <AppText style={styles.reviewEmoji}>⚠️</AppText>
+            <Ionicons
+              name="warning-outline"
+              size={40}
+              color="#E65100"
+              style={styles.reviewEmoji}
+            />
             <AppText weight="bold" style={styles.reviewTitle} numberOfLines={1}>
               แจ้งปัญหา
             </AppText>

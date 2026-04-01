@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useState } from "react";
 import {
@@ -35,12 +36,16 @@ export function HistoryFilterModal({
   const [selectedType, setSelectedType] = useState<string | null>(null);
 
   const transactionTypes = [
-    { id: null, label: t("txTypeAll"), emoji: "📋" },
-    { id: "deposit", label: t("txTypeDeposit"), emoji: "💳" },
-    { id: "withdraw", label: t("txTypeWithdraw"), emoji: "💸" },
-    { id: "won", label: t("txTypeWon"), emoji: "🏆" },
-    { id: "bid", label: t("txTypeBid"), emoji: "🔨" },
-    { id: "refund", label: t("txTypeRefund"), emoji: "↩️" },
+    { id: null, label: t("txTypeAll"), icon: "list-outline" },
+    { id: "deposit", label: t("txTypeDeposit"), icon: "card-outline" },
+    { id: "withdraw", label: t("txTypeWithdraw"), icon: "cash-outline" },
+    { id: "won", label: t("txTypeWon"), icon: "trophy-outline" },
+    { id: "bid", label: t("txTypeBid"), icon: "hammer-outline" },
+    {
+      id: "refund",
+      label: t("txTypeRefund"),
+      icon: "return-down-back-outline",
+    },
   ];
   const monthKeys = [
     "Jan",
@@ -274,7 +279,7 @@ export function HistoryFilterModal({
               {/* Selected Display */}
               <View style={styles.selectedBox}>
                 <View style={styles.selectedIcon}>
-                  <AppText style={styles.iconText}>📅</AppText>
+                  <Ionicons name="calendar-outline" size={18} color="#003994" />
                 </View>
                 <View style={styles.selectedTextContainer}>
                   <AppText

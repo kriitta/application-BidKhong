@@ -1,14 +1,14 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { Image } from "expo-image";
 import React, { useEffect, useState } from "react";
 import {
-  Image,
   ImageBackground,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
-} from "react-native";
+} from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../assets/images";
 import { useAuth } from "../contexts/AuthContext";

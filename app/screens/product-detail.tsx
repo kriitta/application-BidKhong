@@ -1,4 +1,5 @@
 import { image } from "@/assets/images";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
@@ -7,7 +8,6 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
   ScrollView,
@@ -78,54 +78,53 @@ const ProductDetailPage = () => {
       setProduct(data);
       productRef.current = data;
 
-      // Always try to resolve category/subcategory names
-      // 1. Category
-      if (data.category && data.category.name) {
-        setCategoryName(data.category.name);
-      } else if (data.category_id) {
-        try {
-          const cat = await apiService.category.getCategory(data.category_id);
-          setCategoryName(cat.name);
-        } catch {
-          setCategoryName(null);
-        }
-      } else {
-        setCategoryName(null);
-      }
-      // 2. Subcategory
-      if (data.subcategory && data.subcategory.name) {
-        setSubcategoryName(data.subcategory.name);
-      } else if (data.subcategory_id) {
-        try {
-          // Try to get all subcategories for the category and find the match
-          const cat = data.category_id
-            ? await apiService.category.getCategory(data.category_id)
-            : null;
-          if (cat && cat.subcategories) {
-            const sub = cat.subcategories.find(
-              (s) => s.id === data.subcategory_id,
-            );
-            setSubcategoryName(sub ? sub.name : null);
-          } else {
-            // fallback: fetch all subcategories (less efficient)
-            const allSubs = await apiService.category.getAllSubcategories();
-            const sub = allSubs.find((s) => s.id === data.subcategory_id);
-            setSubcategoryName(sub ? sub.name : null);
-          }
-        } catch {
-          setSubcategoryName(null);
-        }
-      } else {
-        setSubcategoryName(null);
-      }
-
-      // Fetch bid history + seller ratings in parallel
+      // Resolve category/subcategory names + bid history + ratings ALL in parallel
       const sellerId = data.user?.id || data.user_id;
+      const needsCategoryFetch =
+        !(data.category && data.category.name) && data.category_id;
+
       await Promise.all([
+        // Category + Subcategory resolution (single fetch if needed)
+        (async () => {
+          if (data.category && data.category.name) {
+            setCategoryName(data.category.name);
+            if (data.subcategory && data.subcategory.name) {
+              setSubcategoryName(data.subcategory.name);
+            } else {
+              setSubcategoryName(null);
+            }
+          } else if (data.category_id) {
+            try {
+              const cat = await apiService.category.getCategory(
+                data.category_id,
+              );
+              setCategoryName(cat.name);
+              // Also resolve subcategory from the same response
+              if (data.subcategory && data.subcategory.name) {
+                setSubcategoryName(data.subcategory.name);
+              } else if (data.subcategory_id && cat.subcategories) {
+                const sub = cat.subcategories.find(
+                  (s) => s.id === data.subcategory_id,
+                );
+                setSubcategoryName(sub ? sub.name : null);
+              } else {
+                setSubcategoryName(null);
+              }
+            } catch {
+              setCategoryName(null);
+              setSubcategoryName(null);
+            }
+          } else {
+            setCategoryName(null);
+            setSubcategoryName(null);
+          }
+        })(),
+        // Bid history
         apiService.product
           .getProductBids(id)
           .then((bids) => setBidHistory(bids))
           .catch(() => {}),
+        // Seller ratings (only on initial load)
         !silent && sellerId
           ? apiService.order
               .getSellerRatings(sellerId)
@@ -150,9 +149,9 @@ const ProductDetailPage = () => {
     fetchProductData(false);
   }, [productId]);
 
-  // ─── Polling — refresh every 5s while auction is active ───
+  // ─── Polling — refresh every 8s while auction is active ───
   useEffect(() => {
-    const POLL_MS = 5_000;
+    const POLL_MS = 8_000;
 
     const startPolling = () => {
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
@@ -476,7 +475,7 @@ const ProductDetailPage = () => {
                 <Image
                   source={img}
                   style={styles.productImage}
-                  resizeMode="contain"
+                  contentFit="contain"
                 />
               </TouchableOpacity>
             ))}
@@ -669,9 +668,9 @@ const ProductDetailPage = () => {
                 style={{
                   width: 12,
                   height: 12,
-                  tintColor: "#9CA3AF",
                   marginRight: 4,
                 }}
+                tintColor="#9CA3AF"
               />
               <AppText
                 weight="regular"
@@ -755,9 +754,9 @@ const ProductDetailPage = () => {
                   style={{
                     width: 13,
                     height: 7,
-                    tintColor: "#22C55E",
                     marginRight: 4,
                   }}
+                  tintColor="#22C55E"
                 />
                 <AppText
                   weight="medium"
@@ -799,9 +798,9 @@ const ProductDetailPage = () => {
                   style={{
                     width: 14,
                     height: 14,
-                    tintColor: "#2C7BFC",
                     marginRight: 4,
                   }}
+                  tintColor="#2C7BFC"
                 />
                 <AppText
                   weight="medium"
@@ -838,9 +837,9 @@ const ProductDetailPage = () => {
               style={{
                 width: 14,
                 height: 14,
-                tintColor: "#6B7280",
                 marginRight: 6,
               }}
+              tintColor="#6B7280"
             />
             <AppText
               weight="regular"
@@ -873,9 +872,9 @@ const ProductDetailPage = () => {
                   style={{
                     width: 13,
                     height: 7,
-                    tintColor: "#22C55E",
                     marginRight: 4,
                   }}
+                  tintColor="#22C55E"
                 />
                 <AppText
                   weight="medium"
@@ -919,9 +918,9 @@ const ProductDetailPage = () => {
                   style={{
                     width: 14,
                     height: 14,
-                    tintColor: "#2C7BFC",
                     marginRight: 4,
                   }}
+                  tintColor="#2C7BFC"
                 />
                 <AppText
                   weight="medium"
@@ -1058,9 +1057,9 @@ const ProductDetailPage = () => {
                     style={{
                       width: 14,
                       height: 14,
-                      tintColor: "#6B7280",
                       marginRight: 6,
                     }}
+                    tintColor="#6B7280"
                   />
                   <AppText
                     weight="regular"
@@ -1086,7 +1085,8 @@ const ProductDetailPage = () => {
             <View style={styles.infoIconContainer}>
               <Image
                 source={image.ends}
-                style={{ width: 16, height: 16, tintColor: "#6B7280" }}
+                style={{ width: 16, height: 16 }}
+                tintColor="#6B7280"
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -1113,7 +1113,8 @@ const ProductDetailPage = () => {
             <View style={styles.infoIconContainer}>
               <Image
                 source={image.time_remaining}
-                style={{ width: 10, height: 17, tintColor: "#6B7280" }}
+                style={{ width: 10, height: 17 }}
+                tintColor="#6B7280"
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -1140,7 +1141,8 @@ const ProductDetailPage = () => {
             <View style={styles.infoIconContainer}>
               <Image
                 source={image.starting_bid}
-                style={{ width: 17, height: 17, tintColor: "#6B7280" }}
+                style={{ width: 17, height: 17 }}
+                tintColor="#6B7280"
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -1165,7 +1167,8 @@ const ProductDetailPage = () => {
             <View style={styles.infoIconContainer}>
               <Image
                 source={image.location}
-                style={{ width: 16, height: 18, tintColor: "#6B7280" }}
+                style={{ width: 16, height: 18 }}
+                tintColor="#6B7280"
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -1685,6 +1688,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#111827",
     backgroundColor: "#fff",
+    fontFamily: "NotoSansThai_400Regular",
   },
   bidButton: {
     paddingHorizontal: 32,

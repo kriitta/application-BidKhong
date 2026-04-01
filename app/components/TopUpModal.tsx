@@ -2,6 +2,7 @@ import { image } from "@/assets/images";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
+import { Image } from "expo-image";
 import LottieView from "lottie-react-native";
 import React, { useRef, useState } from "react";
 import {
@@ -9,7 +10,6 @@ import {
   Animated,
   Clipboard,
   Dimensions,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,7 +17,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
-} from "react-native";
+} from "react-native"
 import { useLanguage } from "../../contexts/LanguageContext";
 import { apiService } from "../../utils/api";
 import { AppText } from "./appText";
@@ -222,7 +222,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
                 <Image
                   source={image.qr_code}
                   style={styles.qrImage}
-                  resizeMode="contain"
+                  contentFit="contain"
                 />
               </View>
             </View>
@@ -275,7 +275,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
                 <Image
                   source={bank.logo}
                   style={styles.bankLogoImage}
-                  resizeMode="contain"
+                  contentFit="contain"
                 />
                 <View style={styles.bankNameCol}>
                   <AppText weight="semibold" style={styles.bankName}>
@@ -342,7 +342,7 @@ export function TopUpModal({ visible, onClose, onConfirm }: TopUpModalProps) {
           <Image
             source={{ uri: slipUri }}
             style={styles.slipPreview}
-            resizeMode="contain"
+            contentFit="contain"
           />
           <TouchableOpacity
             style={styles.slipRemoveBtn}

@@ -1,9 +1,9 @@
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -201,7 +201,7 @@ export function WithdrawModal({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
@@ -341,7 +341,7 @@ export function WithdrawModal({
                           <Image
                             source={bank.logo}
                             style={styles.bankLogo}
-                            resizeMode="contain"
+                            contentFit="contain"
                           />
                         ) : (
                           <AppText weight="bold" style={styles.bankAbbr}>

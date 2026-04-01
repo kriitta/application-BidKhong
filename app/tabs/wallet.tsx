@@ -1,10 +1,11 @@
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
-  Image,
   ImageBackground,
   RefreshControl,
   StyleSheet,
@@ -34,6 +35,7 @@ const WalletPage = () => {
     useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [transLoading, setTransLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
@@ -50,8 +52,15 @@ const WalletPage = () => {
   useFocusEffect(
     useCallback(() => {
       fetchWalletBalance();
-      fetchTransactions();
-    }, []),
+      fetchTransactions(selectedMonth, selectedYear, selectedType);
+
+      // Poll balance every 10 seconds while tab is focused
+      const interval = setInterval(() => {
+        fetchWalletBalance();
+      }, 10000);
+
+      return () => clearInterval(interval);
+    }, [selectedMonth, selectedYear, selectedType]),
   );
 
   /** ดึงยอด wallet realtime จาก /wallet */
@@ -112,6 +121,7 @@ const WalletPage = () => {
       console.error("Failed to fetch transactions:", error.message);
     } finally {
       setTransLoading(false);
+      setLoading(false);
       setRefreshing(false);
     }
   };
@@ -256,6 +266,24 @@ const WalletPage = () => {
     outputRange: [0, -30],
     extrapolate: "clamp",
   });
+
+  if (loading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <LottieView
+          source={require("../../assets/animations/loading.json")}
+          autoPlay
+          loop
+          style={{ width: 120, height: 120 }}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -404,7 +432,7 @@ const WalletPage = () => {
                 <Image
                   source={action.icon}
                   style={{ width: 24, height: 24 }}
-                  resizeMode="contain"
+                  contentFit="contain"
                 />
               </View>
               <AppText numberOfLines={1} style={styles.actionText}>
@@ -478,18 +506,37 @@ const WalletPage = () => {
                   gap: 4,
                 }}
               >
-                <AppText
-                  weight="medium"
-                  style={{ fontSize: 11, color: "#0087F5" }}
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 3 }}
                 >
-                  {[
-                    { id: "deposit", label: "💳 เติมเงิน" },
-                    { id: "withdraw", label: "💸 ถอนเงิน" },
-                    { id: "won", label: "🏆 ชนะประมูล" },
-                    { id: "bid", label: "🔨 วางเดิมพัน" },
-                    { id: "refund", label: "↩️ คืนเงิน" },
-                  ].find((t) => t.id === selectedType)?.label ?? selectedType}
-                </AppText>
+                  <Ionicons
+                    name={
+                      (
+                        {
+                          deposit: "card-outline",
+                          withdraw: "cash-outline",
+                          won: "trophy-outline",
+                          bid: "hammer-outline",
+                          refund: "return-down-back-outline",
+                        } as Record<string, any>
+                      )[selectedType ?? ""] ?? "list-outline"
+                    }
+                    size={12}
+                    color="#0087F5"
+                  />
+                  <AppText
+                    weight="medium"
+                    style={{ fontSize: 11, color: "#0087F5" }}
+                  >
+                    {[
+                      { id: "deposit", label: "เติมเงิน" },
+                      { id: "withdraw", label: "ถอนเงิน" },
+                      { id: "won", label: "ชนะประมูล" },
+                      { id: "bid", label: "วางเดิมพัน" },
+                      { id: "refund", label: "คืนเงิน" },
+                    ].find((t) => t.id === selectedType)?.label ?? selectedType}
+                  </AppText>
+                </View>
               </View>
             </View>
           )}
@@ -535,7 +582,7 @@ const WalletPage = () => {
                       <Image
                         source={display.icon}
                         style={{ width: 28, height: 28 }}
-                        resizeMode="contain"
+                        contentFit="contain"
                       />
                     </View>
 

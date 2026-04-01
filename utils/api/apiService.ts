@@ -1,4 +1,5 @@
 import axios from "axios";
+import { cachedFetch } from "./cache";
 import apiClient, {
     ApiResponse,
     BASE_URL,
@@ -436,25 +437,31 @@ const apiService = {
         // 2. Filter products that have bids
         const productsWithBids = products.filter((p) => p.bids_count > 0);
 
-        // 3. Fetch bids for each product in parallel
-        const bidResults = await Promise.all(
-          productsWithBids.map(async (product) => {
-            try {
-              const res = await apiClient.get(
-                ENDPOINTS.PRODUCT.BIDS(product.id),
-              );
-              const data = res.data;
-              const bids: any[] = Array.isArray(data)
-                ? data
-                : data?.data && Array.isArray(data.data)
-                  ? data.data
-                  : [];
-              return { product, bids };
-            } catch {
-              return { product, bids: [] as any[] };
-            }
-          }),
-        );
+        // 3. Fetch bids for each product in parallel (max 5 concurrent)
+        const CONCURRENCY = 5;
+        const bidResults: { product: Product; bids: any[] }[] = [];
+        for (let i = 0; i < productsWithBids.length; i += CONCURRENCY) {
+          const batch = productsWithBids.slice(i, i + CONCURRENCY);
+          const batchResults = await Promise.all(
+            batch.map(async (product) => {
+              try {
+                const res = await apiClient.get(
+                  ENDPOINTS.PRODUCT.BIDS(product.id),
+                );
+                const data = res.data;
+                const bids: any[] = Array.isArray(data)
+                  ? data
+                  : data?.data && Array.isArray(data.data)
+                    ? data.data
+                    : [];
+                return { product, bids };
+              } catch {
+                return { product, bids: [] as any[] };
+              }
+            }),
+          );
+          bidResults.push(...batchResults);
+        }
 
         // 4. Build ActiveBid[] and HistoryBid[]
         const activeBids: ActiveBid[] = [];
@@ -582,10 +589,12 @@ const apiService = {
   wallet: {
     getBalance: async (): Promise<UserWallet> => {
       try {
-        const response = await apiClient.get<ApiResponse<UserWallet>>(
-          ENDPOINTS.WALLET.BALANCE,
-        );
-        return response.data.data;
+        const response = await apiClient.get<
+          UserWallet | ApiResponse<UserWallet>
+        >(ENDPOINTS.WALLET.BALANCE);
+        // API may return data directly or wrapped in { data: ... }
+        const raw = response.data as any;
+        return raw.data ?? raw;
       } catch (error) {
         throw new Error(handleApiError(error));
       }
@@ -904,40 +913,46 @@ const apiService = {
   // �📂 Category
   // ════════════════════════════════════════════════════════
   category: {
-    /** GET /categories — ดึง category ทั้งหมดพร้อม subcategories */
+    /** GET /categories — ดึง category ทั้งหมดพร้อม subcategories (แคช 5 นาที) */
     getCategories: async (): Promise<Category[]> => {
-      try {
-        const response = await apiClient.get<Category[]>(
-          ENDPOINTS.CATEGORY.LIST,
-        );
-        return response.data;
-      } catch (error) {
-        throw new Error(handleApiError(error));
-      }
+      return cachedFetch("categories:all", async () => {
+        try {
+          const response = await apiClient.get<Category[]>(
+            ENDPOINTS.CATEGORY.LIST,
+          );
+          return response.data;
+        } catch (error) {
+          throw new Error(handleApiError(error));
+        }
+      });
     },
 
-    /** GET /categories/:id — ดึง category เดียวพร้อม subcategories */
+    /** GET /categories/:id — ดึง category เดียวพร้อม subcategories (แคช 5 นาที) */
     getCategory: async (id: number): Promise<Category> => {
-      try {
-        const response = await apiClient.get<Category>(
-          ENDPOINTS.CATEGORY.DETAIL(id),
-        );
-        return response.data;
-      } catch (error) {
-        throw new Error(handleApiError(error));
-      }
+      return cachedFetch(`category:${id}`, async () => {
+        try {
+          const response = await apiClient.get<Category>(
+            ENDPOINTS.CATEGORY.DETAIL(id),
+          );
+          return response.data;
+        } catch (error) {
+          throw new Error(handleApiError(error));
+        }
+      });
     },
 
-    /** GET /subcategories — ดึง subcategory ทั้งหมดพร้อม parent category */
+    /** GET /subcategories — ดึง subcategory ทั้งหมดพร้อม parent category (แคช 5 นาที) */
     getAllSubcategories: async (): Promise<Subcategory[]> => {
-      try {
-        const response = await apiClient.get<Subcategory[]>(
-          ENDPOINTS.CATEGORY.ALL_SUBCATEGORIES,
-        );
-        return response.data;
-      } catch (error) {
-        throw new Error(handleApiError(error));
-      }
+      return cachedFetch("subcategories:all", async () => {
+        try {
+          const response = await apiClient.get<Subcategory[]>(
+            ENDPOINTS.CATEGORY.ALL_SUBCATEGORIES,
+          );
+          return response.data;
+        } catch (error) {
+          throw new Error(handleApiError(error));
+        }
+      });
     },
 
     getSubcategories: async (categoryId: string): Promise<Subcategory[]> => {

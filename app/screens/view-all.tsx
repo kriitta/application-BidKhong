@@ -1,9 +1,9 @@
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
-  Image,
   Keyboard,
   ScrollView,
   StyleSheet,
@@ -153,6 +153,24 @@ const ViewAllPage = () => {
     });
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <LottieView
+          source={require("../../assets/animations/loading.json")}
+          autoPlay
+          loop
+          style={{ width: 120, height: 120 }}
+        />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -224,16 +242,7 @@ const ViewAllPage = () => {
 
         {/* Auctions Grid */}
         <View style={styles.gridContainer}>
-          {loading ? (
-            <View style={styles.emptyContainer}>
-              <LottieView
-                source={require("../../assets/animations/loading.json")}
-                autoPlay
-                loop
-                style={{ width: 120, height: 120 }}
-              />
-            </View>
-          ) : filteredAuctions.length > 0 ? (
+          {filteredAuctions.length > 0 ? (
             <View style={styles.grid}>
               {filteredAuctions.map((item) => (
                 <TouchableOpacity
@@ -473,6 +482,7 @@ const styles = StyleSheet.create({
     paddingRight: 12,
     fontSize: 14,
     color: "#111827",
+    fontFamily: "NotoSansThai_400Regular",
   },
   clearBtn: {
     width: 26,

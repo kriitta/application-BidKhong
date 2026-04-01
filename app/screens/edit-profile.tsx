@@ -1,5 +1,6 @@
 import { image } from "@/assets/images";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -9,7 +10,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -609,11 +609,11 @@ const EditProfilePage = () => {
                               showNewPw ? image.close_eye : image.show_eye
                             }
                             style={{
-                              width: 16,
-                              height: 16,
-                              resizeMode: "contain",
-                              tintColor: "#999",
+                              width: 20,
+                              height: 20,
                             }}
+                            tintColor="#999"
+                            contentFit="contain"
                           />
                         </TouchableOpacity>
                       </View>
@@ -651,11 +651,11 @@ const EditProfilePage = () => {
                               showConfirmPw ? image.close_eye : image.show_eye
                             }
                             style={{
-                              width: 16,
-                              height: 16,
-                              resizeMode: "contain",
-                              tintColor: "#999",
+                              width: 20,
+                              height: 20,
                             }}
+                            tintColor="#999"
+                            contentFit="contain"
                           />
                         </TouchableOpacity>
                       </View>

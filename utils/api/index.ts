@@ -19,6 +19,14 @@
 
 export { default as apiService, getPublicStats } from "./apiService";
 
+// Cache utilities
+export {
+    cachedFetch,
+    invalidateAllCache,
+    invalidateCache,
+    invalidateCacheByPrefix
+} from "./cache";
+
 // Config & Helpers
 export {
     ENDPOINTS,

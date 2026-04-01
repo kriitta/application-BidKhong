@@ -1,10 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useRouter } from "expo-router";
+import { Image } from "expo-image";
+import { useFocusEffect, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
-  Image,
   Modal,
   RefreshControl,
   ScrollView,
@@ -88,6 +88,12 @@ const MyBidPage = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData]),
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -230,6 +236,24 @@ const MyBidPage = () => {
     },
   ];
 
+  if (loading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <LottieView
+          source={require("../../assets/animations/loading.json")}
+          autoPlay
+          loop
+          style={{ width: 120, height: 120 }}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container]}>
       <ScrollView
@@ -334,20 +358,8 @@ const MyBidPage = () => {
           </View>
         </View>
 
-        {/* ═══ Loading ═══ */}
-        {loading && (
-          <View style={{ alignItems: "center", paddingVertical: 60 }}>
-            <LottieView
-              source={require("../../assets/animations/loading.json")}
-              autoPlay
-              loop
-              style={{ width: 100, height: 100 }}
-            />
-          </View>
-        )}
-
         {/* ═══ Active Bids List ═══ */}
-        {!loading && !showHistory && (
+        {!showHistory && (
           <View style={[styles.bidsContainer, { marginTop: 20 }]}>
             {filteredActiveBids.length === 0 ? (
               <View style={styles.emptyContainer}>
@@ -398,8 +410,8 @@ const MyBidPage = () => {
                         style={{
                           width: 14,
                           height: 14,
-                          tintColor: "#fff",
                         }}
+                        tintColor="#fff"
                       />
                       <AppText
                         weight="medium"
@@ -509,7 +521,7 @@ const MyBidPage = () => {
         )}
 
         {/* ═══ History Bids List ═══ */}
-        {!loading && showHistory && (
+        {showHistory && (
           <View style={[styles.bidsContainer, { marginTop: 20 }]}>
             {filteredHistoryBids.length === 0 ? (
               <View style={styles.emptyContainer}>
@@ -556,8 +568,8 @@ const MyBidPage = () => {
                         style={{
                           width: 14,
                           height: 13,
-                          tintColor: "#fff",
                         }}
+                        tintColor="#fff"
                       />
                       <AppText
                         weight="medium"
@@ -667,7 +679,7 @@ const MyBidPage = () => {
       {/* ═══ Bid Modal ═══ */}
       <Modal
         visible={bidModalVisible}
-        animationType="slide"
+        animationType="fade"
         transparent
         statusBarTranslucent
         onRequestClose={() => setBidModalVisible(false)}
@@ -910,6 +922,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#333",
     padding: 0,
+    fontFamily: "NotoSansThai_400Regular",
   },
   filterButton: {
     backgroundColor: "#fff",
@@ -1090,6 +1103,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#111",
     padding: 0,
+    fontFamily: "NotoSansThai_600SemiBold",
   },
   quickAmountRow: {
     flexDirection: "row",

@@ -114,6 +114,7 @@ export const image = {
     qr_code: require("./qr_code.png"),
     kbank: require("./kbank.png"),
     promptpay: require("./promptpay.png"),
+    icon: require("./icon.png"),
     
     
 };

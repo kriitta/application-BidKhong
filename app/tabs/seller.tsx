@@ -1,8 +1,10 @@
 import { image } from "@/assets/images";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
+import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -12,14 +14,12 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Dimensions,
   FlatList,
-  Image,
   Modal,
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -28,6 +28,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { apiService } from "../../utils/api";
 import { Category, Subcategory } from "../../utils/api/types";
 import { AppText } from "../components/appText";
+import { AppTextInput } from "../components/appTextInput";
 
 // ─── 77 จังหวัดในประเทศไทย ───
 const THAI_PROVINCES = [
@@ -149,7 +150,26 @@ const SellerPage = () => {
           setShowIntro(false);
         });
       }, 2000);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        // Reset form when leaving the tab
+        setSelectedCategoryId(null);
+        setSelectedSubcategoryId(null);
+        setProductTitle("");
+        setDescription("");
+        setStartingBid("");
+        setBidIncrement("");
+        setBuyoutPrice("");
+        setLocation("");
+        setPhotos([]);
+        setCertificateUri(null);
+        setAuctionStartDate(null);
+        setAuctionStartTime(null);
+        setAuctionDate(null);
+        setAuctionTime(null);
+        setSubmitResult(null);
+        setSubmitMessage("");
+      };
     }, []),
   );
 
@@ -198,43 +218,43 @@ const SellerPage = () => {
 
   // ─── Category icons ───
   const CATEGORY_ICONS: Record<string, string> = {
-    Electronics: "📱",
-    Fashion: "👕",
-    Collectibles: "🎨",
-    Home: "🏠",
-    Vehicles: "🚗",
-    Others: "📦",
+    Electronics: "cellphone",
+    Fashion: "tshirt-crew-outline",
+    Collectibles: "palette-outline",
+    Home: "home-outline",
+    Vehicles: "car-outline",
+    Others: "package-variant-closed",
   };
 
   const SUBCATEGORY_ICONS: Record<string, string> = {
-    "Smartphones & Tablets": "📱",
-    "Computers & Laptops": "💻",
-    "Cameras & Photography": "📷",
-    "Audio & Headphones": "🎧",
-    "Gaming & Consoles": "🎮",
-    "Wearables & Smartwatch": "⌚",
-    "Men's Clothing": "👔",
-    "Women's Clothing": "👗",
-    "Shoes & Footwear": "👟",
-    "Bags & Accessories": "👜",
-    "Watches & Jewelry": "⌚",
-    "Art & Paintings": "🖼️",
-    "Toys & Figures": "🧸",
-    "Coins & Stamps": "🪙",
-    "Trading Cards": "🃏",
-    "Antiques & Vintage": "🏺",
-    Furniture: "🛋️",
-    "Home Decor": "🖼️",
-    "Kitchen & Dining": "🍽️",
-    "Garden & Outdoor": "🌱",
-    Cars: "🚗",
-    Motorcycles: "🏍️",
-    "Parts & Accessories": "🔧",
-    "Electric Vehicles": "⚡",
-    "Books & Magazines": "📚",
-    "Sports & Fitness": "⚽",
-    "Musical Instruments": "🎸",
-    "Pet Supplies": "🐾",
+    "Smartphones & Tablets": "cellphone",
+    "Computers & Laptops": "laptop",
+    "Cameras & Photography": "camera-outline",
+    "Audio & Headphones": "headphones",
+    "Gaming & Consoles": "gamepad-variant-outline",
+    "Wearables & Smartwatch": "watch",
+    "Men's Clothing": "tshirt-crew-outline",
+    "Women's Clothing": "hanger",
+    "Shoes & Footwear": "shoe-sneaker",
+    "Bags & Accessories": "bag-personal-outline",
+    "Watches & Jewelry": "watch",
+    "Art & Paintings": "palette-outline",
+    "Toys & Figures": "teddy-bear",
+    "Coins & Stamps": "circle-multiple-outline",
+    "Trading Cards": "cards-outline",
+    "Antiques & Vintage": "diamond-stone",
+    Furniture: "sofa-outline",
+    "Home Decor": "lamp",
+    "Kitchen & Dining": "silverware-fork-knife",
+    "Garden & Outdoor": "flower-outline",
+    Cars: "car-outline",
+    Motorcycles: "motorbike",
+    "Parts & Accessories": "wrench-outline",
+    "Electric Vehicles": "lightning-bolt",
+    "Books & Magazines": "book-open-outline",
+    "Sports & Fitness": "dumbbell",
+    "Musical Instruments": "guitar-electric",
+    "Pet Supplies": "paw",
   };
 
   // ─── Fetch categories & subcategories from API ───
@@ -246,7 +266,14 @@ const SellerPage = () => {
           apiService.category.getCategories(),
           apiService.category.getAllSubcategories(),
         ]);
-        setCategories(cats);
+        // Deduplicate categories by name (API may return duplicates with different ids)
+        const seen = new Set<string>();
+        const uniqueCats = cats.filter((cat) => {
+          if (seen.has(cat.name)) return false;
+          seen.add(cat.name);
+          return true;
+        });
+        setCategories(uniqueCats);
         setAllSubcategories(subs);
       } catch (error: any) {
         console.error("Failed to fetch categories:", error.message);
@@ -323,6 +350,39 @@ const SellerPage = () => {
     p.includes(provinceSearch),
   );
 
+  // ─── Minimum date helpers ───
+  // Start: at least 24 hours from now
+  const minStartDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  // Only restrict time if the chosen date is the same day as the minimum
+  const isSameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  const minStartTime =
+    auctionStartDate && isSameDay(auctionStartDate, minStartDate)
+      ? minStartDate
+      : undefined;
+
+  // End: at least 24 hours after the chosen start datetime
+  const getStartDateTime = (): Date | null => {
+    if (!auctionStartDate || !auctionStartTime) return null;
+    const combined = new Date(auctionStartDate);
+    combined.setHours(auctionStartTime.getHours());
+    combined.setMinutes(auctionStartTime.getMinutes());
+    combined.setSeconds(0);
+    return combined;
+  };
+  const startDT = getStartDateTime();
+  const minEndDate = startDT
+    ? new Date(startDT.getTime() + 24 * 60 * 60 * 1000)
+    : minStartDate;
+  const canSelectEnd = !!(auctionStartDate && auctionStartTime);
+
+  const minEndTime =
+    auctionDate && isSameDay(auctionDate, minEndDate) ? minEndDate : undefined;
+
   // ─── Date/Time Handlers ───
   const handleStartDateChange = (
     event: DateTimePickerEvent,
@@ -330,8 +390,12 @@ const SellerPage = () => {
   ) => {
     if (Platform.OS === "android") {
       setShowStartDatePicker(false);
-      if (event.type === "set" && selectedDate)
+      if (event.type === "set" && selectedDate) {
         setAuctionStartDate(selectedDate);
+        // Reset end date/time when start changes
+        setAuctionDate(null);
+        setAuctionTime(null);
+      }
     } else {
       // iOS: just update temp, don't close
       if (selectedDate) setTempPickerDate(selectedDate);
@@ -344,8 +408,12 @@ const SellerPage = () => {
   ) => {
     if (Platform.OS === "android") {
       setShowStartTimePicker(false);
-      if (event.type === "set" && selectedTime)
+      if (event.type === "set" && selectedTime) {
         setAuctionStartTime(selectedTime);
+        // Reset end date/time when start changes
+        setAuctionDate(null);
+        setAuctionTime(null);
+      }
     } else {
       if (selectedTime) setTempPickerDate(selectedTime);
     }
@@ -505,6 +573,26 @@ const SellerPage = () => {
     }
   };
 
+  if (loadingCategories) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "#fff",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <LottieView
+          source={require("../../assets/animations/loading.json")}
+          autoPlay
+          loop
+          style={{ width: 120, height: 120 }}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
       {/* Intro Splash */}
@@ -597,9 +685,9 @@ const SellerPage = () => {
                         </TouchableOpacity>
                       </View>
                       {index === 0 && (
-                        <Text style={styles.photoHint}>
+                        <AppText style={styles.photoHint}>
                           {t("firstPhotoCover")}
-                        </Text>
+                        </AppText>
                       )}
                     </View>
                   ))}
@@ -609,8 +697,10 @@ const SellerPage = () => {
                       style={styles.addPhotoBox}
                       onPress={handleAddPhoto}
                     >
-                      <Text style={styles.addPhotoIcon}>+</Text>
-                      <Text style={styles.addPhotoText}>{t("addPhoto")}</Text>
+                      <AppText style={styles.addPhotoIcon}>+</AppText>
+                      <AppText style={styles.addPhotoText}>
+                        {t("addPhoto")}
+                      </AppText>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -622,7 +712,7 @@ const SellerPage = () => {
               <AppText weight="medium" numberOfLines={1} style={styles.label}>
                 {t("productTitle")}
               </AppText>
-              <TextInput
+              <AppTextInput
                 style={styles.input}
                 placeholder="e.g., Nike Air Jordan 1"
                 value={productTitle}
@@ -654,9 +744,15 @@ const SellerPage = () => {
                       ]}
                       onPress={() => setSelectedCategoryId(cat.id)}
                     >
-                      <Text style={styles.categoryIcon}>
-                        {CATEGORY_ICONS[cat.name] || "📦"}
-                      </Text>
+                      <MaterialCommunityIcons
+                        name={
+                          (CATEGORY_ICONS[cat.name] ||
+                            "package-variant-closed") as any
+                        }
+                        size={20}
+                        color="#374151"
+                        style={{ marginBottom: 4 }}
+                      />
                       <AppText
                         weight={
                           selectedCategoryId === cat.id ? "semibold" : "regular"
@@ -693,9 +789,15 @@ const SellerPage = () => {
                       ]}
                       onPress={() => setSelectedSubcategoryId(sub.id)}
                     >
-                      <Text style={styles.categoryIcon}>
-                        {SUBCATEGORY_ICONS[sub.name] || "📦"}
-                      </Text>
+                      <MaterialCommunityIcons
+                        name={
+                          (SUBCATEGORY_ICONS[sub.name] ||
+                            "package-variant-closed") as any
+                        }
+                        size={20}
+                        color="#374151"
+                        style={{ marginBottom: 4 }}
+                      />
                       <AppText
                         weight={
                           selectedSubcategoryId === sub.id
@@ -732,7 +834,7 @@ const SellerPage = () => {
                   {t("descriptionStar")}
                 </AppText>
               </View>
-              <TextInput
+              <AppTextInput
                 placeholderTextColor="#D1D5DB"
                 style={styles.textArea}
                 placeholder="Describe your product in detail..."
@@ -816,8 +918,8 @@ const SellerPage = () => {
                     {t("startingBidStar")}
                   </AppText>
                   <View style={styles.priceInputWrapper}>
-                    <Text style={styles.currencySymbol}>฿</Text>
-                    <TextInput
+                    <AppText style={styles.currencySymbol}>฿</AppText>
+                    <AppTextInput
                       style={styles.priceInput}
                       placeholder="0"
                       value={startingBid}
@@ -837,8 +939,8 @@ const SellerPage = () => {
                     {t("bidIncrementStar")}
                   </AppText>
                   <View style={styles.priceInputWrapper}>
-                    <Text style={styles.currencySymbol}>฿</Text>
-                    <TextInput
+                    <AppText style={styles.currencySymbol}>฿</AppText>
+                    <AppTextInput
                       style={styles.priceInput}
                       placeholder="0"
                       value={bidIncrement}
@@ -852,9 +954,9 @@ const SellerPage = () => {
                       source={image.info}
                       style={{ width: 16, height: 16 }}
                     />
-                    <Text style={styles.infoText}>
+                    <AppText style={styles.infoText}>
                       จำนวนเงินขั้นต่ำสุดต่อครั้ง (ถ้าไม่ใส่จะใช้ค่าเริ่มต้น 1)
-                    </Text>
+                    </AppText>
                   </View>
                 </View>
 
@@ -867,8 +969,8 @@ const SellerPage = () => {
                     {t("buyoutPrice")}
                   </AppText>
                   <View style={styles.priceInputWrapper}>
-                    <Text style={styles.currencySymbol}>฿</Text>
-                    <TextInput
+                    <AppText style={styles.currencySymbol}>฿</AppText>
+                    <AppTextInput
                       style={styles.priceInput}
                       placeholder="0"
                       placeholderTextColor="#D1D5DB"
@@ -882,7 +984,9 @@ const SellerPage = () => {
                       source={image.info}
                       style={{ width: 16, height: 16 }}
                     />
-                    <Text style={styles.infoText}>{t("buyoutPriceInfo")}</Text>
+                    <AppText style={styles.infoText}>
+                      {t("buyoutPriceInfo")}
+                    </AppText>
                   </View>
                 </View>
               </View>
@@ -908,7 +1012,7 @@ const SellerPage = () => {
                 <TouchableOpacity
                   style={styles.dateTimeButton}
                   onPress={() => {
-                    setTempPickerDate(auctionStartDate || new Date());
+                    setTempPickerDate(auctionStartDate || minStartDate);
                     setShowStartDatePicker(true);
                   }}
                 >
@@ -937,7 +1041,7 @@ const SellerPage = () => {
                 <TouchableOpacity
                   style={styles.dateTimeButton}
                   onPress={() => {
-                    setTempPickerDate(auctionStartTime || new Date());
+                    setTempPickerDate(auctionStartTime || minStartDate);
                     setShowStartTimePicker(true);
                   }}
                 >
@@ -995,12 +1099,18 @@ const SellerPage = () => {
                   {t("auctionEndDateTime")}
                 </AppText>
               </View>
-              <View style={styles.dateTimeContainer}>
+              <View
+                style={[
+                  styles.dateTimeContainer,
+                  !canSelectEnd && { opacity: 0.4 },
+                ]}
+              >
                 {/* Date Picker */}
                 <TouchableOpacity
                   style={styles.dateTimeButton}
+                  disabled={!canSelectEnd}
                   onPress={() => {
-                    setTempPickerDate(auctionDate || new Date());
+                    setTempPickerDate(auctionDate || minEndDate);
                     setShowDatePicker(true);
                   }}
                 >
@@ -1026,8 +1136,9 @@ const SellerPage = () => {
                 {/* Time Picker */}
                 <TouchableOpacity
                   style={styles.dateTimeButton}
+                  disabled={!canSelectEnd}
                   onPress={() => {
-                    setTempPickerDate(auctionTime || new Date());
+                    setTempPickerDate(auctionTime || minEndDate);
                     setShowTimePicker(true);
                   }}
                 >
@@ -1102,7 +1213,7 @@ const SellerPage = () => {
                   <Image
                     source={{ uri: certificateUri }}
                     style={styles.certPreviewImage}
-                    resizeMode="cover"
+                    contentFit="cover"
                   />
                   <View style={styles.certPreviewActions}>
                     <TouchableOpacity
@@ -1191,7 +1302,7 @@ const SellerPage = () => {
           {/* ════════ Province Modal ════════ */}
           <Modal
             visible={provinceModalVisible}
-            animationType="slide"
+            animationType="fade"
             transparent
             statusBarTranslucent
           >
@@ -1217,12 +1328,13 @@ const SellerPage = () => {
 
                 {/* Search */}
                 <View style={styles.modalSearchWrapper}>
-                  <AppText
-                    style={{ fontSize: 14, color: "#9CA3AF", marginRight: 8 }}
-                  >
-                    🔍
-                  </AppText>
-                  <TextInput
+                  <Ionicons
+                    name="search-outline"
+                    size={14}
+                    color="#9CA3AF"
+                    style={{ marginRight: 8 }}
+                  />
+                  <AppTextInput
                     style={styles.modalSearchInput}
                     placeholder="ค้นหาจังหวัด..."
                     placeholderTextColor="#B0B0B0"
@@ -1289,7 +1401,7 @@ const SellerPage = () => {
 
           {/* ════════ Start Date Picker (iOS modal) ════════ */}
           {showStartDatePicker && Platform.OS === "ios" && (
-            <Modal transparent animationType="slide" statusBarTranslucent>
+            <Modal transparent animationType="fade" statusBarTranslucent>
               <View style={styles.pickerModalOverlay}>
                 <View style={styles.pickerModalContent}>
                   <View style={styles.pickerModalHeader}>
@@ -1310,6 +1422,9 @@ const SellerPage = () => {
                       onPress={() => {
                         setAuctionStartDate(tempPickerDate);
                         setShowStartDatePicker(false);
+                        // Reset end date/time when start changes
+                        setAuctionDate(null);
+                        setAuctionTime(null);
                       }}
                     >
                       <AppText
@@ -1325,7 +1440,8 @@ const SellerPage = () => {
                       value={tempPickerDate}
                       mode="date"
                       display="spinner"
-                      minimumDate={new Date()}
+                      themeVariant="light"
+                      minimumDate={minStartDate}
                       onChange={handleStartDateChange}
                       style={{ height: 200, width: "100%" }}
                     />
@@ -1338,17 +1454,18 @@ const SellerPage = () => {
           {/* Android Start Date Picker */}
           {showStartDatePicker && Platform.OS === "android" && (
             <DateTimePicker
-              value={auctionStartDate || new Date()}
+              value={auctionStartDate || minStartDate}
               mode="date"
               display="default"
-              minimumDate={new Date()}
+              themeVariant="light"
+              minimumDate={minStartDate}
               onChange={handleStartDateChange}
             />
           )}
 
           {/* ════════ Start Time Picker (iOS modal) ════════ */}
           {showStartTimePicker && Platform.OS === "ios" && (
-            <Modal transparent animationType="slide" statusBarTranslucent>
+            <Modal transparent animationType="fade" statusBarTranslucent>
               <View style={styles.pickerModalOverlay}>
                 <View style={styles.pickerModalContent}>
                   <View style={styles.pickerModalHeader}>
@@ -1369,6 +1486,9 @@ const SellerPage = () => {
                       onPress={() => {
                         setAuctionStartTime(tempPickerDate);
                         setShowStartTimePicker(false);
+                        // Reset end date/time when start changes
+                        setAuctionDate(null);
+                        setAuctionTime(null);
                       }}
                     >
                       <AppText
@@ -1384,6 +1504,8 @@ const SellerPage = () => {
                       value={tempPickerDate}
                       mode="time"
                       display="spinner"
+                      themeVariant="light"
+                      minimumDate={minStartTime}
                       onChange={handleStartTimeChange}
                       style={{ height: 200, width: "100%" }}
                     />
@@ -1396,16 +1518,18 @@ const SellerPage = () => {
           {/* Android Start Time Picker */}
           {showStartTimePicker && Platform.OS === "android" && (
             <DateTimePicker
-              value={auctionStartTime || new Date()}
+              value={auctionStartTime || minStartDate}
               mode="time"
               display="default"
+              themeVariant="light"
+              minimumDate={minStartTime}
               onChange={handleStartTimeChange}
             />
           )}
 
           {/* ════════ Date Picker (iOS modal) ════════ */}
           {showDatePicker && Platform.OS === "ios" && (
-            <Modal transparent animationType="slide" statusBarTranslucent>
+            <Modal transparent animationType="fade" statusBarTranslucent>
               <View style={styles.pickerModalOverlay}>
                 <View style={styles.pickerModalContent}>
                   <View style={styles.pickerModalHeader}>
@@ -1439,7 +1563,8 @@ const SellerPage = () => {
                       value={tempPickerDate}
                       mode="date"
                       display="spinner"
-                      minimumDate={new Date()}
+                      themeVariant="light"
+                      minimumDate={minEndDate}
                       onChange={handleDateChange}
                       style={{ height: 200, width: "100%" }}
                     />
@@ -1452,17 +1577,18 @@ const SellerPage = () => {
           {/* Android Date Picker */}
           {showDatePicker && Platform.OS === "android" && (
             <DateTimePicker
-              value={auctionDate || new Date()}
+              value={auctionDate || minEndDate}
               mode="date"
               display="default"
-              minimumDate={new Date()}
+              themeVariant="light"
+              minimumDate={minEndDate}
               onChange={handleDateChange}
             />
           )}
 
           {/* ════════ Time Picker (iOS modal) ════════ */}
           {showTimePicker && Platform.OS === "ios" && (
-            <Modal transparent animationType="slide" statusBarTranslucent>
+            <Modal transparent animationType="fade" statusBarTranslucent>
               <View style={styles.pickerModalOverlay}>
                 <View style={styles.pickerModalContent}>
                   <View style={styles.pickerModalHeader}>
@@ -1496,6 +1622,8 @@ const SellerPage = () => {
                       value={tempPickerDate}
                       mode="time"
                       display="spinner"
+                      themeVariant="light"
+                      minimumDate={minEndTime}
                       onChange={handleTimeChange}
                       style={{ height: 200, width: "100%" }}
                     />
@@ -1508,9 +1636,11 @@ const SellerPage = () => {
           {/* Android Time Picker */}
           {showTimePicker && Platform.OS === "android" && (
             <DateTimePicker
-              value={auctionTime || new Date()}
+              value={auctionTime || minEndDate}
               mode="time"
               display="default"
+              themeVariant="light"
+              minimumDate={minEndTime}
               onChange={handleTimeChange}
             />
           )}
@@ -1566,6 +1696,14 @@ const SellerPage = () => {
   );
 };
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const CATEGORY_GAP = 8;
+const SECTION_PADDING = 16;
+const CATEGORY_COLUMNS = 3;
+const CATEGORY_BOX_WIDTH =
+  (SCREEN_WIDTH - SECTION_PADDING * 2 - CATEGORY_GAP * (CATEGORY_COLUMNS - 1)) /
+  CATEGORY_COLUMNS;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1611,6 +1749,7 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 14,
     color: "#111827",
+    fontFamily: "NotoSansThai_400Regular",
   },
   // Photos
   photosContainer: {
@@ -1685,11 +1824,11 @@ const styles = StyleSheet.create({
   gridContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: CATEGORY_GAP,
   },
   categoryBox: {
-    width: "32%",
-    height: 80,
+    width: CATEGORY_BOX_WIDTH,
+    height: 70,
     borderWidth: 1,
     borderColor: "#D1D5DB",
     borderRadius: 8,
@@ -1762,6 +1901,7 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 14,
     color: "#111827",
+    fontFamily: "NotoSansThai_400Regular",
   },
   infoRow: {
     flexDirection: "row",
@@ -1857,6 +1997,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#111827",
     padding: 0,
+    fontFamily: "NotoSansThai_400Regular",
   },
   provinceItem: {
     flexDirection: "row",

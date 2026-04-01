@@ -735,6 +735,7 @@ export type TranslationKeys = {
 
   // ─── Profile (extended) ───
   unknownUser: string;
+  guest: string;
 
   // ─── Wallet TX fallbacks ───
   bidPlacedTx: string;
@@ -1532,6 +1533,7 @@ export const translations: Record<Language, TranslationKeys> = {
 
     // Profile (extended)
     unknownUser: "Unknown User",
+    guest: "Guest",
 
     // Wallet TX fallbacks
     bidPlacedTx: "Bid Placed",
@@ -2321,6 +2323,7 @@ export const translations: Record<Language, TranslationKeys> = {
 
     // Profile (extended)
     unknownUser: "ไม่ระบุชื่อ",
+    guest: "ผู้เยี่ยมชม",
 
     // Wallet TX fallbacks
     bidPlacedTx: "วางเดิมพัน",

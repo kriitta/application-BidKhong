@@ -1,5 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
@@ -8,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Image,
   Linking,
   Modal,
   ScrollView,
@@ -2386,7 +2386,7 @@ const AdminScreen = () => {
                                 borderRadius: 10,
                                 backgroundColor: "#E5E7EB",
                               }}
-                              resizeMode="contain"
+                              contentFit="contain"
                             />
                           </TouchableOpacity>
                         );
@@ -2922,7 +2922,7 @@ const AdminScreen = () => {
                         borderRadius: 12,
                         backgroundColor: "#E5E7EB",
                       }}
-                      resizeMode="contain"
+                      contentFit="contain"
                     />
                     <AppText
                       weight="regular"
@@ -3271,7 +3271,7 @@ const AdminScreen = () => {
                                     marginRight: 8,
                                     backgroundColor: "#F3F4F6",
                                   }}
-                                  resizeMode="cover"
+                                  contentFit="cover"
                                 />
                               </TouchableOpacity>
                             ),
@@ -4696,6 +4696,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: "#111827",
+    fontFamily: "NotoSansThai_400Regular",
   },
   userCard: {
     flexDirection: "row",
@@ -4908,6 +4909,7 @@ const styles = StyleSheet.create({
     color: "#333",
     backgroundColor: "#FAFAFA",
     minHeight: 80,
+    fontFamily: "NotoSansThai_400Regular",
   },
   wdInlineReject: {
     marginTop: 16,

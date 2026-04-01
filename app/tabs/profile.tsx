@@ -1,11 +1,12 @@
 import { image } from "@/assets/images";
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useCallback, useState } from "react";
 import {
   Alert,
-  Image,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -15,17 +16,19 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { getFullImageUrl } from "../../utils/api";
 import { AppText } from "../components/appText";
+import { AuthModal } from "../components/AuthModal";
 
 const ProfilePage = () => {
   const router = useRouter();
-  const { user, logout: contextLogout, refreshUser } = useAuth();
+  const { user, isGuest, logout: contextLogout, refreshUser } = useAuth();
   const { t, lang, setLang } = useLanguage();
   const [loading, setLoading] = useState(false);
+  const [authModalVisible, setAuthModalVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      refreshUser();
-    }, []),
+      if (!isGuest) refreshUser();
+    }, [isGuest]),
   );
 
   const formatJoinDate = (dateStr?: string) => {
@@ -55,6 +58,10 @@ const ProfilePage = () => {
         style: "destructive",
       },
     ]);
+  };
+
+  const handleGuestRestricted = () => {
+    setAuthModalVisible(true);
   };
 
   if (loading) {
@@ -92,7 +99,13 @@ const ProfilePage = () => {
           {/* Profile Picture */}
           <View style={styles.profilePictureContainer}>
             <View style={styles.profilePicture}>
-              {user?.profile_image ? (
+              {isGuest ? (
+                <View style={styles.defaultAvatar}>
+                  <AppText weight="bold" style={styles.defaultAvatarText}>
+                    G
+                  </AppText>
+                </View>
+              ) : user?.profile_image ? (
                 <Image
                   source={{ uri: getFullImageUrl(user.profile_image)! }}
                   style={{ width: 90, height: 90, borderRadius: 50 }}
@@ -109,117 +122,125 @@ const ProfilePage = () => {
 
           {/* User Info */}
           <AppText weight="bold" numberOfLines={1} style={styles.userName}>
-            {user?.name || t("unknownUser")}
+            {isGuest ? t("guest") : user?.name || t("unknownUser")}
           </AppText>
 
-          <View style={styles.infoRow}>
-            <Image
-              source={image.calendar}
-              style={{ width: 13, height: 16, marginRight: 4 }}
-            />
-            <AppText
-              weight="regular"
-              numberOfLines={1}
-              style={styles.infoLabel}
-            >
-              {t("joined")}{" "}
-              {formatJoinDate(user?.join_date || user?.created_at)}
-            </AppText>
-          </View>
+          {!isGuest && (
+            <>
+              <View style={styles.infoRow}>
+                <Image
+                  source={image.calendar}
+                  style={{ width: 13, height: 16, marginRight: 4 }}
+                />
+                <AppText
+                  weight="regular"
+                  numberOfLines={1}
+                  style={styles.infoLabel}
+                >
+                  {t("joined")}{" "}
+                  {formatJoinDate(user?.join_date || user?.created_at)}
+                </AppText>
+              </View>
 
-          <View style={styles.contactRow}>
-            <View style={styles.contactItem}>
-              <Image
-                source={image.mail}
-                style={{ width: 18, height: 14, marginRight: 4 }}
-              />
-              <AppText
-                weight="regular"
-                numberOfLines={1}
-                style={styles.contactValue}
-              >
-                {user?.email || "-"}
-              </AppText>
-            </View>
-            <View style={styles.contactSpacer} />
-            <View style={styles.contactItem}>
-              <Image
-                source={image.phone}
-                style={{ width: 15, height: 14, marginRight: 4 }}
-              />
-              <AppText
-                weight="regular"
-                numberOfLines={1}
-                style={styles.contactValue}
-              >
-                {user?.phone_number || "-"}
-              </AppText>
-            </View>
-          </View>
+              <View style={styles.contactRow}>
+                <View style={styles.contactItem}>
+                  <Image
+                    source={image.mail}
+                    style={{ width: 18, height: 14, marginRight: 4 }}
+                  />
+                  <AppText
+                    weight="regular"
+                    numberOfLines={1}
+                    style={styles.contactValue}
+                  >
+                    {user?.email || "-"}
+                  </AppText>
+                </View>
+                <View style={styles.contactSpacer} />
+                <View style={styles.contactItem}>
+                  <Image
+                    source={image.phone}
+                    style={{ width: 15, height: 14, marginRight: 4 }}
+                  />
+                  <AppText
+                    weight="regular"
+                    numberOfLines={1}
+                    style={styles.contactValue}
+                  >
+                    {user?.phone_number || "-"}
+                  </AppText>
+                </View>
+              </View>
 
-          {/* Wallet Balance Summary */}
-          {user?.wallet && (
-            <View style={styles.walletSummary}>
-              <View style={styles.walletItem}>
-                <AppText
-                  weight="regular"
-                  numberOfLines={1}
-                  style={styles.walletLabel}
-                >
-                  {t("balance")}
-                </AppText>
-                <AppText
-                  weight="bold"
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  style={styles.walletValue}
-                >
-                  {formatBalance(user.wallet.balance_available)}
-                </AppText>
-              </View>
-              <View style={styles.walletDivider} />
-              <View style={styles.walletItem}>
-                <AppText
-                  weight="regular"
-                  numberOfLines={1}
-                  style={styles.walletLabel}
-                >
-                  {t("pending")}
-                </AppText>
-                <AppText
-                  weight="bold"
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  style={[styles.walletValue, { color: "#FF9800" }]}
-                >
-                  {formatBalance(user.wallet.balance_pending)}
-                </AppText>
-              </View>
-              <View style={styles.walletDivider} />
-              <View style={styles.walletItem}>
-                <AppText
-                  weight="regular"
-                  numberOfLines={1}
-                  style={styles.walletLabel}
-                >
-                  {t("total")}
-                </AppText>
-                <AppText
-                  weight="bold"
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  style={[styles.walletValue, { color: "#003994" }]}
-                >
-                  {formatBalance(user.wallet.balance_total)}
-                </AppText>
-              </View>
-            </View>
+              {/* Wallet Balance Summary */}
+              {user?.wallet && (
+                <View style={styles.walletSummary}>
+                  <View style={styles.walletItem}>
+                    <AppText
+                      weight="regular"
+                      numberOfLines={1}
+                      style={styles.walletLabel}
+                    >
+                      {t("balance")}
+                    </AppText>
+                    <AppText
+                      weight="bold"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      style={styles.walletValue}
+                    >
+                      {formatBalance(user.wallet.balance_available)}
+                    </AppText>
+                  </View>
+                  <View style={styles.walletDivider} />
+                  <View style={styles.walletItem}>
+                    <AppText
+                      weight="regular"
+                      numberOfLines={1}
+                      style={styles.walletLabel}
+                    >
+                      {t("pending")}
+                    </AppText>
+                    <AppText
+                      weight="bold"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      style={[styles.walletValue, { color: "#FF9800" }]}
+                    >
+                      {formatBalance(user.wallet.balance_pending)}
+                    </AppText>
+                  </View>
+                  <View style={styles.walletDivider} />
+                  <View style={styles.walletItem}>
+                    <AppText
+                      weight="regular"
+                      numberOfLines={1}
+                      style={styles.walletLabel}
+                    >
+                      {t("total")}
+                    </AppText>
+                    <AppText
+                      weight="bold"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      style={[styles.walletValue, { color: "#003994" }]}
+                    >
+                      {formatBalance(user.wallet.balance_total)}
+                    </AppText>
+                  </View>
+                </View>
+              )}
+            </>
           )}
 
           {/* Menu Items */}
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push("/screens/edit-profile")}
+            onPress={
+              isGuest
+                ? handleGuestRestricted
+                : () => router.push("/screens/edit-profile")
+            }
           >
             <View style={styles.menuIconContainer}>
               <Image
@@ -243,7 +264,11 @@ const ProfilePage = () => {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push("/screens/verify-product")}
+            onPress={
+              isGuest
+                ? handleGuestRestricted
+                : () => router.push("/screens/verify-product")
+            }
           >
             <View
               style={[styles.menuIconContainer, { backgroundColor: "#E8F5E9" }]}
@@ -266,7 +291,11 @@ const ProfilePage = () => {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push("/screens/my-products")}
+            onPress={
+              isGuest
+                ? handleGuestRestricted
+                : () => router.push("/screens/my-products")
+            }
           >
             <View
               style={[styles.menuIconContainer, { backgroundColor: "#E3F2FD" }]}
@@ -292,7 +321,11 @@ const ProfilePage = () => {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push("/screens/help-support")}
+            onPress={
+              isGuest
+                ? handleGuestRestricted
+                : () => router.push("/screens/help-support")
+            }
           >
             <View
               style={[styles.menuIconContainer, { backgroundColor: "#FFF3E0" }]}
@@ -342,7 +375,7 @@ const ProfilePage = () => {
             <View
               style={[styles.menuIconContainer, { backgroundColor: "#E8F4FD" }]}
             >
-              <AppText style={{ fontSize: 16 }}>🌐</AppText>
+              <Ionicons name="globe-outline" size={18} color="#0087F5" />
             </View>
             <View style={styles.menuContent}>
               <AppText
@@ -414,6 +447,11 @@ const ProfilePage = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <AuthModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+      />
     </View>
   );
 };

@@ -2,6 +2,8 @@ import { image } from "@/assets/images";
 import { apiService } from "@/utils/api";
 import { getFullImageUrl } from "@/utils/api/config";
 import type { EvidenceImage, ReportType, UserReport } from "@/utils/api/types";
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -11,7 +13,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -71,6 +72,72 @@ const FAQ_DATA_TH = [
     answer:
       'ไปที่หน้า "Seller" แล้วกดปุ่ม "ลงขายสินค้า" กรอกรายละเอียดสินค้า ถ่ายรูป ตั้งราคาเริ่มต้นและระยะเวลาประมูล สินค้าจะต้องผ่านการอนุมัติจากแอดมินก่อนเปิดประมูล',
   },
+  {
+    id: 8,
+    question: "Buy Now (ซื้อทันที) คืออะไร?",
+    answer:
+      "Buy Now คือราคาซื้อทันทีที่ผู้ขายกำหนดไว้ คุณสามารถกดซื้อได้เลยโดยไม่ต้องรอให้การประมูลจบ ซึ่งต่างจาก Place Bid ที่ต้องเสนอราคาแข่งกับคนอื่น",
+  },
+  {
+    id: 9,
+    question: "ผู้เยี่ยมชม (Guest) สามารถทำอะไรได้บ้าง?",
+    answer:
+      "ผู้เยี่ยมชมสามารถเลือกดูสินค้า ค้นหา และดูหมวดหมู่ได้ แต่ไม่สามารถประมูล ซื้อสินค้า ใช้ Wallet หรือลงขายสินค้าได้ ต้องสมัครสมาชิกก่อนจึงจะใช้ฟีเจอร์เหล่านี้ได้",
+  },
+  {
+    id: 10,
+    question: "วิธีดูประวัติธุรกรรมใน Wallet?",
+    answer:
+      'ไปที่แท็บ "Wallet" จะเห็นรายการธุรกรรมทั้งหมดด้านล่าง สามารถกดไอคอนกรองเพื่อเลือกแสดงตามประเภท (เติมเงิน, ถอนเงิน, ชนะประมูล, วางประมูล, คืนเงิน, รายได้) หรือกรองตามเดือนและปีได้',
+  },
+  {
+    id: 11,
+    question: "ลืมรหัสผ่านทำอย่างไร?",
+    answer:
+      'กดปุ่ม "ลืมรหัสผ่าน" ที่หน้า Login กรอกอีเมลที่ลงทะเบียนไว้ ระบบจะส่งรหัสยืนยันไปทางอีเมล นำรหัสมากรอกพร้อมรหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร) เพื่อตั้งค่ารหัสผ่านใหม่',
+  },
+  {
+    id: 12,
+    question: "สินค้า Incoming, Hot, Ending Soon คืออะไร?",
+    answer:
+      '"Incoming" คือสินค้าที่กำลังจะเปิดประมูลเร็วๆ นี้ ยังประมูลไม่ได้จนกว่าจะถึงเวลา, "Hot" คือสินค้ายอดนิยมที่มีคนประมูลเยอะ, "Ending Soon" คือสินค้าที่ใกล้จะปิดการประมูล ต้องรีบเสนอราคา',
+  },
+  {
+    id: 13,
+    question: "AI Pick / แนะนำสำหรับคุณ คืออะไร?",
+    answer:
+      "ระบบ AI จะวิเคราะห์พฤติกรรมการใช้งานของคุณ เช่น สินค้าที่เคยดู หมวดหมู่ที่สนใจ แล้วแนะนำสินค้าที่น่าจะตรงกับความสนใจของคุณ ต้องล็อกอินถึงจะเห็นส่วนนี้",
+  },
+  {
+    id: 14,
+    question: "วิธีแก้ไขข้อมูลโปรไฟล์?",
+    answer:
+      'ไปที่แท็บ "โปรไฟล์" แล้วกด "แก้ไขโปรไฟล์" สามารถเปลี่ยนชื่อ เบอร์โทร รูปโปรไฟล์ และรีเซ็ตรหัสผ่านได้ อีเมลไม่สามารถเปลี่ยนได้',
+  },
+  {
+    id: 15,
+    question: "วิธีเปลี่ยนภาษาในแอป?",
+    answer:
+      'ไปที่แท็บ "โปรไฟล์" จะมีปุ่มสลับภาษา ไทย/EN ระบบจะจำการตั้งค่าภาษาไว้ให้โดยอัตโนมัติ',
+  },
+  {
+    id: 16,
+    question: "Minimum Bid Increment คืออะไร?",
+    answer:
+      "คือจำนวนเงินขั้นต่ำที่ต้องเสนอเพิ่มจากราคาปัจจุบัน เช่น หากราคาปัจจุบัน ฿1,000 และ min increment ฿100 คุณต้องเสนอ ฿1,100 ขึ้นไป",
+  },
+  {
+    id: 17,
+    question: "วิธีจัดการสินค้าที่ลงขาย?",
+    answer:
+      'ไปที่แท็บ "โปรไฟล์" แล้วกด "สินค้าของฉัน" จะเห็นสินค้าทั้งหมดที่ลงขาย แบ่งตามสถานะ: กำลังจะเปิด, กำลังประมูล, ปิดประมูลแล้ว และกำลังจัดส่ง เมื่อมีผู้ชนะประมูล สามารถกด "จัดส่งแล้ว" เพื่ออัปเดตสถานะได้',
+  },
+  {
+    id: 18,
+    question: "วิธียืนยันรับสินค้าหลังชนะประมูล?",
+    answer:
+      'ไปที่แท็บ "โปรไฟล์" แล้วกด "ยืนยันสินค้า" เลือกรายการที่ชนะแล้วกดยืนยัน คุณมีเวลา 24 ชั่วโมงในการยืนยัน หากไม่ยืนยันภายในเวลา รายการจะถูกยกเลิกอัตโนมัติ',
+  },
 ];
 
 const FAQ_DATA_EN = [
@@ -115,6 +182,72 @@ const FAQ_DATA_EN = [
     question: "How do I become a seller?",
     answer:
       'Go to the "Seller" page and tap "List Product", fill in product details, upload photos, set a starting price and duration. The product must be approved by an admin before the auction opens.',
+  },
+  {
+    id: 8,
+    question: "What is Buy Now?",
+    answer:
+      "Buy Now is a fixed price set by the seller that lets you purchase the item immediately without waiting for the auction to end. This is different from Place Bid, where you compete with other bidders.",
+  },
+  {
+    id: 9,
+    question: "What can a Guest user do?",
+    answer:
+      "Guests can browse products, search, and view categories, but cannot bid, buy items, use the Wallet, or list products for sale. You must create an account to access these features.",
+  },
+  {
+    id: 10,
+    question: "How do I view my transaction history?",
+    answer:
+      'Go to the "Wallet" tab to see all transactions listed below your balance. Tap the filter icon to filter by type (deposit, withdraw, won auction, bid placed, refund, earnings) or by month and year.',
+  },
+  {
+    id: 11,
+    question: "I forgot my password — what do I do?",
+    answer:
+      'Tap "Forgot Password" on the login screen, enter your registered email, and a verification code will be sent. Enter the code along with your new password (at least 6 characters) to reset it.',
+  },
+  {
+    id: 12,
+    question: "What are Incoming, Hot, and Ending Soon products?",
+    answer:
+      '"Incoming" are products whose auction hasn\'t started yet. "Hot" are trending products with many bidders. "Ending Soon" are auctions about to close — bid quickly!',
+  },
+  {
+    id: 13,
+    question: "What is AI Pick / Recommended for You?",
+    answer:
+      "The AI analyzes your browsing behavior — products you've viewed and categories you're interested in — to suggest items you might like. You must be logged in to see recommendations.",
+  },
+  {
+    id: 14,
+    question: "How do I edit my profile?",
+    answer:
+      'Go to the "Profile" tab and tap "Edit Profile". You can change your name, phone number, profile picture, and reset your password. Email cannot be changed.',
+  },
+  {
+    id: 15,
+    question: "How do I change the app language?",
+    answer:
+      'Go to the "Profile" tab where you\'ll find a language toggle (Thai/EN). The app will remember your language preference automatically.',
+  },
+  {
+    id: 16,
+    question: "What is Minimum Bid Increment?",
+    answer:
+      "It's the minimum amount you must add on top of the current bid. For example, if the current bid is ฿1,000 and the increment is ฿100, you must bid at least ฿1,100.",
+  },
+  {
+    id: 17,
+    question: "How do I manage my listed products?",
+    answer:
+      'Go to the "Profile" tab and tap "My Products". You\'ll see all your listings by status: Incoming, Active, Ended, and Shipping. When a buyer wins, you can tap "Mark as Shipped" to update the status.',
+  },
+  {
+    id: 18,
+    question: "How do I verify a product after winning?",
+    answer:
+      'Go to the "Profile" tab and tap "Verify Product". Select the won item and confirm receipt. You have 24 hours to verify. If not verified in time, the order is automatically cancelled.',
   },
 ];
 
@@ -292,28 +425,28 @@ const HelpSupportPage = () => {
           label: t("reportPending"),
           color: "#F59E0B",
           bg: "#FEF3C7",
-          icon: "⏳",
+          icon: "hourglass-outline",
         };
       case "reviewing":
         return {
           label: t("reportReviewing"),
           color: "#3B82F6",
           bg: "#EFF6FF",
-          icon: "🔄",
+          icon: "sync-outline",
         };
       case "resolved":
         return {
           label: t("reportResolved"),
           color: "#22C55E",
           bg: "#F0FDF4",
-          icon: "✅",
+          icon: "checkmark-circle-outline",
         };
       default:
         return {
           label: t("reportUnknown"),
           color: "#9CA3AF",
           bg: "#F3F4F6",
-          icon: "❓",
+          icon: "help-circle-outline",
         };
     }
   };
@@ -599,7 +732,11 @@ const HelpSupportPage = () => {
               key={s}
               style={[styles.statusSummaryCard, { borderColor: config.color }]}
             >
-              <AppText style={{ fontSize: 22 }}>{config.icon}</AppText>
+              <Ionicons
+                name={config.icon as any}
+                size={22}
+                color={config.color}
+              />
               <AppText
                 weight="bold"
                 style={[styles.statusSummaryCount, { color: config.color }]}
@@ -690,9 +827,12 @@ const HelpSupportPage = () => {
                     { backgroundColor: statusConfig.bg },
                   ]}
                 >
-                  <AppText style={{ fontSize: 11, marginRight: 3 }}>
-                    {statusConfig.icon}
-                  </AppText>
+                  <Ionicons
+                    name={statusConfig.icon as any}
+                    size={11}
+                    color={statusConfig.color}
+                    style={{ marginRight: 3 }}
+                  />
                   <AppText
                     weight="semibold"
                     style={[
@@ -728,14 +868,17 @@ const HelpSupportPage = () => {
                   style={styles.statusCardDate}
                   numberOfLines={1}
                 >
-                  📅 {formatDate(report.created_at)}
+                  <Ionicons name="calendar-outline" size={12} color="#9CA3AF" />{" "}
+                  {formatDate(report.created_at)}
                 </AppText>
               </View>
 
               {/* Admin Note Preview */}
               {report.admin_note && (
                 <View style={styles.replyPreview}>
-                  <AppText style={{ fontSize: 13, marginRight: 6 }}>📝</AppText>
+                  <AppText style={{ fontSize: 13, marginRight: 6 }}>
+                    <Ionicons name="create-outline" size={13} color="#3B82F6" />
+                  </AppText>
                   <AppText
                     weight="regular"
                     style={styles.replyPreviewText}
@@ -749,7 +892,12 @@ const HelpSupportPage = () => {
               {/* Admin Reply Preview */}
               {report.admin_reply && (
                 <View style={styles.replyPreview}>
-                  <AppText style={{ fontSize: 13, marginRight: 6 }}>💬</AppText>
+                  <Ionicons
+                    name="chatbubble-outline"
+                    size={13}
+                    color="#3B82F6"
+                    style={{ marginRight: 6 }}
+                  />
                   <AppText
                     weight="regular"
                     style={styles.replyPreviewText}
@@ -785,7 +933,7 @@ const HelpSupportPage = () => {
     return (
       <Modal
         visible={showDetailModal}
-        animationType="slide"
+        animationType="fade"
         transparent
         onRequestClose={() => setShowDetailModal(false)}
       >
@@ -824,9 +972,12 @@ const HelpSupportPage = () => {
                   { backgroundColor: statusConfig.bg },
                 ]}
               >
-                <AppText style={{ fontSize: 18, marginRight: 8 }}>
-                  {statusConfig.icon}
-                </AppText>
+                <Ionicons
+                  name={statusConfig.icon as any}
+                  size={18}
+                  color={statusConfig.color}
+                  style={{ marginRight: 8 }}
+                />
                 <View style={{ flex: 1 }}>
                   <AppText
                     weight="semibold"
@@ -859,7 +1010,12 @@ const HelpSupportPage = () => {
               {/* Report Info */}
               <View style={styles.modalSection}>
                 <AppText weight="semibold" style={styles.modalSectionTitle}>
-                  📋 ปัญหาที่แจ้ง
+                  <Ionicons
+                    name="clipboard-outline"
+                    size={14}
+                    color="#1E293B"
+                  />{" "}
+                  ปัญหาที่แจ้ง
                 </AppText>
                 <AppText weight="regular" style={styles.modalReportDesc}>
                   {selectedReport.description}
@@ -912,7 +1068,7 @@ const HelpSupportPage = () => {
                               marginRight: 10,
                               backgroundColor: "#F3F4F6",
                             }}
-                            resizeMode="cover"
+                            contentFit="cover"
                           />
                         ) : null;
                       })}
@@ -1055,7 +1211,8 @@ const HelpSupportPage = () => {
               {selectedReport.admin_note && (
                 <View style={styles.modalSection}>
                   <AppText weight="semibold" style={styles.modalSectionTitle}>
-                    📝 หมายเหตุจากแอดมิน
+                    <Ionicons name="create-outline" size={14} color="#1E293B" />{" "}
+                    หมายเหตุจากแอดมิน
                   </AppText>
                   <View style={styles.adminReplyCard}>
                     <View style={styles.adminReplyHeader}>
@@ -1156,7 +1313,8 @@ const HelpSupportPage = () => {
         pointerEvents="none"
       >
         <AppText weight="semibold" style={styles.successToastText}>
-          ✅ ส่งรายงานเรียบร้อยแล้ว ทีมงานจะติดต่อกลับเร็วๆนี้
+          <Ionicons name="checkmark-circle-outline" size={14} color="#FFF" />{" "}
+          ส่งรายงานเรียบร้อยแล้ว ทีมงานจะติดต่อกลับเร็วๆนี้
         </AppText>
       </Animated.View>
 
@@ -1407,6 +1565,7 @@ const styles = StyleSheet.create({
     color: "#111827",
     borderWidth: 1,
     borderColor: "#E5E7EB",
+    fontFamily: "NotoSansThai_400Regular",
   },
   reportTextArea: {
     height: 130,

@@ -99,23 +99,26 @@ const schedule = async (content: object, channelId: string) => {
 };
 
 // ── 1. ถูกตัดหน้า ─────────────────────────────────────────────
-export const sendOutbidNotification = (productTitle: string) =>
+export const sendOutbidNotification = (
+  productTitle: string,
+  productId?: string,
+) =>
   schedule(
     {
       title: "ถูกตัดหน้าแล้ว! ⚡",
       body: `"${productTitle}" โดนตัดหน้า กดเพื่อเสนอราคาใหม่`,
-      data: { type: "outbid", productTitle },
+      data: { type: "outbid", productTitle, productId },
     },
     "outbid",
   );
 
 // ── 2. ชนะประมูล ──────────────────────────────────────────────
-export const sendWonNotification = (productTitle: string) =>
+export const sendWonNotification = (productTitle: string, productId?: string) =>
   schedule(
     {
       title: "ยินดีด้วย! คุณชนะประมูล 🏆",
       body: `"${productTitle}" เป็นของคุณแล้ว กดเพื่อดูรายละเอียด`,
-      data: { type: "won", productTitle },
+      data: { type: "won", productTitle, productId },
     },
     "won",
   );
@@ -124,12 +127,13 @@ export const sendWonNotification = (productTitle: string) =>
 export const sendNewBidOnMyProductNotification = (
   productTitle: string,
   bidAmount: string,
+  productId?: string,
 ) =>
   schedule(
     {
       title: "มีคนประมูลสินค้าของคุณ 🔔",
       body: `"${productTitle}" มีราคาล่าสุด ฿${bidAmount}`,
-      data: { type: "new_bid", productTitle, bidAmount },
+      data: { type: "new_bid", productTitle, bidAmount, productId },
     },
     "new_bid",
   );
@@ -160,23 +164,27 @@ export const sendWithdrawNotification = (amount: string) =>
 export const sendEndingSoonNotification = (
   productTitle: string,
   timeLeft: string,
+  productId?: string,
 ) =>
   schedule(
     {
       title: "ใกล้หมดเวลาแล้ว! ⏰",
       body: `"${productTitle}" เหลือเวลาอีก ${timeLeft} รีบเสนอราคา!`,
-      data: { type: "ending_soon", productTitle },
+      data: { type: "ending_soon", productTitle, productId },
     },
     "ending_soon",
   );
 
 // ── 7. Admin อนุมัติสินค้า ─────────────────────────────────────
-export const sendProductApprovedNotification = (productTitle: string) =>
+export const sendProductApprovedNotification = (
+  productTitle: string,
+  productId?: string,
+) =>
   schedule(
     {
       title: "สินค้าได้รับการอนุมัติ ✅",
       body: `"${productTitle}" ผ่านการตรวจสอบและพร้อมประมูลแล้ว`,
-      data: { type: "product_approved", productTitle },
+      data: { type: "product_approved", productTitle, productId },
     },
     "product_status",
   );
@@ -185,6 +193,7 @@ export const sendProductApprovedNotification = (productTitle: string) =>
 export const sendProductRejectedNotification = (
   productTitle: string,
   reason?: string,
+  productId?: string,
 ) =>
   schedule(
     {
@@ -192,40 +201,49 @@ export const sendProductRejectedNotification = (
       body: reason
         ? `"${productTitle}" — ${reason}`
         : `"${productTitle}" ไม่ผ่านการตรวจสอบ กรุณาแก้ไขและส่งใหม่`,
-      data: { type: "product_rejected", productTitle, reason },
+      data: { type: "product_rejected", productTitle, reason, productId },
     },
     "product_status",
   );
 
 // ── 9. ผู้ซื้อยืนยันการติดต่อแล้ว (แจ้งไปหาผู้ขาย) ────────────
-export const sendOrderBuyerConfirmedNotification = (productTitle: string) =>
+export const sendOrderBuyerConfirmedNotification = (
+  productTitle: string,
+  productId?: string,
+) =>
   schedule(
     {
       title: "ผู้ซื้อยืนยันการติดต่อแล้ว ✅",
       body: `"${productTitle}" ผู้ซื้อยืนยันการติดต่อเรียบร้อย รอการจัดส่งสินค้า`,
-      data: { type: "order_buyer_confirmed", productTitle },
+      data: { type: "order_buyer_confirmed", productTitle, productId },
     },
     "order_status",
   );
 
 // ── 10. ผู้ขายจัดส่งสินค้าแล้ว (แจ้งไปหาผู้ซื้อ) ────────────────
-export const sendOrderSellerShippedNotification = (productTitle: string) =>
+export const sendOrderSellerShippedNotification = (
+  productTitle: string,
+  productId?: string,
+) =>
   schedule(
     {
       title: "สินค้าถูกจัดส่งแล้ว 📦",
       body: `"${productTitle}" ผู้ขายจัดส่งสินค้าแล้ว กรุณารอรับสินค้า`,
-      data: { type: "order_seller_shipped", productTitle },
+      data: { type: "order_seller_shipped", productTitle, productId },
     },
     "order_status",
   );
 
 // ── 11. ผู้ซื้อยืนยันรับสินค้าแล้ว (แจ้งไปหาผู้ขาย) ─────────────
-export const sendOrderCompletedNotification = (productTitle: string) =>
+export const sendOrderCompletedNotification = (
+  productTitle: string,
+  productId?: string,
+) =>
   schedule(
     {
       title: "คำสั่งซื้อเสร็จสมบูรณ์ 🎉",
       body: `"${productTitle}" ผู้ซื้อยืนยันรับสินค้าแล้ว การขายเสร็จสิ้น`,
-      data: { type: "order_completed", productTitle },
+      data: { type: "order_completed", productTitle, productId },
     },
     "order_status",
   );
@@ -261,4 +279,77 @@ export const sendReportResolvedNotification = () =>
       data: { type: "report_resolved" },
     },
     "report_status",
+  );
+
+// ── 15. แพ้การประมูล (หมดเวลา ไม่ได้เป็นราคาสูงสุด) ──────────
+export const sendAuctionLostNotification = (
+  productTitle: string,
+  productId?: string,
+) =>
+  schedule(
+    {
+      title: "ประมูลไม่สำเร็จ 😔",
+      body: `"${productTitle}" จบการประมูลแล้ว คุณไม่ได้เป็นผู้ชนะ`,
+      data: { type: "auction_lost", productTitle, productId },
+    },
+    "outbid",
+  );
+
+// ── 16. มีคน Buy Now สินค้าที่เราประมูลอยู่ (แจ้งผู้ประมูลอื่น) ─
+export const sendBuyNowLostNotification = (
+  productTitle: string,
+  productId?: string,
+) =>
+  schedule(
+    {
+      title: "สินค้าถูกซื้อแล้ว 💸",
+      body: `"${productTitle}" ถูกซื้อด้วย Buy Now การประมูลสิ้นสุดแล้ว`,
+      data: { type: "buynow_lost", productTitle, productId },
+    },
+    "outbid",
+  );
+
+// ── 17. ซื้อสำเร็จผ่าน Buy Now (แจ้งผู้ซื้อ) ─────────────────────
+export const sendBuyNowSuccessNotification = (
+  productTitle: string,
+  productId?: string,
+) =>
+  schedule(
+    {
+      title: "ซื้อสำเร็จ! 🎉",
+      body: `"${productTitle}" เป็นของคุณแล้ว กดเพื่อดูรายละเอียด`,
+      data: { type: "buynow_purchased", productTitle, productId },
+    },
+    "won",
+  );
+
+// ── 18. มีการเปิดข้อพิพาทคำสั่งซื้อ ──────────────────────────────
+export const sendOrderDisputedNotification = (
+  productTitle: string,
+  productId?: string,
+) =>
+  schedule(
+    {
+      title: "มีข้อพิพาทเกิดขึ้น ⚠️",
+      body: `"${productTitle}" มีการแจ้งข้อพิพาท ทีมงานจะตรวจสอบโดยเร็ว`,
+      data: { type: "order_disputed", productTitle, productId },
+    },
+    "order_status",
+  );
+
+// ── 19. คำสั่งซื้อถูกยกเลิก ────────────────────────────────────────
+export const sendOrderCancelledNotification = (
+  productTitle: string,
+  reason?: string,
+  productId?: string,
+) =>
+  schedule(
+    {
+      title: "คำสั่งซื้อถูกยกเลิก ❌",
+      body: reason
+        ? `"${productTitle}" — ${reason}`
+        : `"${productTitle}" คำสั่งซื้อถูกยกเลิกเนื่องจากหมดเวลาดำเนินการ`,
+      data: { type: "order_cancelled", productTitle, reason, productId },
+    },
+    "order_status",
   );

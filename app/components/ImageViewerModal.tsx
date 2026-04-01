@@ -1,8 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { Image } from "expo-image";
 import React, { useRef, useState } from "react";
 import {
   Dimensions,
-  Image,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -10,7 +10,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
-} from "react-native";
+} from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "./appText";
 
@@ -111,7 +111,7 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
                 centerContent
                 bouncesZoom
               >
-                <Image source={{ uri }} style={s.image} resizeMode="contain" />
+                <Image source={{ uri }} style={s.image} contentFit="contain" />
               </ScrollView>
             </View>
           ))}

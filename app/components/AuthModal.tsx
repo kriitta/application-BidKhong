@@ -1,3 +1,4 @@
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
@@ -5,7 +6,6 @@ import React, { useState } from "react";
 import {
   Alert,
   Dimensions,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -285,7 +285,12 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       Email Address
                     </AppText>
                     <View style={styles.inputWrapper}>
-                      <Image source={image.mail} style={styles.inputIcon} />
+                      <Image
+                        source={image.mail}
+                        style={styles.inputIcon}
+                        tintColor="#999"
+                        contentFit="contain"
+                      />
                       <AppTextInput
                         placeholder="you@example.com"
                         value={email}
@@ -310,7 +315,12 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       Password
                     </AppText>
                     <View style={styles.inputWrapper}>
-                      <Image source={image.password} style={styles.inputIcon} />
+                      <Image
+                        source={image.password}
+                        style={styles.inputIcon}
+                        tintColor="#999"
+                        contentFit="contain"
+                      />
                       <AppTextInput
                         placeholder="••••••••"
                         value={password}
@@ -331,6 +341,8 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                             showPassword ? image.close_eye : image.show_eye
                           }
                           style={styles.eyeIconImage}
+                          tintColor="#999"
+                          contentFit="contain"
                         />
                       </TouchableOpacity>
                     </View>
@@ -592,7 +604,12 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       {t("fullName")}
                     </AppText>
                     <View style={styles.inputWrapper}>
-                      <Image source={image.person} style={styles.inputIcon} />
+                      <Image
+                        source={image.person}
+                        style={styles.inputIcon}
+                        tintColor="#999"
+                        contentFit="contain"
+                      />
                       <AppTextInput
                         placeholder="John Doe"
                         value={fullName}
@@ -616,7 +633,12 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       {t("email")}
                     </AppText>
                     <View style={styles.inputWrapper}>
-                      <Image source={image.mail} style={styles.inputIcon} />
+                      <Image
+                        source={image.mail}
+                        style={styles.inputIcon}
+                        tintColor="#999"
+                        contentFit="contain"
+                      />
                       <AppTextInput
                         placeholder="you@example.com"
                         value={email}
@@ -641,7 +663,12 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       {t("phoneNumber")}
                     </AppText>
                     <View style={styles.inputWrapper}>
-                      <Image source={image.phone} style={styles.inputIcon} />
+                      <Image
+                        source={image.phone}
+                        style={styles.inputIcon}
+                        tintColor="#999"
+                        contentFit="contain"
+                      />
                       <AppTextInput
                         placeholder="08X-XXX-XXXX"
                         value={phoneNumber}
@@ -666,7 +693,12 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       {t("password")}
                     </AppText>
                     <View style={styles.inputWrapper}>
-                      <Image source={image.password} style={styles.inputIcon} />
+                      <Image
+                        source={image.password}
+                        style={styles.inputIcon}
+                        tintColor="#999"
+                        contentFit="contain"
+                      />
                       <AppTextInput
                         placeholder="••••••••"
                         value={password}
@@ -687,6 +719,8 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                             showPassword ? image.show_eye : image.close_eye
                           }
                           style={styles.eyeIconImage}
+                          tintColor="#999"
+                          contentFit="contain"
                         />
                       </TouchableOpacity>
                     </View>
@@ -702,7 +736,12 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       {t("confirmPassword")}
                     </AppText>
                     <View style={styles.inputWrapper}>
-                      <Image source={image.password} style={styles.inputIcon} />
+                      <Image
+                        source={image.password}
+                        style={styles.inputIcon}
+                        tintColor="#999"
+                        contentFit="contain"
+                      />
                       <AppTextInput
                         placeholder="••••••••"
                         value={confirmPassword}
@@ -727,6 +766,8 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                               : image.close_eye
                           }
                           style={styles.eyeIconImage}
+                          tintColor="#999"
+                          contentFit="contain"
                         />
                       </TouchableOpacity>
                     </View>
@@ -810,7 +851,12 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       {t("email")}
                     </AppText>
                     <View style={styles.inputWrapper}>
-                      <Image source={image.mail} style={styles.inputIcon} />
+                      <Image
+                        source={image.mail}
+                        style={styles.inputIcon}
+                        tintColor="#999"
+                        contentFit="contain"
+                      />
                       <AppTextInput
                         placeholder="you@example.com"
                         value={forgotEmail}
@@ -909,7 +955,12 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       {t("email")}
                     </AppText>
                     <View style={styles.inputWrapper}>
-                      <Image source={image.mail} style={styles.inputIcon} />
+                      <Image
+                        source={image.mail}
+                        style={styles.inputIcon}
+                        tintColor="#999"
+                        contentFit="contain"
+                      />
                       <AppTextInput
                         placeholder="you@example.com"
                         value={email}
@@ -931,7 +982,12 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       {t("resetToken")}
                     </AppText>
                     <View style={styles.inputWrapper}>
-                      <Image source={image.password} style={styles.inputIcon} />
+                      <Image
+                        source={image.password}
+                        style={styles.inputIcon}
+                        tintColor="#999"
+                        contentFit="contain"
+                      />
                       <AppTextInput
                         placeholder="Paste token from email"
                         value={resetToken}
@@ -952,7 +1008,12 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                       {t("newPasswordLabel")}
                     </AppText>
                     <View style={styles.inputWrapper}>
-                      <Image source={image.password} style={styles.inputIcon} />
+                      <Image
+                        source={image.password}
+                        style={styles.inputIcon}
+                        tintColor="#999"
+                        contentFit="contain"
+                      />
                       <AppTextInput
                         placeholder="••••••••"
                         value={newPassword}
@@ -970,6 +1031,8 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
                             showNewPassword ? image.close_eye : image.show_eye
                           }
                           style={styles.eyeIconImage}
+                          tintColor="#999"
+                          contentFit="contain"
                         />
                       </TouchableOpacity>
                     </View>
@@ -1145,9 +1208,7 @@ const styles = StyleSheet.create({
   inputIcon: {
     width: 20,
     height: 20,
-    resizeMode: "contain",
     marginRight: 10,
-    tintColor: "#999",
   },
   input: {
     flex: 1,
@@ -1162,10 +1223,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   eyeIconImage: {
-    width: 20,
-    height: 20,
-    resizeMode: "contain",
-    tintColor: "#999",
+    width: 22,
+    height: 22,
   },
   eyeIconText: {
     fontSize: 18,

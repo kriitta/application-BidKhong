@@ -1,11 +1,12 @@
 import { image } from "@/assets/images";
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
-  Image,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -22,7 +23,7 @@ const { width } = Dimensions.get("window");
 const TUTORIAL_STEPS_TH = [
   {
     id: 1,
-    icon: "👤",
+    icon: "person-outline",
     title: "สมัครสมาชิก / เข้าสู่ระบบ",
     subtitle: "Account Registration & Login",
     steps: [
@@ -36,21 +37,21 @@ const TUTORIAL_STEPS_TH = [
   },
   {
     id: 2,
-    icon: "🔍",
+    icon: "search-outline",
     title: "ค้นหาและเลือกดูสินค้า",
     subtitle: "Browse & Search Products",
     steps: [
       "เลื่อนดูสินค้าบนหน้าแรกที่แบ่งเป็นหมวดหมู่",
       "ใช้ช่องค้นหาเพื่อค้นหาสินค้าที่ต้องการ",
       "กดเลือกหมวดหมู่เพื่อดู Subcategory ย่อย",
-      'ดูสินค้าที่กำลัง "Hot 🔥" หรือ "Ending Soon ⏳"',
+      'ดูสินค้าที่กำลัง "Hot" หรือ "Ending Soon"',
     ],
     color: "#F5A623",
     bgColor: "#FFF8EB",
   },
   {
     id: 3,
-    icon: "💰",
+    icon: "wallet-outline",
     title: "เติมเงินเข้ากระเป๋า",
     subtitle: "Top Up Wallet",
     steps: [
@@ -64,7 +65,7 @@ const TUTORIAL_STEPS_TH = [
   },
   {
     id: 4,
-    icon: "🏷️",
+    icon: "pricetag-outline",
     title: "วางราคาประมูล",
     subtitle: "Place a Bid on Products",
     steps: [
@@ -72,20 +73,20 @@ const TUTORIAL_STEPS_TH = [
       'ดูราคาปัจจุบัน (Current Bid) และ "Minimum Bid Increment"',
       'กดปุ่ม "Place Bid" แล้วระบุราคาที่ต้องการเสนอ',
       "ราคาต้องมากกว่าราคาปัจจุบัน + Minimum Increment",
-      "⚠️ ต้องเข้าสู่ระบบก่อนจึงจะประมูลได้",
+      "ต้องเข้าสู่ระบบก่อนจึงจะประมูลได้",
     ],
     color: "#D0021B",
     bgColor: "#FDECEE",
   },
   {
     id: 5,
-    icon: "⏱️",
+    icon: "time-outline",
     title: "ติดตามการประมูล",
     subtitle: "Track Your Bids",
     steps: [
       'ไปที่แท็บ "My Bid" เพื่อดูรายการประมูลทั้งหมด',
       '"Bidding" — สินค้าที่คุณกำลังประมูล',
-      '"Won" — สินค้าที่คุณชนะ 🎉',
+      '"Won" — สินค้าที่คุณชนะ',
       '"Lost" — สินค้าที่คุณไม่ได้ชนะ',
     ],
     color: "#9013FE",
@@ -93,21 +94,21 @@ const TUTORIAL_STEPS_TH = [
   },
   {
     id: 6,
-    icon: "✅",
+    icon: "checkmark-circle-outline",
     title: "ยืนยันรับสินค้า",
     subtitle: "Verify & Receive Won Products",
     steps: [
       'เมื่อชนะประมูล สินค้าจะอยู่ในสถานะ "Won"',
-      "⏰ คุณมีเวลา 24 ชั่วโมง ในการยืนยันสินค้า",
+      "คุณมีเวลา 24 ชั่วโมง ในการยืนยันสินค้า",
       'กด "Verify" เพื่อยืนยันว่าต้องการรับสินค้า',
-      "❌ หากไม่ยืนยันภายใน 24 ชม. สินค้าจะถูกยกเลิกอัตโนมัติ",
+      "หากไม่ยืนยันภายใน 24 ชม. สินค้าจะถูกยกเลิกอัตโนมัติ",
     ],
     color: "#417505",
     bgColor: "#EDF7E0",
   },
   {
     id: 7,
-    icon: "📦",
+    icon: "cube-outline",
     title: "ขายสินค้า",
     subtitle: "List Your Products for Auction",
     steps: [
@@ -123,7 +124,7 @@ const TUTORIAL_STEPS_TH = [
   },
   {
     id: 8,
-    icon: "💸",
+    icon: "cash-outline",
     title: "ถอนเงิน",
     subtitle: "Withdraw Funds from Wallet",
     steps: [
@@ -136,12 +137,69 @@ const TUTORIAL_STEPS_TH = [
     color: "#BD10E0",
     bgColor: "#F8E8FD",
   },
+  {
+    id: 9,
+    icon: "cart-outline",
+    title: "ซื้อทันที (Buy Now)",
+    subtitle: "Buy Now — Instant Purchase",
+    steps: [
+      "เปิดหน้ารายละเอียดสินค้าที่มีราคา Buy Now",
+      'กดปุ่ม "Buy Now" เพื่อซื้อทันทีในราคาที่ผู้ขายกำหนด',
+      "ยืนยันการซื้อ — ระบบจะหักเงินจาก Wallet ทันที",
+      "ไม่ต้องรอให้การประมูลจบ ได้สินค้าเลย",
+    ],
+    color: "#E91E63",
+    bgColor: "#FDE8EF",
+  },
+  {
+    id: 10,
+    icon: "create-outline",
+    title: "แก้ไขโปรไฟล์",
+    subtitle: "Edit Your Profile",
+    steps: [
+      'ไปที่แท็บ "โปรไฟล์" แล้วกด "แก้ไขโปรไฟล์"',
+      "เปลี่ยนชื่อ เบอร์โทร และรูปโปรไฟล์ได้",
+      'รีเซ็ตรหัสผ่านได้โดยกด "ส่งรหัสยืนยัน" ไปที่อีเมล',
+      "กรอกรหัสยืนยัน + รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)",
+    ],
+    color: "#00BCD4",
+    bgColor: "#E0F7FA",
+  },
+  {
+    id: 11,
+    icon: "receipt-outline",
+    title: "จัดการสินค้าของฉัน",
+    subtitle: "Manage My Products & Orders",
+    steps: [
+      'ไปที่ "โปรไฟล์" > "สินค้าของฉัน" เพื่อดูสินค้าที่ลงขาย',
+      "ดูสถานะ: กำลังจะเปิด, กำลังประมูล, ปิดแล้ว, กำลังจัดส่ง",
+      'เมื่อมีผู้ชนะประมูล กด "จัดส่งแล้ว" เพื่ออัปเดต',
+      'ผู้ซื้อสามารถยืนยันรับสินค้าได้ที่ "ยืนยันสินค้า"',
+    ],
+    color: "#FF9800",
+    bgColor: "#FFF3E0",
+  },
+  {
+    id: 12,
+    icon: "alert-circle-outline",
+    title: "แจ้งปัญหา",
+    subtitle: "Report Issues & Get Support",
+    steps: [
+      'ไปที่ "โปรไฟล์" > "ช่วยเหลือ & สนับสนุน"',
+      'เลือกแท็บ "รายงาน" แล้วเลือกประเภทปัญหา',
+      "กรอก User ID / Product ID ที่ต้องการรายงาน",
+      "อธิบายรายละเอียดและแนบหลักฐาน (ถ้ามี)",
+      'ติดตามสถานะได้ที่แท็บ "สถานะ"',
+    ],
+    color: "#F44336",
+    bgColor: "#FFEBEE",
+  },
 ];
 
 const TUTORIAL_STEPS_EN = [
   {
     id: 1,
-    icon: "👤",
+    icon: "person-outline",
     title: "Register / Sign In",
     subtitle: "Account Registration & Login",
     steps: [
@@ -155,21 +213,21 @@ const TUTORIAL_STEPS_EN = [
   },
   {
     id: 2,
-    icon: "🔍",
+    icon: "search-outline",
     title: "Browse & Search",
     subtitle: "Browse & Search Products",
     steps: [
       "Scroll through products on the Home tab by category",
       "Use the search bar to find what you want",
       "Tap a category to browse subcategories",
-      'See "Hot 🔥" and "Ending Soon ⏳" items',
+      'See "Hot" and "Ending Soon" items',
     ],
     color: "#F5A623",
     bgColor: "#FFF8EB",
   },
   {
     id: 3,
-    icon: "💰",
+    icon: "wallet-outline",
     title: "Top Up Wallet",
     subtitle: "Top Up Your Wallet",
     steps: [
@@ -183,7 +241,7 @@ const TUTORIAL_STEPS_EN = [
   },
   {
     id: 4,
-    icon: "🏷️",
+    icon: "pricetag-outline",
     title: "Place a Bid",
     subtitle: "Place a Bid on Products",
     steps: [
@@ -191,20 +249,20 @@ const TUTORIAL_STEPS_EN = [
       'Check the Current Bid and "Minimum Bid Increment"',
       'Tap "Place Bid" and enter your price',
       "Your bid must exceed current bid + increment",
-      "⚠️ You must be signed in to bid",
+      "You must be signed in to bid",
     ],
     color: "#D0021B",
     bgColor: "#FDECEE",
   },
   {
     id: 5,
-    icon: "⏱️",
+    icon: "time-outline",
     title: "Track Your Bids",
     subtitle: "Track Your Bids",
     steps: [
       'Go to the "My Bid" tab to view all bids',
       '"Bidding" — items you are currently bidding on',
-      '"Won" — items you have won 🎉',
+      '"Won" — items you have won',
       '"Lost" — items you did not win',
     ],
     color: "#9013FE",
@@ -212,21 +270,21 @@ const TUTORIAL_STEPS_EN = [
   },
   {
     id: 6,
-    icon: "✅",
+    icon: "checkmark-circle-outline",
     title: "Verify Receipt",
     subtitle: "Verify & Receive Won Products",
     steps: [
       'When you win, the item status becomes "Won"',
-      "⏰ You have 24 hours to verify the item",
+      "You have 24 hours to verify the item",
       'Tap "Verify" to confirm you want to receive it',
-      "❌ If not verified within 24 hrs, the order is auto-cancelled",
+      "If not verified within 24 hrs, the order is auto-cancelled",
     ],
     color: "#417505",
     bgColor: "#EDF7E0",
   },
   {
     id: 7,
-    icon: "📦",
+    icon: "cube-outline",
     title: "Sell a Product",
     subtitle: "List Your Products for Auction",
     steps: [
@@ -242,7 +300,7 @@ const TUTORIAL_STEPS_EN = [
   },
   {
     id: 8,
-    icon: "💸",
+    icon: "cash-outline",
     title: "Withdraw Funds",
     subtitle: "Withdraw Funds from Wallet",
     steps: [
@@ -254,6 +312,63 @@ const TUTORIAL_STEPS_EN = [
     ],
     color: "#BD10E0",
     bgColor: "#F8E8FD",
+  },
+  {
+    id: 9,
+    icon: "cart-outline",
+    title: "Buy Now",
+    subtitle: "Buy Now — Instant Purchase",
+    steps: [
+      "Open a product that has a Buy Now price",
+      'Tap "Buy Now" to purchase at the seller\'s fixed price',
+      "Confirm — funds are deducted from your Wallet instantly",
+      "No need to wait for the auction to end",
+    ],
+    color: "#E91E63",
+    bgColor: "#FDE8EF",
+  },
+  {
+    id: 10,
+    icon: "create-outline",
+    title: "Edit Profile",
+    subtitle: "Edit Your Profile",
+    steps: [
+      'Go to the "Profile" tab and tap "Edit Profile"',
+      "Change your name, phone number, and profile picture",
+      'Reset your password by tapping "Send Verification Code"',
+      "Enter the code + new password (at least 6 characters)",
+    ],
+    color: "#00BCD4",
+    bgColor: "#E0F7FA",
+  },
+  {
+    id: 11,
+    icon: "receipt-outline",
+    title: "Manage My Products",
+    subtitle: "Manage My Products & Orders",
+    steps: [
+      'Go to "Profile" > "My Products" to view your listings',
+      "See statuses: Incoming, Active, Ended, Shipping",
+      'When a buyer wins, tap "Mark as Shipped" to update',
+      'Buyers can verify receipt via "Verify Product"',
+    ],
+    color: "#FF9800",
+    bgColor: "#FFF3E0",
+  },
+  {
+    id: 12,
+    icon: "alert-circle-outline",
+    title: "Report Issues",
+    subtitle: "Report Issues & Get Support",
+    steps: [
+      'Go to "Profile" > "Help & Support"',
+      'Select the "Report" tab and choose the issue type',
+      "Enter the User ID / Product ID to report",
+      "Describe the issue and attach evidence (if any)",
+      'Track your report status in the "Status" tab',
+    ],
+    color: "#F44336",
+    bgColor: "#FFEBEE",
   },
 ];
 
@@ -283,6 +398,30 @@ const FAQ_ITEMS_TH = [
     q: "จะเปลี่ยนรหัสผ่านได้อย่างไร?",
     a: "ไปที่ Profile > Edit Profile เพื่อเปลี่ยนรหัสผ่านและข้อมูลส่วนตัว",
   },
+  {
+    q: "Hot และ Ending Soon คืออะไร?",
+    a: '"Hot" คือสินค้ายอดนิยมที่มีคนประมูลเยอะ ส่วน "Ending Soon" คือสินค้าที่ใกล้จะปิดการประมูล ต้องรีบเสนอราคาก่อนหมดเวลา',
+  },
+  {
+    q: "AI Pick / แนะนำสำหรับคุณ คืออะไร?",
+    a: "ระบบ AI จะวิเคราะห์พฤติกรรมการใช้งานของคุณ เช่น สินค้าที่เคยดู หมวดหมู่ที่สนใจ แล้วแนะนำสินค้าที่น่าจะตรงกับความสนใจ ต้องล็อกอินถึงจะเห็นส่วนนี้",
+  },
+  {
+    q: "ลืมรหัสผ่านทำอย่างไร?",
+    a: 'กดปุ่ม "ลืมรหัสผ่าน" ที่หน้า Login กรอกอีเมลที่ลงทะเบียนไว้ ระบบจะส่งรหัสยืนยันไปทางอีเมล นำรหัสมากรอกพร้อมรหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)',
+  },
+  {
+    q: "วิธีเปลี่ยนภาษาในแอป?",
+    a: 'ไปที่แท็บ "โปรไฟล์" จะมีปุ่มสลับภาษา ไทย/EN ระบบจะจำการตั้งค่าภาษาไว้ให้โดยอัตโนมัติ',
+  },
+  {
+    q: "วิธีดูประวัติธุรกรรม Wallet?",
+    a: 'ไปที่แท็บ "Wallet" จะเห็นรายการธุรกรรมด้านล่าง สามารถกรองตามประเภท (เติมเงิน, ถอนเงิน, ชนะประมูล, วางประมูล, คืนเงิน, รายได้) หรือตามเดือนและปีได้',
+  },
+  {
+    q: "วิธีแจ้งปัญหาหรือรายงานผู้ใช้?",
+    a: 'ไปที่ "โปรไฟล์" > "ช่วยเหลือ & สนับสนุน" เลือกแท็บ "รายงาน" เลือกประเภทปัญหา กรอก ID และรายละเอียด แนบหลักฐานแล้วส่ง ติดตามสถานะได้ที่แท็บ "สถานะ"',
+  },
 ];
 
 const FAQ_ITEMS_EN = [
@@ -310,6 +449,30 @@ const FAQ_ITEMS_EN = [
     q: "How do I change my password?",
     a: "Go to Profile > Edit Profile to update your password and personal information.",
   },
+  {
+    q: "What are Hot and Ending Soon?",
+    a: '"Hot" products are trending with many bidders. "Ending Soon" are auctions about to close — bid quickly before time runs out!',
+  },
+  {
+    q: "What is AI Pick / Recommended for You?",
+    a: "The AI analyzes your browsing behavior — products you've viewed and categories you're interested in — to suggest items you might like. You must be logged in to see recommendations.",
+  },
+  {
+    q: "I forgot my password — what do I do?",
+    a: 'Tap "Forgot Password" on the login screen, enter your email, and a verification code will be sent. Enter the code with your new password (at least 6 characters).',
+  },
+  {
+    q: "How do I change the app language?",
+    a: 'Go to the "Profile" tab where you\'ll find a language toggle (Thai/EN). Your preference is saved automatically.',
+  },
+  {
+    q: "How do I view my Wallet transaction history?",
+    a: 'Go to the "Wallet" tab to see all transactions below your balance. Use the filter to sort by type (deposit, withdraw, won auction, bid placed, refund, earnings) or by month and year.',
+  },
+  {
+    q: "How do I report a problem or user?",
+    a: 'Go to "Profile" > "Help & Support", select the "Report" tab, choose the issue type, fill in details and attach evidence. Track your report in the "Status" tab.',
+  },
 ];
 
 // ─── Component ───────────────────────────────────────────────
@@ -323,21 +486,57 @@ const AboutAppPage = () => {
   const features =
     lang === "th"
       ? [
-          { icon: "🔐", title: "ปลอดภัย", desc: "ระบบล็อกอินปลอดภัย" },
-          { icon: "⏰", title: "Real-time", desc: "นับถอยหลังแบบเรียลไทม์" },
-          { icon: "💳", title: "Wallet", desc: "กระเป๋าเงินในตัว" },
-          { icon: "📱", title: "ง่ายต่อการใช้", desc: "UI สวยงาม ใช้ง่าย" },
-          { icon: "🔔", title: "แจ้งเตือน", desc: "แจ้งเมื่อชนะประมูล" },
-          { icon: "🏪", title: "ขายง่าย", desc: "ลงขายได้ในไม่กี่ขั้นตอน" },
+          {
+            icon: "lock-closed-outline",
+            title: "ปลอดภัย",
+            desc: "ระบบล็อกอินปลอดภัย",
+          },
+          {
+            icon: "alarm-outline",
+            title: "Real-time",
+            desc: "นับถอยหลังแบบเรียลไทม์",
+          },
+          { icon: "card-outline", title: "Wallet", desc: "กระเป๋าเงินในตัว" },
+          {
+            icon: "phone-portrait-outline",
+            title: "ง่ายต่อการใช้",
+            desc: "UI สวยงาม ใช้ง่าย",
+          },
+          {
+            icon: "notifications-outline",
+            title: "แจ้งเตือน",
+            desc: "แจ้งเมื่อชนะประมูล",
+          },
+          {
+            icon: "storefront-outline",
+            title: "ขายง่าย",
+            desc: "ลงขายได้ในไม่กี่ขั้นตอน",
+          },
         ]
       : [
-          { icon: "🔐", title: "Secure", desc: "Safe login system" },
-          { icon: "⏰", title: "Real-time", desc: "Live countdown timers" },
-          { icon: "💳", title: "Wallet", desc: "Built-in wallet" },
-          { icon: "📱", title: "Easy to Use", desc: "Beautiful, intuitive UI" },
-          { icon: "🔔", title: "Notifications", desc: "Alerts when you win" },
           {
-            icon: "🏪",
+            icon: "lock-closed-outline",
+            title: "Secure",
+            desc: "Safe login system",
+          },
+          {
+            icon: "alarm-outline",
+            title: "Real-time",
+            desc: "Live countdown timers",
+          },
+          { icon: "card-outline", title: "Wallet", desc: "Built-in wallet" },
+          {
+            icon: "phone-portrait-outline",
+            title: "Easy to Use",
+            desc: "Beautiful, intuitive UI",
+          },
+          {
+            icon: "notifications-outline",
+            title: "Notifications",
+            desc: "Alerts when you win",
+          },
+          {
+            icon: "storefront-outline",
             title: "Sell Easily",
             desc: "List in just a few steps",
           },
@@ -396,7 +595,7 @@ const AboutAppPage = () => {
             <Image
               source={image.logo}
               style={styles.appLogo}
-              resizeMode="contain"
+              contentFit="contain"
             />
           </View>
           <AppText weight="bold" style={styles.appName} numberOfLines={1}>
@@ -515,7 +714,11 @@ const AboutAppPage = () => {
                 <View
                   style={[styles.stepIconBg, { backgroundColor: step.bgColor }]}
                 >
-                  <AppText style={styles.stepIcon}>{step.icon}</AppText>
+                  <Ionicons
+                    name={step.icon as any}
+                    size={24}
+                    color={step.color}
+                  />
                 </View>
 
                 <AppText
@@ -573,7 +776,12 @@ const AboutAppPage = () => {
           <View style={styles.featuresGrid}>
             {features.map((feat, i) => (
               <View key={i} style={styles.featureCard}>
-                <AppText style={styles.featureIcon}>{feat.icon}</AppText>
+                <Ionicons
+                  name={feat.icon as any}
+                  size={28}
+                  color="#003994"
+                  style={{ marginBottom: 8 }}
+                />
                 <AppText
                   weight="semibold"
                   numberOfLines={1}
@@ -668,7 +876,12 @@ const AboutAppPage = () => {
 
             <View style={styles.contactCards}>
               <View style={styles.contactCard}>
-                <AppText style={styles.contactCardIcon}>📧</AppText>
+                <Ionicons
+                  name="mail-outline"
+                  size={18}
+                  color="rgba(255,255,255,0.9)"
+                  style={{ marginRight: 12 }}
+                />
                 <AppText
                   weight="regular"
                   style={styles.contactCardText}
@@ -678,7 +891,12 @@ const AboutAppPage = () => {
                 </AppText>
               </View>
               <View style={styles.contactCard}>
-                <AppText style={styles.contactCardIcon}>📞</AppText>
+                <Ionicons
+                  name="call-outline"
+                  size={18}
+                  color="rgba(255,255,255,0.9)"
+                  style={{ marginRight: 12 }}
+                />
                 <AppText
                   weight="regular"
                   style={styles.contactCardText}
@@ -688,7 +906,12 @@ const AboutAppPage = () => {
                 </AppText>
               </View>
               <View style={styles.contactCard}>
-                <AppText style={styles.contactCardIcon}>💬</AppText>
+                <Ionicons
+                  name="chatbubble-outline"
+                  size={18}
+                  color="rgba(255,255,255,0.9)"
+                  style={{ marginRight: 12 }}
+                />
                 <AppText
                   weight="regular"
                   style={styles.contactCardText}

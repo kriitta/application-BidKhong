@@ -1,3 +1,5 @@
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
@@ -5,7 +7,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -225,28 +226,28 @@ const MyProductsPage = () => {
           label: t("tabHot"),
           color: "#FF3B30",
           bg: "#FFEBEE",
-          icon: "🔥",
+          icon: "flame",
         };
       case "ending":
         return {
           label: t("tagEnding"),
           color: "#FF9500",
           bg: "#FFF3E0",
-          icon: "⏰",
+          icon: "alarm-outline",
         };
       case "incoming":
         return {
           label: t("tabIncoming"),
           color: "#7B1FA2",
           bg: "#F3E5F5",
-          icon: "📦",
+          icon: "cube-outline",
         };
       default:
         return {
           label: t("tagActive"),
           color: "#4CAF50",
           bg: "#E8F5E9",
-          icon: "✅",
+          icon: "checkmark-circle-outline",
         };
     }
   };
@@ -265,7 +266,7 @@ const MyProductsPage = () => {
         label: t("tagShipping"),
         color: "#E65100",
         bg: "#FFF3E0",
-        icon: "📦",
+        icon: "cube-outline",
       };
     }
     if (isRealEnded(product)) {
@@ -281,6 +282,24 @@ const MyProductsPage = () => {
     { key: "ended", label: t("tabEnded"), count: stats.ended },
     { key: "shipping", label: t("tabShipping"), count: stats.shipping },
   ];
+
+  if (loading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <LottieView
+          source={require("../../assets/animations/loading.json")}
+          autoPlay
+          loop
+          style={{ width: 120, height: 120 }}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -331,16 +350,7 @@ const MyProductsPage = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {loading ? (
-          <View style={{ alignItems: "center", paddingVertical: 60 }}>
-            <LottieView
-              source={require("../../assets/animations/loading.json")}
-              autoPlay
-              loop
-              style={{ width: 100, height: 100 }}
-            />
-          </View>
-        ) : filteredProducts.length === 0 ? (
+        {filteredProducts.length === 0 ? (
           <View style={styles.emptyContainer}>
             <LottieView
               source={require("../../assets/animations/empty.json")}
@@ -523,7 +533,12 @@ const MyProductsPage = () => {
                       <>
                         <View style={styles.metaItem}>
                           <AppText weight="regular" style={styles.metaText}>
-                            🏷️ เริ่มต้น ฿
+                            <Ionicons
+                              name="pricetag-outline"
+                              size={12}
+                              color="#666"
+                            />{" "}
+                            เริ่มต้น ฿
                             {parseFloat(
                               product.starting_price,
                             ).toLocaleString()}
@@ -531,7 +546,12 @@ const MyProductsPage = () => {
                         </View>
                         <View style={styles.metaItem}>
                           <AppText weight="regular" style={styles.metaText}>
-                            👥 {product.bids_count || 0} {t("bids")}
+                            <Ionicons
+                              name="people-outline"
+                              size={12}
+                              color="#666"
+                            />{" "}
+                            {product.bids_count || 0} {t("bids")}
                           </AppText>
                         </View>
                       </>
