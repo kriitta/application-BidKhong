@@ -3,9 +3,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  Animated,
   Dimensions,
   ScrollView,
   StyleSheet,
@@ -479,7 +478,6 @@ const FAQ_ITEMS_EN = [
 const AboutAppPage = () => {
   const router = useRouter();
   const { t, lang } = useLanguage();
-  const scrollY = useRef(new Animated.Value(0)).current;
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const tutorialSteps = lang === "th" ? TUTORIAL_STEPS_TH : TUTORIAL_STEPS_EN;
   const faqItems = lang === "th" ? FAQ_ITEMS_TH : FAQ_ITEMS_EN;
@@ -583,10 +581,6 @@ const AboutAppPage = () => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false },
-        )}
         scrollEventThrottle={16}
       >
         {/* ─── App Logo & Info ─────────────────────────── */}

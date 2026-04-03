@@ -162,7 +162,7 @@ const ProductDetailPage = () => {
           p &&
           (p.status === "completed" ||
             p.status === "ended" ||
-            new Date(p.auction_end_time) < new Date())
+            (p.auction_end_time && new Date(p.auction_end_time) < new Date()))
         ) {
           if (pollTimerRef.current) clearInterval(pollTimerRef.current);
           return;

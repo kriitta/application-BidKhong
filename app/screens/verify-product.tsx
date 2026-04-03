@@ -311,16 +311,16 @@ const CountdownTimer = ({
 
 // ─── Helper: get product image URL ──────────────────────────
 const getOrderProductImage = (order: Order): { uri: string } | null => {
-  if (order.product?.images && order.product.images.length > 0) {
-    const url = getFullImageUrl(order.product.images[0].image_url);
-    if (url) return { uri: url };
-  }
   if (order.product?.image_url) {
     const url = getFullImageUrl(order.product.image_url);
     if (url) return { uri: url };
   }
   if (order.product?.picture) {
     const url = getFullImageUrl(order.product.picture);
+    if (url) return { uri: url };
+  }
+  if (order.product?.images && order.product.images.length > 0) {
+    const url = getFullImageUrl(order.product.images[0].image_url);
     if (url) return { uri: url };
   }
   return null;

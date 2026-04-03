@@ -6,7 +6,6 @@ import LottieView from "lottie-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
-  Dimensions,
   Keyboard,
   ScrollView,
   StyleSheet,
@@ -19,8 +18,6 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { apiService, getFullImageUrl } from "../../utils/api";
 import { Category, Product, Subcategory } from "../../utils/api/types";
 import { AppText } from "../components/appText";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // ─── Image mapping สำหรับ subcategory (ใช้ name จาก API map กับรูปใน local) ───
 const SUBCATEGORY_IMAGES: Record<string, any> = {

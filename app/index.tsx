@@ -6,12 +6,10 @@ import { View } from "react-native";
 
 export default function Index() {
   const [ready, setReady] = useState(false);
-  const [firstLaunch, setFirstLaunch] = useState(false);
 
   useEffect(() => {
     const init = async () => {
-      const seen = await AsyncStorage.getItem("hasSeenWelcome");
-      setFirstLaunch(seen === null);
+      await AsyncStorage.getItem("hasSeenWelcome");
       setReady(true);
     };
     init();

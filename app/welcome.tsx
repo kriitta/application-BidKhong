@@ -1,14 +1,14 @@
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { Image } from "expo-image";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ImageBackground,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
-} from "react-native"
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { image } from "../assets/images";
 import { useAuth } from "../contexts/AuthContext";
@@ -278,18 +278,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
-  logo: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "white",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-  },
-  logoIcon: {
-    fontSize: 24,
-  },
   logoText: {
     fontSize: 24,
     fontWeight: "bold",
@@ -322,10 +310,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.1)",
     borderColor: "rgba(255, 255, 255, 0.5)",
   },
-  statIcon: {
-    fontSize: 32,
-    marginBottom: 10,
-  },
   statNumber: {
     fontSize: 18,
     fontWeight: 400,
@@ -355,9 +339,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
-  },
-  featureIcon: {
-    fontSize: 20,
   },
   featureTitle: {
     fontSize: 16,

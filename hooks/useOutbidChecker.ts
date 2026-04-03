@@ -272,13 +272,14 @@ export function useOutbidChecker() {
             parseInt(hhmmss[1]) * 3600_000 +
             parseInt(hhmmss[2]) * 60_000 +
             parseInt(hhmmss[3]) * 1000;
-        }
-        const dmh = tl.match(/(\d+)d\s+(\d+)h\s+(\d+)m/);
-        if (dmh) {
-          remainingMs =
-            parseInt(dmh[1]) * 86400_000 +
-            parseInt(dmh[2]) * 3600_000 +
-            parseInt(dmh[3]) * 60_000;
+        } else {
+          const dmh = tl.match(/(\d+)d\s+(\d+)h\s+(\d+)m/);
+          if (dmh) {
+            remainingMs =
+              parseInt(dmh[1]) * 86400_000 +
+              parseInt(dmh[2]) * 3600_000 +
+              parseInt(dmh[3]) * 60_000;
+          }
         }
 
         const key = bid.auctionId;

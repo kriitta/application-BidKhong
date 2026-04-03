@@ -468,33 +468,6 @@ const styles = StyleSheet.create({
     color: "#0087F5",
     fontWeight: 600,
   },
-  typeGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  typeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 20,
-    backgroundColor: "#F3F4F6",
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  typeButtonActive: {
-    backgroundColor: "#D4ECFF",
-    borderColor: "#0087F5",
-  },
-  typeButtonText: {
-    fontSize: 13,
-    color: "#374151",
-  },
-  typeButtonTextActive: {
-    color: "#0087F5",
-  },
   selectedBox: {
     flexDirection: "row",
     alignItems: "center",

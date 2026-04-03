@@ -814,17 +814,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  avatarEditOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 50,
-    backgroundColor: "rgba(0,0,0,0.25)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
   changePhotoText: {
     fontSize: 13,
     color: "#3B82F6",
@@ -837,17 +826,6 @@ const styles = StyleSheet.create({
   defaultAvatarText: {
     fontSize: 36,
     color: "#FFF",
-  },
-  uploadingOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 50,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    alignItems: "center",
   },
 
   // Section

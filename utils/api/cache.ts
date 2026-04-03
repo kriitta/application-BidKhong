@@ -11,6 +11,7 @@ interface CacheEntry<T> {
 }
 
 const cache = new Map<string, CacheEntry<any>>();
+const MAX_CACHE_SIZE = 100;
 
 /** Default TTL: 5 minutes */
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
@@ -32,6 +33,13 @@ export async function cachedFetch<T>(
   }
 
   const data = await fetcher();
+
+  // Evict oldest entries if cache exceeds max size
+  if (cache.size >= MAX_CACHE_SIZE) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey !== undefined) cache.delete(oldestKey);
+  }
+
   cache.set(key, { data, timestamp: Date.now() });
   return data;
 }

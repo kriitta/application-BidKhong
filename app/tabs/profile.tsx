@@ -3,8 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
-import LottieView from "lottie-react-native";
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -22,7 +21,6 @@ const ProfilePage = () => {
   const router = useRouter();
   const { user, isGuest, logout: contextLogout, refreshUser } = useAuth();
   const { t, lang, setLang } = useLanguage();
-  const [loading, setLoading] = useState(false);
   const [authModalVisible, setAuthModalVisible] = useState(false);
 
   useFocusEffect(
@@ -63,24 +61,6 @@ const ProfilePage = () => {
   const handleGuestRestricted = () => {
     setAuthModalVisible(true);
   };
-
-  if (loading) {
-    return (
-      <View
-        style={[
-          styles.container,
-          { justifyContent: "center", alignItems: "center" },
-        ]}
-      >
-        <LottieView
-          source={require("../../assets/animations/loading.json")}
-          autoPlay
-          loop
-          style={{ width: 120, height: 120 }}
-        />
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>

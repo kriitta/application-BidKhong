@@ -102,19 +102,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
   },
-  overlay: {
-    position: "absolute",
-    bottom: 60,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  brandText: {
-    fontSize: 24,
-    color: "#fff",
-    textShadowColor: "rgba(0, 0, 0, 0.8)",
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
-  },
 });
 
 export default SplashScreenComponent;

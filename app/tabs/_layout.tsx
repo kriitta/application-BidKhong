@@ -1,6 +1,6 @@
-import { Tabs } from "expo-router";
 import { Image } from "expo-image";
-import React, { useEffect, useState } from "react";
+import { Tabs } from "expo-router";
+import { useEffect } from "react";
 
 import { image } from "../../assets/images";
 import { useAuth } from "../../contexts/AuthContext";
@@ -10,7 +10,6 @@ import { requestNotificationPermissions } from "../../utils/notificationService"
 import { CustomTabBar } from "../components/customTabBar";
 
 export default function TabLayout() {
-  const [modalVisible, setModalVisible] = useState(false);
   const { t } = useLanguage();
   const { isLoggedIn } = useAuth();
 
@@ -94,11 +93,6 @@ export default function TabLayout() {
           }}
         />
       </Tabs>
-
-      {/* <TimeAttendanceModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-      /> */}
     </>
   );
 }

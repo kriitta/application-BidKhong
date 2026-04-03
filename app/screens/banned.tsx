@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -89,7 +89,11 @@ export default function BannedScreen() {
         <View style={{ flex: 1 }} />
 
         {/* Logout Button */}
-        <View style={styles.logoutButton} onTouchEnd={logout}>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={logout}
+          activeOpacity={0.8}
+        >
           <LinearGradient
             colors={["#FF4444", "#CC0000"]}
             style={styles.logoutGradient}
@@ -104,7 +108,7 @@ export default function BannedScreen() {
             />
             <AppText style={styles.logoutText}>{t("logout")}</AppText>
           </LinearGradient>
-        </View>
+        </TouchableOpacity>
       </View>
     </LinearGradient>
   );
