@@ -181,20 +181,28 @@ const ProductDetailPage = () => {
   const getProductImages = () => {
     if (!product) return [image.macbook];
     const imgs: any[] = [];
-    if (product.images && product.images.length > 0) {
-      product.images.forEach((img) => {
-        const url = getFullImageUrl(img.image_url);
-        if (url) imgs.push({ uri: url });
-      });
-    }
-    if (imgs.length === 0 && product.image_url) {
+
+    // เพิ่มรูปหลัก (cover) เป็นรูปแรกเสมอ
+    if (product.image_url) {
       const url = getFullImageUrl(product.image_url);
       if (url) imgs.push({ uri: url });
-    }
-    if (imgs.length === 0 && product.picture) {
+    } else if (product.picture) {
       const url = getFullImageUrl(product.picture);
       if (url) imgs.push({ uri: url });
     }
+
+    // เพิ่มรูปเพิ่มเติมจาก images[]
+    if (product.images && product.images.length > 0) {
+      product.images.forEach((img) => {
+        const url = getFullImageUrl(img.image_url);
+        if (url) {
+          // ไม่เพิ่มซ้ำกับรูปหลัก
+          const alreadyAdded = imgs.some((existing) => existing.uri === url);
+          if (!alreadyAdded) imgs.push({ uri: url });
+        }
+      });
+    }
+
     if (imgs.length === 0) imgs.push(image.macbook);
     return imgs;
   };

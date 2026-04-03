@@ -278,18 +278,18 @@ const HomePage = () => {
     }, [refreshProducts]),
   );
 
-  /** ดึงรูปแรกของสินค้า หรือใช้ image_url / picture เป็น fallback */
+  /** ดึงรูปแรกของสินค้า — ใช้รูปหลัก (cover) ก่อนเสมอ */
   const getProductImage = (product: Product) => {
-    if (product.images && product.images.length > 0) {
-      const url = getFullImageUrl(product.images[0].image_url);
-      if (url) return { uri: url };
-    }
     if (product.image_url) {
       const url = getFullImageUrl(product.image_url);
       if (url) return { uri: url };
     }
     if (product.picture) {
       const url = getFullImageUrl(product.picture);
+      if (url) return { uri: url };
+    }
+    if (product.images && product.images.length > 0) {
+      const url = getFullImageUrl(product.images[0].image_url);
       if (url) return { uri: url };
     }
     return image.macbook; // fallback
@@ -655,7 +655,7 @@ const HomePage = () => {
                       horizontal
                       showsHorizontalScrollIndicator={false}
                     >
-                      {hotAuctions.map((item) => (
+                      {hotAuctions.slice(0, 5).map((item) => (
                         <TouchableOpacity
                           key={item.id}
                           style={styles.searchHotCard}
@@ -1068,7 +1068,7 @@ const HomePage = () => {
                     {t("hotBids")}
                   </AppText>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {hotAuctions.map((item) => (
+                    {hotAuctions.slice(0, 5).map((item) => (
                       <TouchableOpacity
                         key={item.id}
                         style={styles.searchHotCard}

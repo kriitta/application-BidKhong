@@ -96,18 +96,18 @@ const CategoryPage = () => {
     fetchProducts();
   }, [selectedSub]);
 
-  /** ดึงรูปของ product */
+  /** ดึงรูปของ product — ใช้รูปหลัก (cover) ก่อนเสมอ */
   const getProductImage = (product: Product) => {
-    if (product.images && product.images.length > 0) {
-      const url = getFullImageUrl(product.images[0].image_url);
-      if (url) return { uri: url };
-    }
     if (product.image_url) {
       const url = getFullImageUrl(product.image_url);
       if (url) return { uri: url };
     }
     if (product.picture) {
       const url = getFullImageUrl(product.picture);
+      if (url) return { uri: url };
+    }
+    if (product.images && product.images.length > 0) {
+      const url = getFullImageUrl(product.images[0].image_url);
       if (url) return { uri: url };
     }
     return image.macbook;

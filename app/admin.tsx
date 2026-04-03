@@ -11,6 +11,7 @@ import {
   Dimensions,
   Linking,
   Modal,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -267,6 +268,9 @@ const AdminScreen = () => {
 
   // Dashboard stats from API
   const [dashboardStats, setDashboardStats] = useState<AdminStats | null>(null);
+
+  // Pull-to-refresh state
+  const [refreshing, setRefreshing] = useState(false);
 
   // Withdrawals state
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
@@ -941,6 +945,30 @@ const AdminScreen = () => {
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              try {
+                await Promise.all([
+                  fetchDashboardStats(),
+                  activeTab === "pending"
+                    ? fetchPendingProducts()
+                    : activeTab === "reports"
+                      ? fetchReports()
+                      : activeTab === "users"
+                        ? fetchUsers()
+                        : fetchWithdrawals(wdFilter),
+                ]);
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+            tintColor="#001A3D"
+            colors={["#001A3D"]}
+          />
+        }
       >
         {activeTab === "pending" ? (
           /* ─── PENDING TAB ─────────────────────────────── */
