@@ -521,7 +521,12 @@ const ProductDetailPage = () => {
         </View>
 
         {/* Tags */}
-        <View style={styles.tagsContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tagsContainer}
+          contentContainerStyle={{ gap: 8 }}
+        >
           {product.tag && (
             <View
               style={[
@@ -614,7 +619,7 @@ const ProductDetailPage = () => {
               )}
             </>
           )}
-        </View>
+        </ScrollView>
 
         {/* Product Title */}
         <View style={styles.titleSection}>
@@ -1510,7 +1515,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingHorizontal: 12,
     paddingTop: 16,
-    gap: 8,
   },
   tag: {
     paddingHorizontal: 12,

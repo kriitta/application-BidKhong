@@ -148,16 +148,20 @@ const HomePage = () => {
   const [allProductDefault, setAllProductDefault] = useState<Product[]>([]);
   const [incoming, setIncoming] = useState<Product[]>([]);
   const [recommendations, setRecommendations] = useState<Product[]>([]);
+  const [recReady, setRecReady] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   // ─── Refresh products (reusable for pull-to-refresh & polling) ───
   const refreshProducts = useCallback(async () => {
     try {
-      const [productsRes, recsRes] = await Promise.allSettled([
+      const [productsRes, recsRes, recStatusRes] = await Promise.allSettled([
         apiService.product.getProducts({ per_page: 100 }),
         isLoggedIn && !isGuest
           ? apiService.product.getRecommendations(10)
           : Promise.resolve([]),
+        isLoggedIn && !isGuest
+          ? apiService.product.getRecommendationStatus()
+          : Promise.resolve(false),
       ]);
 
       if (productsRes.status === "fulfilled") {
@@ -171,6 +175,12 @@ const HomePage = () => {
       if (recsRes.status === "fulfilled") {
         const recsData = recsRes.value;
         setRecommendations(Array.isArray(recsData) ? recsData : []);
+      }
+
+      if (recStatusRes.status === "fulfilled") {
+        setRecReady(recStatusRes.value === true);
+      } else {
+        setRecReady(false);
       }
     } catch (e) {
       // silent
@@ -1318,7 +1328,7 @@ const HomePage = () => {
             </View>
 
             {/* 🤖 Recommended For You */}
-            {isLoggedIn && !isGuest && (
+            {isLoggedIn && !isGuest && recReady && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <View style={{ flexDirection: "row", alignItems: "center" }}>

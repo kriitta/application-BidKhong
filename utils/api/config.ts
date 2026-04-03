@@ -1,9 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios, {
-  AxiosError,
-  AxiosInstance,
-  AxiosResponse,
-  InternalAxiosRequestConfig,
+    AxiosError,
+    AxiosInstance,
+    AxiosResponse,
+    InternalAxiosRequestConfig,
 } from "axios";
 
 // ============================================================
@@ -84,6 +84,7 @@ export const ENDPOINTS = {
     BIDS: (id: number) => `/products/${id}/bids`,
     MY_PRODUCTS: "/my-products",
     RECOMMENDATIONS: "/recommendations",
+    RECOMMENDATIONS_STATUS: "/recommendations/status",
   },
 
   // 🏷️ Auction

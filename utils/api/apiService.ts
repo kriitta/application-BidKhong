@@ -695,6 +695,20 @@ const apiService = {
       }
     },
 
+    /** GET /recommendations/status — เช็คว่า AI recommendation พร้อมใช้งานหรือยัง */
+    getRecommendationStatus: async (): Promise<boolean> => {
+      try {
+        const response = await apiClient.get<{
+          ready: boolean;
+          total_users: number;
+          total_products: number;
+        }>(ENDPOINTS.PRODUCT.RECOMMENDATIONS_STATUS);
+        return response.data?.ready ?? false;
+      } catch {
+        return false;
+      }
+    },
+
     /** GET /products/:id — ดึงสินค้าชิ้นเดียว */
     getProduct: async (id: number): Promise<Product> => {
       try {
