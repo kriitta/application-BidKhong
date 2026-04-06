@@ -11,6 +11,7 @@ import {
   Dimensions,
   Linking,
   Modal,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -1003,102 +1004,48 @@ const AdminScreen = () => {
                   product.picture || product.image_url,
                 );
                 return (
-                  <TouchableOpacity
-                    key={product.id}
-                    style={styles.productCard}
-                    onPress={() => openProductDetail(product)}
-                    activeOpacity={0.7}
-                  >
-                    {imgUrl ? (
-                      <Image
-                        source={{ uri: imgUrl }}
-                        style={styles.productCardImage}
-                      />
-                    ) : (
-                      <View
-                        style={[
-                          styles.productCardImage,
-                          {
-                            backgroundColor: "#F3F4F6",
-                            justifyContent: "center",
-                            alignItems: "center",
-                          },
-                        ]}
-                      >
-                        <Ionicons
-                          name="image-outline"
-                          size={24}
-                          color="#9CA3AF"
+                  <View key={product.id} style={styles.productCard}>
+                    <TouchableOpacity
+                      onPress={() => openProductDetail(product)}
+                      activeOpacity={0.7}
+                    >
+                      {imgUrl ? (
+                        <Image
+                          source={{ uri: imgUrl }}
+                          style={styles.productCardImage}
                         />
-                      </View>
-                    )}
-                    <View style={styles.productCardInfo}>
-                      <View style={styles.productCardTop}>
-                        <AppText
-                          weight="semibold"
-                          style={styles.productCardName}
-                          numberOfLines={1}
+                      ) : (
+                        <View
+                          style={[
+                            styles.productCardImage,
+                            {
+                              backgroundColor: "#F3F4F6",
+                              justifyContent: "center",
+                              alignItems: "center",
+                            },
+                          ]}
                         >
-                          {product.name}
-                        </AppText>
-                        <View style={styles.pendingBadge}>
-                          <AppText weight="medium" style={styles.pendingText}>
-                            Pending
-                          </AppText>
+                          <Ionicons
+                            name="image-outline"
+                            size={24}
+                            color="#9CA3AF"
+                          />
                         </View>
-                      </View>
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
-                        <Ionicons name="person" size={13} color="#6B7280" />
-                        <AppText
-                          weight="regular"
-                          style={styles.productCardSeller}
-                          numberOfLines={1}
-                        >
-                          {product.user?.name || t("unknownUser")}
-                        </AppText>
-                      </View>
-                      <View style={styles.productCardPrices}>
-                        <View style={styles.priceTag}>
-                          <AppText weight="regular" style={styles.priceLabel}>
-                            Start
-                          </AppText>
-                          <AppText weight="semibold" style={styles.priceValue}>
-                            {formatPrice(product.starting_price)}
-                          </AppText>
-                        </View>
-                        <View style={styles.priceTag}>
-                          <AppText weight="regular" style={styles.priceLabel}>
-                            Buy Now
-                          </AppText>
+                      )}
+                      <View style={styles.productCardInfo}>
+                        <View style={styles.productCardTop}>
                           <AppText
                             weight="semibold"
-                            style={[styles.priceValue, { color: "#22C55E" }]}
+                            style={styles.productCardName}
+                            numberOfLines={1}
                           >
-                            {formatPrice(product.buyout_price)}
+                            {product.name}
                           </AppText>
-                        </View>
-                      </View>
-                      <View style={styles.productCardBottom}>
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 4,
-                          }}
-                        >
-                          <Ionicons name="pricetag" size={11} color="#9CA3AF" />
-                          <AppText
-                            weight="regular"
-                            style={styles.productCardMeta}
-                          >
-                            {product.category?.name || "-"}
-                          </AppText>
+                          <View style={styles.pendingBadge}>
+                            <AppText weight="medium" style={styles.pendingText}>
+                              Pending
+                            </AppText>
+                          </View>
                         </View>
                         <View
                           style={{
@@ -1107,48 +1054,114 @@ const AdminScreen = () => {
                             gap: 4,
                           }}
                         >
-                          <Ionicons name="calendar" size={11} color="#9CA3AF" />
+                          <Ionicons name="person" size={13} color="#6B7280" />
                           <AppText
                             weight="regular"
-                            style={styles.productCardMeta}
+                            style={styles.productCardSeller}
+                            numberOfLines={1}
                           >
-                            {formatDateTime(product.created_at)}
+                            {product.user?.name || t("unknownUser")}
                           </AppText>
                         </View>
+                        <View style={styles.productCardPrices}>
+                          <View style={styles.priceTag}>
+                            <AppText weight="regular" style={styles.priceLabel}>
+                              Start
+                            </AppText>
+                            <AppText
+                              weight="semibold"
+                              style={styles.priceValue}
+                            >
+                              {formatPrice(product.starting_price)}
+                            </AppText>
+                          </View>
+                          <View style={styles.priceTag}>
+                            <AppText weight="regular" style={styles.priceLabel}>
+                              Buy Now
+                            </AppText>
+                            <AppText
+                              weight="semibold"
+                              style={[styles.priceValue, { color: "#22C55E" }]}
+                            >
+                              {formatPrice(product.buyout_price)}
+                            </AppText>
+                          </View>
+                        </View>
+                        <View style={styles.productCardBottom}>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
+                            <Ionicons
+                              name="pricetag"
+                              size={11}
+                              color="#9CA3AF"
+                            />
+                            <AppText
+                              weight="regular"
+                              style={styles.productCardMeta}
+                            >
+                              {product.category?.name || "-"}
+                            </AppText>
+                          </View>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
+                            <Ionicons
+                              name="calendar"
+                              size={11}
+                              color="#9CA3AF"
+                            />
+                            <AppText
+                              weight="regular"
+                              style={styles.productCardMeta}
+                            >
+                              {formatDateTime(product.created_at)}
+                            </AppText>
+                          </View>
+                        </View>
                       </View>
-                    </View>
+                    </TouchableOpacity>
 
                     {/* Quick Actions */}
-                    <View style={styles.quickActions}>
-                      <TouchableOpacity
+                    <View
+                      style={styles.quickActions}
+                      onStartShouldSetResponder={() => true}
+                    >
+                      <Pressable
                         style={styles.quickApprove}
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handleApproveProduct(product);
-                        }}
+                        onPress={() => handleApproveProduct(product)}
+                        hitSlop={4}
                       >
                         <Ionicons
                           name="checkmark-circle"
                           size={20}
                           color="#22C55E"
                         />
-                      </TouchableOpacity>
-                      <TouchableOpacity
+                      </Pressable>
+                      <Pressable
                         style={styles.quickDelete}
-                        onPress={(e) => {
-                          e.stopPropagation();
+                        onPress={() => {
                           setSelectedProduct(product);
                           setRejectModalVisible(true);
                         }}
+                        hitSlop={4}
                       >
                         <Ionicons
                           name="close-circle"
                           size={20}
                           color="#EF4444"
                         />
-                      </TouchableOpacity>
+                      </Pressable>
                     </View>
-                  </TouchableOpacity>
+                  </View>
                 );
               })
             )}
@@ -4349,6 +4362,7 @@ const styles = StyleSheet.create({
     right: 12,
     flexDirection: "row",
     gap: 8,
+    zIndex: 10,
   },
   quickApprove: {
     width: 36,

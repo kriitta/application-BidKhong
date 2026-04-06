@@ -408,8 +408,8 @@ const MyBidPage = () => {
                       <Image
                         source={statusIcon}
                         style={{
-                          width: 14,
-                          height: 14,
+                          width: isOutbid ? 14 : 14,
+                          height: isOutbid ? 14 : 7,
                         }}
                         tintColor="#fff"
                       />

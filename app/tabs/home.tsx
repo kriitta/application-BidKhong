@@ -215,15 +215,17 @@ const HomePage = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [categoriesData, productsRes, recsRes] = await Promise.allSettled(
-          [
+        const [categoriesData, productsRes, recsRes, recStatusRes] =
+          await Promise.allSettled([
             apiService.category.getCategories(),
             apiService.product.getProducts({ per_page: 100 }),
             isLoggedIn && !isGuest
               ? apiService.product.getRecommendations(10)
               : Promise.resolve([]),
-          ],
-        );
+            isLoggedIn && !isGuest
+              ? apiService.product.getRecommendationStatus()
+              : Promise.resolve(false),
+          ]);
 
         if (categoriesData.status === "fulfilled") {
           // Deduplicate by name (server may return same category with different IDs)
@@ -258,6 +260,12 @@ const HomePage = () => {
         if (recsRes.status === "fulfilled") {
           const recsData = recsRes.value;
           setRecommendations(Array.isArray(recsData) ? recsData : []);
+        }
+
+        if (recStatusRes.status === "fulfilled") {
+          setRecReady(recStatusRes.value === true);
+        } else {
+          setRecReady(false);
         }
       } finally {
         setLoading(false);
