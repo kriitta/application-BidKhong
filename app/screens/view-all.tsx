@@ -57,9 +57,32 @@ const ViewAllPage = () => {
             ),
           );
         } else {
-          const res = await apiService.product.getProducts({ per_page: 100 });
-          const all = res.data ?? [];
-          setProducts(all.filter((p) => p.tag === typeStr));
+          // Fetch first page
+          const firstPage = await apiService.product.getProducts({
+            tag: typeStr,
+            per_page: 100,
+            page: 1,
+          });
+          let allProducts = firstPage.data ?? [];
+
+          // Fetch remaining pages if any
+          if (firstPage.last_page > 1) {
+            const remaining = Array.from(
+              { length: firstPage.last_page - 1 },
+              (_, i) =>
+                apiService.product.getProducts({
+                  tag: typeStr,
+                  per_page: 100,
+                  page: i + 2,
+                }),
+            );
+            const pages = await Promise.all(remaining);
+            for (const page of pages) {
+              allProducts = allProducts.concat(page.data ?? []);
+            }
+          }
+
+          setProducts(allProducts);
         }
       } catch (error: any) {
         console.error("Failed to fetch products:", error.message);
