@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { AppState, AppStateStatus } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
 import apiService from "../utils/api/apiService";
+import { parseRemainingMs } from "../utils/helpers/bidTimeUtils";
 import {
     sendAuctionLostNotification,
     sendBuyNowLostNotification,
@@ -265,22 +266,7 @@ export function useOutbidChecker() {
         const tl = bid.timeLeft ?? "";
 
         // Parse remaining ms from "HH:MM:SS" or "Xd Yh Zm" format
-        let remainingMs = Infinity;
-        const hhmmss = tl.match(/^(\d+):(\d+):(\d+)$/);
-        if (hhmmss) {
-          remainingMs =
-            parseInt(hhmmss[1]) * 3600_000 +
-            parseInt(hhmmss[2]) * 60_000 +
-            parseInt(hhmmss[3]) * 1000;
-        } else {
-          const dmh = tl.match(/(\d+)d\s+(\d+)h\s+(\d+)m/);
-          if (dmh) {
-            remainingMs =
-              parseInt(dmh[1]) * 86400_000 +
-              parseInt(dmh[2]) * 3600_000 +
-              parseInt(dmh[3]) * 60_000;
-          }
-        }
+        const remainingMs = parseRemainingMs(tl);
 
         const key = bid.auctionId;
 
