@@ -3,6 +3,7 @@ import { AppState, AppStateStatus } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
 import apiService from "../utils/api/apiService";
 import { parseRemainingMs } from "../utils/helpers/bidTimeUtils";
+import { classifyNotificationType } from "../utils/helpers/bidLogic";
 import {
     sendAuctionLostNotification,
     sendBuyNowLostNotification,
@@ -91,159 +92,57 @@ export function useOutbidChecker() {
         seenIdsRef.current.add(n.id);
 
         const type = n.type?.toLowerCase() ?? "";
+        const category = classifyNotificationType(n.type ?? "");
         const title = n.data?.product_title ?? n.title ?? "";
         const amount = n.data?.amount ?? "";
         const timeLeft = n.data?.time_left ?? "ไม่นาน";
         const reason = n.data?.reason ?? "";
         const productId = String(n.data?.product_id ?? n.data?.productId ?? "");
 
-        // 1. ถูกตัดหน้า — ข้ามถ้าผู้ที่บิดคนใหม่คือตัวเราเอง
-        if (["outbid", "out_bid", "overbid"].some((k) => type.includes(k))) {
-          const bidderId =
-            n.data?.bidder_id ??
-            n.data?.new_bidder_id ??
-            n.data?.bidder_user_id ??
-            n.data?.new_bid_user_id ??
-            null;
+                // 1. ถูกตัดหน้า
+        if (category === "outbid") {
+          const bidderId = n.data?.bidder_id ?? n.data?.new_bidder_id ?? n.data?.bidder_user_id ?? n.data?.new_bid_user_id ?? null;
           if (bidderId !== null && Number(bidderId) === user?.id) {
             // เราบิดเพิ่มเองบน bid ของตัวเอง → ไม่ต้องแจ้งเตือน
           } else {
             sendOutbidNotification(title, productId).catch(() => {});
           }
-
-          // 2. ชนะประมูล
-        } else if (
-          ["won", "auction_won", "bid_won"].some((k) => type.includes(k))
-        ) {
+        } else if (category === "won") {
           sendWonNotification(title, productId).catch(() => {});
-
-          // 2.5 แพ้ประมูล (หมดเวลา ไม่ได้เป็นราคาสูงสุด)
-        } else if (
-          ["auction_lost", "bid_lost", "lost"].some((k) => type.includes(k))
-        ) {
+        } else if (category === "lost") {
           sendAuctionLostNotification(title, productId).catch(() => {});
-
-          // 2.6 มีคน Buy Now สินค้าที่เราประมูลอยู่ (เราแพ้)
-        } else if (
-          ["buynow_lost", "buy_now_lost", "bought_now"].some((k) =>
-            type.includes(k),
-          )
-        ) {
+        } else if (category === "buynow_lost") {
           sendBuyNowLostNotification(title, productId).catch(() => {});
-
-          // 2.7 ซื้อสำเร็จผ่าน Buy Now
-        } else if (
-          ["buynow_purchased", "buy_now_success", "buynow_success"].some((k) =>
-            type.includes(k),
-          )
-        ) {
+        } else if (category === "buynow_success") {
           sendBuyNowSuccessNotification(title, productId).catch(() => {});
-
-          // 3. มีคนประมูลสินค้าเรา (ผู้ขาย)
-        } else if (
-          ["new_bid", "bid_placed", "bid_received"].some((k) =>
-            type.includes(k),
-          )
-        ) {
-          sendNewBidOnMyProductNotification(title, amount, productId).catch(
-            () => {},
-          );
-
-          // 4. เติมเงินสำเร็จ
-        } else if (
-          ["deposit", "top_up", "topup"].some((k) => type.includes(k))
-        ) {
+        } else if (category === "new_bid") {
+          sendNewBidOnMyProductNotification(title, amount, productId).catch(() => {});
+        } else if (category === "deposit") {
           sendDepositNotification(amount || title).catch(() => {});
-
-          // 5. ถอนเงินสำเร็จ
-        } else if (["withdraw", "withdrawal"].some((k) => type.includes(k))) {
+        } else if (category === "withdraw") {
           sendWithdrawNotification(amount || title).catch(() => {});
-
-          // 6. ใกล้หมดเวลา (server-sent)
-        } else if (
-          ["ending_soon", "ending", "time_warning"].some((k) =>
-            type.includes(k),
-          )
-        ) {
-          sendEndingSoonNotification(title, timeLeft, productId).catch(
-            () => {},
-          );
-
-          // 7. Admin อนุมัติสินค้า
-        } else if (
-          ["approved", "product_approved"].some((k) => type.includes(k))
-        ) {
+        } else if (category === "ending_soon") {
+          sendEndingSoonNotification(title, timeLeft, productId).catch(() => {});
+        } else if (category === "approved") {
           sendProductApprovedNotification(title, productId).catch(() => {});
-
-          // 8. Admin ปฏิเสธสินค้า
-        } else if (
-          ["rejected", "product_rejected"].some((k) => type.includes(k))
-        ) {
-          sendProductRejectedNotification(title, reason, productId).catch(
-            () => {},
-          );
-
-          // 9. ผู้ซื้อยืนยันการติดต่อ (แจ้งผู้ขาย)
-        } else if (
-          ["buyer_confirmed", "order_confirmed", "confirmed_contact"].some(
-            (k) => type.includes(k),
-          )
-        ) {
+        } else if (category === "rejected") {
+          sendProductRejectedNotification(title, reason, productId).catch(() => {});
+        } else if (category === "buyer_confirmed") {
           sendOrderBuyerConfirmedNotification(title, productId).catch(() => {});
-
-          // 10. ผู้ขายจัดส่งสินค้าแล้ว (แจ้งผู้ซื้อ)
-        } else if (
-          ["seller_shipped", "order_shipped", "shipped"].some((k) =>
-            type.includes(k),
-          )
-        ) {
+        } else if (category === "seller_shipped") {
           sendOrderSellerShippedNotification(title, productId).catch(() => {});
-
-          // 11. คำสั่งซื้อเสร็จ (แจ้งผู้ขาย)
-        } else if (
-          ["order_completed", "buyer_received", "received", "completed"].some(
-            (k) => type.includes(k),
-          )
-        ) {
+        } else if (category === "order_completed") {
           sendOrderCompletedNotification(title, productId).catch(() => {});
-
-          // 12. มีข้อพิพาทคำสั่งซื้อ
-        } else if (
-          ["order_disputed", "disputed", "dispute"].some((k) =>
-            type.includes(k),
-          )
-        ) {
+        } else if (category === "disputed") {
           sendOrderDisputedNotification(title, productId).catch(() => {});
-
-          // 13. คำสั่งซื้อถูกยกเลิก
-        } else if (
-          ["order_cancelled", "cancelled", "order_timeout"].some((k) =>
-            type.includes(k),
-          )
-        ) {
+        } else if (category === "cancelled") {
           const cancelReason = n.data?.reason ?? "";
-          sendOrderCancelledNotification(title, cancelReason, productId).catch(
-            () => {},
-          );
-
-          // 14. Report รอดำเนินการ
-        } else if (
-          ["report_pending", "report_submitted"].some((k) => type.includes(k))
-        ) {
+          sendOrderCancelledNotification(title, cancelReason, productId).catch(() => {});
+        } else if (category === "report_pending") {
           sendReportPendingNotification().catch(() => {});
-
-          // 15. Report กำลังตรวจสอบ
-        } else if (
-          ["report_reviewing", "report_under_review"].some((k) =>
-            type.includes(k),
-          )
-        ) {
+        } else if (category === "report_reviewing") {
           sendReportReviewingNotification().catch(() => {});
-
-          // 16. Report แก้ไขเรียบร้อย
-        } else if (
-          ["report_resolved", "report_closed"].some((k) => type.includes(k))
-        ) {
+        } else if (category === "report_resolved") {
           sendReportResolvedNotification().catch(() => {});
         }
       }

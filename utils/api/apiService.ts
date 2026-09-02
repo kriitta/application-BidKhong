@@ -8,6 +8,7 @@ import apiClient, {
     handleApiError,
     tokenManager,
 } from "./config";
+import { isBidWinning, getHighestBid, getMyHighestBidAmount, calculateOrderDeadline, isOrderExpired } from "../helpers/bidLogic";
 import {
     ActiveBid,
     AdminIncomingProduct,
@@ -473,16 +474,14 @@ const apiService = {
           const myBids = bids.filter((b: any) => Number(b.user_id) === userId);
           if (myBids.length === 0) continue;
 
-          const highestMyBid = Math.max(
-            ...myBids.map((b: any) => parseFloat(b.price)),
-          );
+                    const highestMyBid = getMyHighestBidAmount(myBids, userId);
           const currentPrice = parseFloat(product.current_price || "0");
           const auctionEnd = new Date(product.auction_end_time);
           const isEnded =
             auctionEnd < now ||
             product.status === "ended" ||
             product.status === "completed";
-          const isWinning = highestMyBid >= currentPrice;
+          const isWinning = isBidWinning(highestMyBid, currentPrice);
 
           const imageUrl =
             product.picture ||
@@ -1569,19 +1568,15 @@ const apiService = {
           const myBids = bids.filter((b: any) => Number(b.user_id) === userId);
           if (myBids.length === 0) continue;
 
-          const highestMyBid = Math.max(
-            ...myBids.map((b: any) => parseFloat(b.price)),
-          );
+                    const highestMyBid = getMyHighestBidAmount(myBids, userId);
           const currentPrice = parseFloat(product.current_price || "0");
-          const isWinner = highestMyBid >= currentPrice;
+          const isWinner = isBidWinning(highestMyBid, currentPrice);
           if (!isWinner) continue;
 
           // Build a deadline 24h from when auction ended
           const endedAt = product.updated_at || product.auction_end_time;
-          const deadline = new Date(
-            new Date(endedAt).getTime() + 24 * 60 * 60 * 1000,
-          );
-          const isExpired = deadline < new Date();
+          const deadline = calculateOrderDeadline(endedAt);
+          const isExpired = isOrderExpired(deadline);
 
           orders.push({
             id: product.id,
@@ -1687,17 +1682,12 @@ const apiService = {
           if (bids.length === 0) continue;
 
           // Highest bid = winner
-          const sorted = [...bids].sort(
-            (a, b) => parseFloat(b.price) - parseFloat(a.price),
-          );
-          const winnerBid = sorted[0];
+                    const winnerBid = getHighestBid(bids);
           if (!winnerBid) continue;
 
           const endedAt = product.updated_at || product.auction_end_time;
-          const deadline = new Date(
-            new Date(endedAt).getTime() + 24 * 60 * 60 * 1000,
-          );
-          const isExpired = deadline < new Date();
+          const deadline = calculateOrderDeadline(endedAt);
+          const isExpired = isOrderExpired(deadline);
 
           orders.push({
             id: product.id,
