@@ -1,6 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, TextProps } from "react-native";
-
+import { containsThai } from "../../utils/helpers/bidLogic";
 type FontWeight = "light" | "regular" | "medium" | "semibold" | "bold";
 
 interface AppTextProps extends TextProps {
@@ -23,20 +23,6 @@ const thaiMap: Record<FontWeight, string> = {
   semibold: "NotoSansThai_600SemiBold",
   bold: "NotoSansThai_700Bold",
 };
-
-// Detect Thai Unicode block (U+0E00–U+0E7F)
-function containsThai(children: React.ReactNode): boolean {
-  const extract = (node: React.ReactNode): string => {
-    if (typeof node === "string" || typeof node === "number")
-      return String(node);
-    if (Array.isArray(node)) return node.map(extract).join("");
-    if (React.isValidElement(node) && (node.props as any)?.children) {
-      return extract((node.props as any).children);
-    }
-    return "";
-  };
-  return /[\u0E00-\u0E7F]/.test(extract(children));
-}
 
 export function AppText({
   weight = "regular",

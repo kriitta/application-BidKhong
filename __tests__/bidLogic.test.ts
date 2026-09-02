@@ -5,6 +5,7 @@ import {
   calculateOrderDeadline,
   isOrderExpired,
   classifyNotificationType,
+  containsThai,
 } from "../utils/helpers/bidLogic";
 
 describe("isBidWinning", () => {
@@ -131,5 +132,30 @@ describe("classifyNotificationType", () => {
 
   test("ต้องไม่สนตัวพิมพ์เล็ก-ใหญ่ (case-insensitive)", () => {
     expect(classifyNotificationType("OUTBID")).toBe("outbid");
+  });
+});
+
+describe("containsThai", () => {
+  test("ข้อความภาษาไทยล้วน ต้องคืนค่า true", () => {
+    expect(containsThai("สวัสดี")).toBe(true);
+  });
+  test("ข้อความภาษาอังกฤษล้วน ต้องคืนค่า false", () => {
+    expect(containsThai("Hello World")).toBe(false);
+  });
+  test("ข้อความผสมไทย-อังกฤษ ต้องคืนค่า true", () => {
+    expect(containsThai("Hello สวัสดี")).toBe(true);
+  });
+  test("ตัวเลขล้วน ต้องคืนค่า false", () => {
+    expect(containsThai(12345)).toBe(false);
+  });
+  test("children เป็น array ของ string ต้องตรวจสอบรวมกันได้", () => {
+    expect(containsThai(["Hello ", "สวัสดี"])).toBe(true);
+  });
+  test("children เป็น null หรือ undefined ต้องคืนค่า false ไม่ error", () => {
+    expect(containsThai(null)).toBe(false);
+    expect(containsThai(undefined)).toBe(false);
+  });
+  test("string ว่าง ต้องคืนค่า false", () => {
+    expect(containsThai("")).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 // ════════════════════════════════════════════════════════
 // Bid Winner Logic
 // ════════════════════════════════════════════════════════
-
+import React from "react";
 export interface BidLike {
   price: string;
   user_id?: number;
@@ -112,4 +112,22 @@ export function classifyNotificationType(
     if (keywords.some((k) => t.includes(k))) return category;
   }
   return null;
+}
+
+// ════════════════════════════════════════════════════════
+// Text/Font Helpers
+// ════════════════════════════════════════════════════════
+
+/** ตรวจว่า React node มีตัวอักษรไทยปนอยู่หรือไม่ (Unicode block U+0E00–U+0E7F) ใช้เลือกฟอนต์ */
+export function containsThai(children: React.ReactNode): boolean {
+  const extract = (node: React.ReactNode): string => {
+    if (typeof node === "string" || typeof node === "number")
+      return String(node);
+    if (Array.isArray(node)) return node.map(extract).join("");
+    if (React.isValidElement(node) && (node.props as any)?.children) {
+      return extract((node.props as any).children);
+    }
+    return "";
+  };
+  return /[\u0E00-\u0E7F]/.test(extract(children));
 }
